@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { FundraiseRound } from "@rakazo/contracts";
@@ -22,12 +21,10 @@ import { MoreHorizontal } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { centsFromText } from "../../lib/dollars-input";
-import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { SectionCard } from "../SectionCard";
-
-const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
+import { isoShortDay, usd } from "./format";
 
 /** Starts a round, or edits the open one when `round` is given. */
 export function RoundDialog({
@@ -177,7 +174,6 @@ export function RoundCard({
   onReopen: () => void;
 }) {
   useHideAmounts();
-  const locale = i18n.locale || "en";
   if (!round || round.closedAt) {
     return (
       <SectionCard
@@ -188,7 +184,7 @@ export function RoundCard({
               <h2 className="truncate text-sm font-semibold">{round.name}</h2>
               {round.closedAt ? (
                 <p className="text-xs text-muted-foreground">
-                  {t`Closed ${shortDay(round.closedAt.slice(0, 10), new Date(), locale)} · funded ${usd(fundedCents)}`}
+                  {t`Closed ${isoShortDay(round.closedAt)} · funded ${usd(fundedCents)}`}
                 </p>
               ) : null}
             </>

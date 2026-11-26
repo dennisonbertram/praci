@@ -53,6 +53,8 @@ const bot: MobileBot = {
   modelId: null,
   thinkingLevel: null,
   autoSpeak: false,
+  firewall: false,
+  spawnKey: null,
 };
 
 describe("spaceInboxItems", () => {

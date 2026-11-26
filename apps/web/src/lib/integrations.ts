@@ -1,4 +1,5 @@
 import type {
+  Bot,
   Connection,
   ConnectionCatalogItem,
   ConnectionCategory,
@@ -9,11 +10,15 @@ import {
   BOX_OAUTH_SCOPE,
   DEVIN_MCP_ENDPOINT,
   GRANOLA_MCP_ENDPOINT,
+  isInboxAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
   isZernioEndpoint,
   WISPR_FLOW_MCP_ENDPOINT,
 } from "@rakazo/contracts";
 import type { StatusKind } from "@rakazo/core";
 import { appStatus, matchFeaturedConnectorId } from "@rakazo/core";
+import type { SortDir } from "./list-params";
+import { sortBy } from "./list-params";
 
 export type { StatusKind };
 
@@ -179,6 +184,15 @@ export const FIRST_PARTY_MCP = [
     category: "docs_files",
   },
   {
+    // Omi has no MCP server: the endpoint is a placeholder that matches no connected server.
+    id: "omi",
+    name: "Omi",
+    logo: null,
+    endpoint: "omi:pendant",
+    section: "tools",
+    category: "docs_files",
+  },
+  {
     // Id has no hyphen so a catalog toolkit "wispr_flow" or "wispr-flow" matches it.
     id: "wisprflow",
     name: "Wispr Flow",
@@ -317,6 +331,79 @@ export function groupConnections(
   });
 }
 
+/**
+ * What names each connected account of an app: its own label (left out when it is just the app's
+ * name) and its address, so two accounts of one app can be told apart.
+ */
+export function accountLabels(app: ConnectedApp): string[] {
+  return app.rows
+    .filter((row) => row.status === "connected")
+    .flatMap((row) => {
+      const own = row.displayName === app.name ? null : row.displayName;
+      const text = [own, row.account].filter(Boolean).join(" · ");
+      return text ? [text] : [];
+    });
+}
+
+/** The accounts a card lists: the first `max` lines, and how many more there are. */
+export function accountLines(labels: readonly string[], max: number) {
+  return { lines: labels.slice(0, max), more: Math.max(0, labels.length - max) };
+}
+
+export type AppStatusFilter = "connected" | "attention";
+export type AppSortField = "default" | "name" | "status" | "connected";
+
+/** What the page's search, status filter and sort read from any card: an app, a server or a finance tile. */
+export type EntryInfo = {
+  name: string;
+  /** Every text the search matches: the name, account labels, addresses, hosts. */
+  search: readonly string[];
+  attention: boolean;
+  /** Newest connection date, ISO text; null sorts last. */
+  created: string | null;
+};
+
+export function appEntry(app: ConnectedApp): EntryInfo & { app: ConnectedApp } {
+  return {
+    app,
+    name: app.name,
+    search: [app.name, ...app.rows.flatMap((row) => [row.displayName, row.account ?? ""])],
+    attention: app.status !== "connected",
+    created:
+      app.rows
+        .map((row) => row.createdAt)
+        .sort()
+        .at(-1) ?? null,
+  };
+}
+
+export function filterEntries<T extends EntryInfo>(
+  entries: readonly T[],
+  { query, status }: { query: string; status: AppStatusFilter | undefined },
+): T[] {
+  const needle = query.trim().toLowerCase();
+  return entries.filter(
+    (entry) =>
+      (!status || (status === "attention") === entry.attention) &&
+      (!needle || entry.search.some((text) => text.toLowerCase().includes(needle))),
+  );
+}
+
+/** Status sorts problems first when ascending. */
+export function sortEntries<T extends EntryInfo>(
+  entries: readonly T[],
+  field: AppSortField,
+  dir: SortDir,
+): T[] {
+  if (field === "default") return [...entries];
+  const pick = {
+    name: (entry: T) => entry.name,
+    status: (entry: T) => (entry.attention ? 0 : 1),
+    connected: (entry: T) => entry.created,
+  }[field];
+  return sortBy(entries, pick, dir);
+}
+
 /** Catalog apps with no account row yet, featured apps first. */
 export function popularApps(
   catalog: readonly ConnectionCatalogItem[],
@@ -356,5 +443,32 @@ export function toggleAccess(
   if (on) ids.add(botId);
   else ids.delete(botId);
   const all = allBotIds.every((id) => ids.has(id));
+  return { allAgents: all, botIds: all ? [] : [...ids] };
+}
+
+/** On a mail connection, the Inbox agent and every email chat; otherwise just the owning agent. All and None leave these alone. */
+export function keptAgentIds(bots: Bot[], ownerBotId: string | null | undefined): string[] {
+  if (!ownerBotId) return [];
+  const owner = bots.find((bot) => bot.id === ownerBotId);
+  const chats = isInboxAgentSpawnKey(owner?.spawnKey)
+    ? bots.filter((bot) => isMailThreadAgentSpawnKey(bot.spawnKey)).map((bot) => bot.id)
+    : [];
+  return [ownerBotId, ...chats];
+}
+
+/** All or None for the agents outside `keepIds`; the kept agents stay exactly as they are. */
+export function setOthersAccess(
+  current: { allAgents: boolean; botIds: string[] },
+  allBotIds: string[],
+  keepIds: string[],
+  on: boolean,
+): { allAgents: boolean; botIds: string[] } {
+  const kept = new Set(keepIds);
+  const ids = new Set(
+    (current.allAgents ? allBotIds : current.botIds).filter((id) => kept.has(id)),
+  );
+  if (on) for (const id of allBotIds) if (!kept.has(id)) ids.add(id);
+  // None stays an explicit list even when it covers today's agents, so future agents start off.
+  const all = on && allBotIds.every((id) => ids.has(id));
   return { allAgents: all, botIds: all ? [] : [...ids] };
 }

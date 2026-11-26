@@ -3,28 +3,45 @@ export type GroupMemberRef = {
   name: string;
 };
 
-const MENTION_PATTERN = /@([A-Za-z0-9][A-Za-z0-9_-]{0,39})/g;
-
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** An `@Name` token, bounded so it never matches part of a longer word or an email address. */
+export function mentionTokenPattern(name: string, flags: string): RegExp {
+  const allFlags = flags.includes("u") ? flags : `${flags}u`;
+  return new RegExp(`(^|[^\\p{L}\\p{N}_-])@${escapeRegExp(name)}(?![\\p{L}\\p{N}_-])`, allFlags);
 }
 
 export function hasMentionToken(text: string, name: string): boolean {
   const normalized = name.trim();
   if (!normalized) return false;
-  return new RegExp(
-    `(?:^|[^\\p{L}\\p{N}_-])@${escapeRegExp(normalized)}(?![\\p{L}\\p{N}_-])`,
-    "iu",
-  ).test(text);
+  return mentionTokenPattern(normalized, "i").test(text);
 }
 
-export function parseMentionNames(text: string): string[] {
-  const names = new Set<string>();
-  for (const match of text.matchAll(MENTION_PATTERN)) {
-    const name = match[1];
-    if (name) names.add(name.toLowerCase());
+export type MentionRange<T extends { name: string }> = { start: number; end: number; mention: T };
+
+/** Where each mention's `@Name` token sits in the text, in order, without overlaps. */
+export function findMentionRanges<T extends { name: string }>(
+  text: string,
+  mentions: readonly T[],
+): MentionRange<T>[] {
+  const all: MentionRange<T>[] = [];
+  for (const mention of mentions) {
+    const name = mention.name.trim();
+    if (!name) continue;
+    const pattern = mentionTokenPattern(name, "gi");
+    for (const match of text.matchAll(pattern)) {
+      const start = match.index + (match[1] ?? "").length;
+      all.push({ start, end: start + name.length + 1, mention });
+    }
   }
-  return [...names];
+  all.sort((a, b) => a.start - b.start || b.end - a.end);
+  const ranges: MentionRange<T>[] = [];
+  for (const range of all) {
+    if (range.start >= (ranges.at(-1)?.end ?? 0)) ranges.push(range);
+  }
+  return ranges;
 }
 
 export function resolveGroupTargetBotIds(input: {
@@ -46,9 +63,8 @@ export function resolveGroupTargetBotIds(input: {
   if (targetIds.size === 0 && hasMentionToken(input.text, "everyone")) {
     for (const member of input.members) targetIds.add(member.id);
   } else {
-    for (const member of input.members) {
-      if (hasMentionToken(input.text, member.name)) targetIds.add(member.id);
-    }
+    for (const { mention } of findMentionRanges(input.text, input.members))
+      targetIds.add(mention.id);
   }
 
   if (targetIds.size === 0 && input.members[0]) {
@@ -63,21 +79,4 @@ export function inferHandoffTargetName(prompt: string): string | undefined {
     /hand(?:\s+this|\s+off|\s+it)?\s+to\s+@?([A-Za-z0-9][A-Za-z0-9_-]{0,39})/i.exec(prompt) ??
     /@([A-Za-z0-9][A-Za-z0-9_-]{0,39})\s+take/i.exec(prompt);
   return handoffMatch?.[1];
-}
-
-export function inferHandoffTargetBotId(
-  prompt: string,
-  members: GroupMemberRef[],
-): string | undefined {
-  const handedTo = members.find((member) => {
-    const escaped = escapeRegExp(member.name.trim());
-    return escaped
-      ? new RegExp(`\\bto\\s+@?${escaped}(?![\\p{L}\\p{N}_-])`, "iu").test(prompt)
-      : false;
-  });
-  if (handedTo) return handedTo.id;
-  const mentioned = members.find((member) => hasMentionToken(prompt, member.name));
-  if (mentioned) return mentioned.id;
-  const name = inferHandoffTargetName(prompt)?.toLowerCase();
-  return name ? members.find((member) => member.name.toLowerCase() === name)?.id : undefined;
 }

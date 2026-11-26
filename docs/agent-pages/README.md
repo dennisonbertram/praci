@@ -74,6 +74,9 @@ in chat.
 
 ## Fast follow: live charts
 
+Superseded by [Live pages](live-pages.md), which plans named pages, scheduled sources and
+stored history. The note below is kept as the original intent.
+
 Add an optional `source` to `PageChart`: a read-only built-in tool name plus arguments
 (for example `finance_overview`). A new `pages.chartData({ botId, revision, index })`
 RPC runs that tool scoped to the bot's owner and returns rows; `data` stays as the

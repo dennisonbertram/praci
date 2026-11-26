@@ -17,6 +17,9 @@ function tx(options?: {
   const events: Array<Record<string, unknown>> = [];
   const client = {
     $queryRaw: vi.fn(async () => []),
+    externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     run: {
       updateMany: vi.fn(async () => ({ count: options?.cancelled ?? 1 })),
       findUnique: vi.fn(async () => {
@@ -37,6 +40,7 @@ function tx(options?: {
       ),
       create: vi.fn(async () => ({ id: "run-next" })),
     },
+    secret: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
     task: {
       updateMany: vi.fn(async () => ({ count: 1 })),
@@ -44,6 +48,7 @@ function tx(options?: {
     },
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 2, nextEventSeq: 9 })) },
     message: {
+      findFirst: vi.fn(async () => null),
       create: vi.fn(async (args: { data: Record<string, unknown> }) => {
         const row = { id: "message-expired", ...args.data };
         messages.push(row);
@@ -58,6 +63,7 @@ function tx(options?: {
       deleteMany: vi.fn(async () => ({ count: 1 })),
     },
     computerExecutionLease: { updateMany: vi.fn(async () => ({ count: 1 })) },
+    threadGoal: { findFirst: vi.fn(async () => null) },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     steeringMessage: {
       updateMany: vi.fn(async () => ({ count: 1 })),

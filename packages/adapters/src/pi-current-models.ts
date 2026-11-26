@@ -64,5 +64,22 @@ export function supplementPiModels(models: MutableModels): MutableModels {
     name: "Meta: Muse Wonder",
     cost: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 0 },
   });
+  // The first row is what clients preselect and the server falls back to.
+  for (const [providerId, id] of RECOMMENDED_FIRST_MODEL) {
+    const provider = models.getProvider(providerId);
+    const model = models.getModel(providerId, id);
+    if (!provider || !model) continue;
+    models.setProvider({
+      ...provider,
+      getModels: () => [model, ...provider.getModels().filter((m) => m.id !== id)],
+    });
+  }
   return models;
 }
+
+const RECOMMENDED_FIRST_MODEL = [
+  ["google", "gemini-flash-latest"],
+  ["openai", "gpt-6-luna"],
+  ["mistral", "mistral-medium-latest"],
+  ["openrouter", "~anthropic/claude-sonnet-latest"],
+] as const;

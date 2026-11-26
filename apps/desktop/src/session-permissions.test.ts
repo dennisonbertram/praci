@@ -6,12 +6,15 @@ import { shouldOpenInAppPopup } from "./window-open.js";
 const appUrl = "https://app.example.test/chat";
 const providerUrl = "https://provider.example.test/authorize";
 type RequestHandler = NonNullable<Parameters<Session["setPermissionRequestHandler"]>[0]>;
+type DisplayHandler = NonNullable<Parameters<Session["setDisplayMediaRequestHandler"]>[0]>;
 type CheckHandler = NonNullable<Parameters<Session["setPermissionCheckHandler"]>[0]>;
 
 function policyFixture(url = appUrl) {
   const setPermissionRequestHandler = vi.fn<Session["setPermissionRequestHandler"]>();
   const setPermissionCheckHandler = vi.fn<Session["setPermissionCheckHandler"]>();
+  const setDisplayMediaRequestHandler = vi.fn<Session["setDisplayMediaRequestHandler"]>();
   const session = {
+    setDisplayMediaRequestHandler,
     setPermissionRequestHandler,
     setPermissionCheckHandler,
   } as unknown as Session;
@@ -19,14 +22,38 @@ function policyFixture(url = appUrl) {
     session,
     isDestroyed: vi.fn(() => false),
     getURL: vi.fn(() => url),
+    mainFrame: { name: "main" },
   } as unknown as WebContents;
+  const getSources = vi.fn(
+    async () => [{ id: "screen:1:0" }] as unknown as Electron.DesktopCapturerSource[],
+  );
   let app: { webContents: WebContents; url: string } | null = { webContents: contents, url };
-  installSessionPermissions(session, () => app);
+  const displayCapture = { platform: "darwin", getSources };
+  installSessionPermissions(session, () => app, displayCapture);
   const requestHandler = setPermissionRequestHandler.mock.calls[0]?.[0] as RequestHandler;
   const checkHandler = setPermissionCheckHandler.mock.calls[0]?.[0] as CheckHandler;
+  const displayHandler = setDisplayMediaRequestHandler.mock.calls[0]?.[0] as DisplayHandler;
   return {
     contents,
     session,
+    getSources,
+    displayCapture,
+    async display(request: Partial<Parameters<DisplayHandler>[0]> = {}) {
+      const callback = vi.fn();
+      displayHandler(
+        {
+          frame: contents.mainFrame,
+          securityOrigin: new URL(url).origin,
+          videoRequested: true,
+          audioRequested: true,
+          userGesture: false,
+          ...request,
+        },
+        callback,
+      );
+      await vi.waitFor(() => expect(callback).toHaveBeenCalledOnce());
+      return callback.mock.calls[0]?.[0];
+    },
     setApp: (next: typeof app) => {
       app = next;
     },
@@ -247,5 +274,43 @@ describe("desktop session permissions", () => {
     expect(policy.request("media", {}, other.contents)).toBe(false);
     expect(policy.check("media", {}, other.contents)).toBe(false);
     expect(policy.check("notifications", { embeddingOrigin: appUrl }, null)).toBe(false);
+  });
+});
+
+describe("desktop display capture (meeting call audio)", () => {
+  it("answers the app's request with the screen and loopback audio, without a user gesture", async () => {
+    const policy = policyFixture();
+    expect(await policy.display()).toEqual({ video: { id: "screen:1:0" }, audio: "loopback" });
+    expect(policy.getSources).toHaveBeenCalledWith({
+      types: ["screen"],
+      thumbnailSize: { width: 0, height: 0 },
+    });
+  });
+
+  it("denies a subframe, another origin, a destroyed app and an audio-less request", async () => {
+    const policy = policyFixture();
+    expect(await policy.display({ frame: { name: "child" } as never })).toEqual({});
+    expect(await policy.display({ frame: null })).toEqual({});
+    expect(await policy.display({ securityOrigin: providerUrl })).toEqual({});
+    expect(await policy.display({ audioRequested: false })).toEqual({});
+    vi.mocked(policy.contents.isDestroyed).mockReturnValue(true);
+    expect(await policy.display()).toEqual({});
+    expect(policy.getSources).not.toHaveBeenCalled();
+  });
+
+  it("denies when no screen source is available (system audio permission missing) or on error", async () => {
+    const policy = policyFixture();
+    policy.getSources.mockResolvedValueOnce([]);
+    expect(await policy.display()).toEqual({});
+    policy.getSources.mockRejectedValueOnce(new Error("denied"));
+    expect(await policy.display()).toEqual({});
+  });
+
+  it("is granted on Windows and denied on Linux", async () => {
+    const policy = policyFixture();
+    policy.displayCapture.platform = "win32";
+    expect(await policy.display()).toMatchObject({ audio: "loopback" });
+    policy.displayCapture.platform = "linux";
+    expect(await policy.display()).toEqual({});
   });
 });

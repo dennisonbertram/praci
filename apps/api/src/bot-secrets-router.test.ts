@@ -203,7 +203,9 @@ describe("botSecrets router", () => {
     expect(Object.keys(select).sort()).toEqual([
       "auth",
       "createdAt",
+      "lastUsedAt",
       "name",
+      "needsAttentionAt",
       "origin",
       "updatedAt",
     ]);
@@ -213,6 +215,8 @@ describe("botSecrets router", () => {
         origin: "https://api.github.com",
         auth: { type: "basic", username: "octocat" },
         createdAt: "2026-08-01T00:00:00.000Z",
+        lastUsedAt: null,
+        needsAttentionAt: null,
         updatedAt: "2026-08-01T00:00:00.000Z",
       },
     ]);
@@ -230,6 +234,8 @@ describe("botSecrets router", () => {
       origin: "http://192.168.1.20:8080",
       auth: { type: "bearer" },
       createdAt: "2026-09-01T00:00:00.000Z",
+      lastUsedAt: null,
+      needsAttentionAt: null,
       updatedAt: "2026-09-01T00:00:00.000Z",
     });
     expect(saved.text).not.toContain(FAKE_VALUE);
@@ -349,6 +355,8 @@ describe("botSecrets router", () => {
         origin: "http://192.168.1.20:8080",
         auth: null,
         createdAt: "2026-08-01T00:00:00.000Z",
+        lastUsedAt: null,
+        needsAttentionAt: null,
         updatedAt: "2026-08-01T00:00:00.000Z",
       },
     ]);

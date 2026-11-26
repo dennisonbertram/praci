@@ -23,7 +23,9 @@ const accountSecurity = (value: AccountSecurity) => () => {
     "aiConsent.status": { recipients: [] },
     "models.credentials": [],
     "approvalRules.list": [],
-    "autoReview.get": { enabled: false, checkerAvailable: true },
+    "autoReview.get": { enabled: false, background: false, checkerAvailable: true },
+    "autoReview.recent": [],
+    "autoReview.approvals": { rows: [] },
   });
   const original = window.fetch;
   window.fetch = async (input, init) => {
@@ -31,6 +33,15 @@ const accountSecurity = (value: AccountSecurity) => () => {
     if (url.includes("/api/auth/account-security")) {
       return new Response(JSON.stringify(value), {
         headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url.includes("/api/auth/capabilities")) {
+      return Response.json({
+        sso: null,
+        passwordAuth: true,
+        passwordReset: false,
+        resetUrl: null,
+        passkey: false,
       });
     }
     return original(input, init);

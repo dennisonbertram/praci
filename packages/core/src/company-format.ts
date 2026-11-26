@@ -1,4 +1,4 @@
-import type { CompanyFact, CompanyPartialDate } from "@rakazo/contracts";
+import type { CompanyFact, CompanyPartialDate, CompanyRelation } from "@rakazo/contracts";
 
 export function companyDate(value: CompanyPartialDate | null | undefined): string {
   if (!value) return "—";
@@ -15,8 +15,15 @@ export function companyDateEnd(value: CompanyPartialDate): string {
   if (value.precision === "month") end.setUTCMonth(end.getUTCMonth() + 1, 0);
   return end.toISOString().slice(0, 10);
 }
-export function companyFactTitle(fact: CompanyFact): string {
+export function companyFactTitle(
+  fact: CompanyFact,
+  nameOf?: (id: string) => string | undefined,
+  relationLabel: (relation: CompanyRelation) => string = (relation) =>
+    relation.replaceAll("_", " "),
+): string {
   if (fact.kind === "entity") return fact.record.displayName;
   if (fact.kind === "event") return fact.record.title;
-  return fact.record.role ?? fact.record.relation.replaceAll("_", " ");
+  const label = fact.record.role ?? relationLabel(fact.record.relation);
+  if (!nameOf) return label;
+  return [nameOf(fact.record.fromId), label, nameOf(fact.record.toId)].filter(Boolean).join(" · ");
 }

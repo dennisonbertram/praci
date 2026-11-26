@@ -31,6 +31,8 @@ export async function resolveUpdateBotAvatar(input: {
   color?: unknown;
   artifactId?: unknown;
   useAttachedImage?: unknown;
+  /** The bot's stored avatar value; its `::shape_N` suffix survives a plain hex color write. */
+  currentColor?: string;
   sourceImageArtifactIds: readonly string[];
   loadArtifact: (id: string) => Promise<Uint8Array | null>;
 }): Promise<{ color: string } | { error: string }> {
@@ -67,7 +69,10 @@ export async function resolveUpdateBotAvatar(input: {
           "color must be a hex value, an encoded shape like #8B5CF6::shape_3, or a data image.",
       };
     }
-    return { color };
+    const keptShape = /^#[0-9a-fA-F]{3,6}$/.test(color)
+      ? input.currentColor?.match(/::shape_\d+$/)?.[0]
+      : undefined;
+    return { color: keptShape ? `${color}${keptShape}` : color };
   }
 
   return { error: "missing" };

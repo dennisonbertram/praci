@@ -160,6 +160,7 @@ import { createRoot } from "react-dom/client";
 import { Pressable } from "react-native";
 import type { LinkFavicons } from "./markdown.native";
 import {
+  AppLinkProvider,
   ChatMarkdown,
   HideAmountsContext,
   LinkFaviconsContext,
@@ -414,6 +415,52 @@ describe("user message links", () => {
       root.unmount();
     });
     container.remove();
+  });
+});
+
+describe("native in-app links", () => {
+  const render = async (resolve: (href: string) => (() => void) | null, md: string) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    await act(async () => {
+      createRoot(container).render(
+        <AppLinkProvider resolve={resolve}>
+          <ChatMarkdown>{md}</ChatMarkdown>
+        </AppLinkProvider>,
+      );
+    });
+    return container;
+  };
+
+  it("opens the screen for a page link the app can route", async () => {
+    const open = vi.fn();
+    const resolve = vi.fn((href: string) => (href === "/app/pages/b1/p1" ? open : null));
+    const container = await render(resolve, "See [Customer support](/app/pages/b1/p1).");
+    const link = container.querySelector<HTMLElement>("[data-accessibility-role='link']");
+    expect(link?.textContent).toBe("Customer support");
+    await act(async () => {
+      link?.click();
+    });
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an in-app path the app has no screen for as plain text, and never opens it", async () => {
+    linking.openURL.mockClear();
+    const container = await render(() => null, "[Gone](/app/nowhere)");
+    expect(container.textContent).toBe("Gone");
+    expect(container.querySelector("[data-accessibility-role='link']")).toBeNull();
+    expect(linking.openURL).not.toHaveBeenCalled();
+  });
+
+  it("does not treat look-alike or scripted links as in-app", async () => {
+    const resolve = vi.fn(() => () => undefined);
+    const container = await render(
+      resolve,
+      "[a](//evil.test/app/x) [b](/\\evil.test) [c](javascript:alert(1)) [d](app/pages/b/p)",
+    );
+    expect(resolve).not.toHaveBeenCalled();
+    expect(container.querySelector("[data-accessibility-role='link']")).toBeNull();
   });
 });
 

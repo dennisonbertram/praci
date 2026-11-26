@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { EmailCard, MessageBlock } from "@rakazo/contracts";
 import { groupEmailCards } from "@rakazo/core";
-import { Button, Card } from "@rakazo/ui-web";
+import { Button, Table, TableBody, TableCell, TableRow } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useRef, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -11,7 +11,7 @@ import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { InboxMessageDialog } from "./inbox/InboxMessageDialog";
 
-/** Mail the bot cited, grouped by urgency. Mail text is untrusted, so it only ever renders as text. */
+/** Mail the bot cited, as one table ordered by urgency. Mail text is untrusted, so it only ever renders as text. */
 export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "emails" }> }) {
   const { t } = useLingui();
   useHideAmounts();
@@ -37,20 +37,13 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
     return next;
   };
   const now = new Date();
-  // The same order the cards are listed in, so the preview steps through them.
+  // The table order, so the preview steps through the rows.
   const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
   const at = ordered.findIndex((email) => email.id === open?.id);
-  // Groups are how soon a reply is due, not when the mail came, so the titles say so.
-  const titles = {
-    today: t`Today`,
-    within_3_days: t`Within 3 days`,
-    this_week: t`This week`,
-    later: t`No rush`,
-  };
   const attachments = (email: EmailCard) =>
     email.attachments ? (
       <span
-        className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"
+        className="inline-flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground"
         role="img"
         aria-label={t`Attachments: ${email.attachments}`}
       >
@@ -58,75 +51,77 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
         {email.attachments}
       </span>
     ) : null;
-
-  const groups = groupEmailCards(block.emails);
-  // "No rush" only means something next to more urgent mail; alone, such as past updates the bot
-  // looked up, it reads as a stray label.
-  const onlyLater = groups.length === 1 && groups[0]?.urgency === "later";
+  // Urgency as a short label; "later" is the default and needs none. Only "Today" stands out.
+  const whens = {
+    today: t`Today`,
+    within_3_days: t`3 days`,
+    this_week: t`This week`,
+    later: "",
+  };
 
   return (
-    <div data-testid="email-cards" className="flex w-full min-w-0 flex-col gap-3 py-1">
-      {groups.map((group) => (
-        <section key={group.urgency} className="flex flex-col gap-1.5">
-          {onlyLater ? null : (
-            <h3 className="text-xs font-semibold text-muted-foreground">{titles[group.urgency]}</h3>
-          )}
-          {group.urgency === "later" ? (
-            <Card size="sm" className="gap-0 py-1">
-              {group.emails.map((email) => (
-                <button
-                  key={email.id}
-                  type="button"
-                  data-testid="email-row"
-                  onClick={() => setOpen(email)}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 px-3 py-1.5 text-start hover:bg-muted"
-                >
-                  <span dir="auto" className="truncate font-medium">
-                    {email.from}
+    <div data-testid="email-cards" className="@container flex w-full min-w-0 flex-col gap-2 py-1">
+      <Table compact>
+        <TableBody>
+          {ordered.map((email) => (
+            <TableRow
+              key={email.id}
+              data-testid="email-row"
+              onOpen={() => setOpen(email)}
+              className="align-top"
+            >
+              <TableCell className="w-px whitespace-nowrap text-xs">
+                <span className="inline-flex items-center gap-1.5">
+                  {unread[email.id] ? (
+                    <span
+                      role="img"
+                      aria-label={t`Unread`}
+                      className="size-2 shrink-0 rounded-full bg-primary"
+                    />
+                  ) : null}
+                  <span
+                    className={
+                      email.urgency === "today"
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {whens[email.urgency]}
                   </span>
-                  <span className="flex items-center gap-2">
-                    {attachments(email)}
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
-                    </span>
-                  </span>
-                  <span dir="auto" className="col-span-2 truncate text-muted-foreground">
-                    {maskCurrencyWhenHidden(email.subject)}
-                  </span>
-                </button>
-              ))}
-            </Card>
-          ) : (
-            group.emails.map((email) => (
-              <button
-                key={email.id}
-                type="button"
-                data-testid="email-card"
-                onClick={() => setOpen(email)}
-                className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 rounded-xl bg-card px-3 py-2.5 text-start text-sm ring-1 ring-foreground/10 hover:bg-muted @2xl:grid-cols-[12rem_minmax(0,1fr)_auto]"
-              >
-                <span dir="auto" className="truncate font-medium">
-                  {email.from}
                 </span>
-                <span className="col-start-2 row-start-1 flex shrink-0 items-baseline gap-2 @2xl:col-start-3">
+              </TableCell>
+              <TableCell dir="auto" className="max-w-24 truncate @md:max-w-40 font-medium">
+                {email.from}
+              </TableCell>
+              <TableCell className="w-full max-w-0">
+                <span className="flex min-w-0 items-center gap-2">
+                  <button
+                    type="button"
+                    data-row-open
+                    dir="auto"
+                    className="min-w-0 truncate text-start"
+                  >
+                    {maskCurrencyWhenHidden(email.subject)}
+                  </button>
                   {attachments(email)}
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
-                  </span>
                 </span>
-                <span className="col-span-2 flex min-w-0 flex-col gap-0.5 @2xl:col-span-1 @2xl:col-start-2 @2xl:row-start-1">
-                  <span dir="auto" className="truncate">
-                    {maskCurrencyWhenHidden(email.subject)}
+                {archived[email.id] ? (
+                  <span className="block truncate text-xs text-muted-foreground">
+                    <Trans>Archived</Trans>
                   </span>
-                  <span dir="auto" className="line-clamp-2 text-muted-foreground">
-                    {maskCurrencyWhenHidden(email.snippet)}
+                ) : email.note ? (
+                  <span dir="auto" className="block truncate text-xs text-muted-foreground">
+                    {maskCurrencyWhenHidden(email.note)}
                   </span>
-                </span>
-              </button>
-            ))
-          )}
-        </section>
-      ))}
+                ) : null}
+              </TableCell>
+              <TableCell className="hidden whitespace-nowrap text-end text-xs text-muted-foreground tabular-nums @md:table-cell">
+                {formatMailTime(email.receivedAt, now)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <InboxMessageDialog
         messageId={open?.id ?? null}
         subject={open?.subject}

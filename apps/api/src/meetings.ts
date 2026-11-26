@@ -1,15 +1,25 @@
 import { ORPCError } from "@orpc/server";
-import { MeetingSourceError } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob, MeetingSourceError, meetingsDigestJob } from "@rakazo/adapter-kit";
 import type { MeetingSourceRegistry } from "@rakazo/adapters";
 import {
   aiRecipient,
+  attendeesOf,
+  identityEmails,
+  isMine,
+  MeetingDigestSchema,
   parseModelSecret,
   persistPreparedSecret,
   queueMeetingDigests,
   requestMeetingSync,
   selectConfiguredModel,
+  triageReadiness,
 } from "@rakazo/adapters";
-import type { Actor, MeetingsStatus, StoredMeetingsPage } from "@rakazo/contracts";
+import type {
+  Actor,
+  MeetingsStatus,
+  StoredMeetingDetail,
+  StoredMeetingsPage,
+} from "@rakazo/contracts";
 import {
   AI_DISCLOSURE_VERSION,
   GRANOLA_API_CONNECTOR_ID,
@@ -17,12 +27,17 @@ import {
 } from "@rakazo/contracts";
 import {
   deleteMeeting,
+  findBotModelCredential,
   findDefaultModelCredential,
-  findModelCredential,
+  findMergeablePrevious,
   getMeetingSyncState,
   IsolationError,
+  ignorePinnedConnectionLost,
+  likeLiteral,
+  mergeMeetingWithPrevious,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { DIGEST_WINDOW_MS } from "./inbox.js";
 import type { ensureConnectedAppAgent } from "./integration-agent.js";
 import { provisionConnectionAgent } from "./integration-agent.js";
 import type { RouterDeps } from "./router.js";
@@ -38,7 +53,7 @@ export interface MeetingsDeps {
   agent: Parameters<typeof ensureConnectedAppAgent>[0];
 }
 
-const owner = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
+export const owner = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 
 /** The user's Granola key connection, whatever its status except revoked. */
 const findConnection = (deps: MeetingsDeps, actor: Actor) =>
@@ -72,7 +87,12 @@ async function primaryRecipient(deps: MeetingsDeps, actor: Actor, botId?: string
     botId
       ? prisma.bot.findFirst({
           where: { id: botId, ...owner(actor), archivedAt: null },
-          select: { modelProvider: true, modelId: true, thinkingLevel: true },
+          select: {
+            modelProvider: true,
+            modelId: true,
+            modelCredentialId: true,
+            thinkingLevel: true,
+          },
         })
       : null,
     findDefaultModelCredential(prisma, actor),
@@ -80,7 +100,11 @@ async function primaryRecipient(deps: MeetingsDeps, actor: Actor, botId?: string
   ]);
   const overrideCredential =
     bot?.modelProvider && bot.modelId
-      ? await findModelCredential(prisma, actor, bot.modelProvider, bot.modelId)
+      ? await findBotModelCredential(prisma, actor, {
+          modelProvider: bot.modelProvider,
+          modelId: bot.modelId,
+          modelCredentialId: bot.modelCredentialId,
+        }).catch(ignorePinnedConnectionLost)
       : null;
   const model = selectConfiguredModel({
     override: bot ?? null,
@@ -121,7 +145,7 @@ async function missingConsent(deps: MeetingsDeps, actor: Actor, botId?: string |
 }
 
 /** Connecting is the consent act: it records consent for the primary model's recipient. */
-async function recordConsent(deps: MeetingsDeps, actor: Actor, botId: string | null) {
+export async function recordConsent(deps: MeetingsDeps, actor: Actor, botId: string | null) {
   for (const recipient of await missingConsent(deps, actor, botId)) {
     await deps.router.prisma.aiDataConsent.upsert({
       where: {
@@ -217,7 +241,7 @@ export async function connectGranola(
     owner(actor),
     { connectionId: connection.id },
     "granola",
-  );
+  ).catch((error) => getLogger().error("meetings.connect: sync not queued", error));
   return { ok: true };
 }
 
@@ -227,7 +251,7 @@ export async function granolaStatus(deps: MeetingsDeps, actor: Actor): Promise<M
   const { prisma } = deps.router;
   const [state, syncedCount] = await Promise.all([
     getMeetingSyncState(prisma, owner(actor), { connectionId: connection.id }),
-    prisma.meeting.count({ where: { ...owner(actor), deletedAt: null } }),
+    prisma.meeting.count({ where: { ...owner(actor), provider: "granola", deletedAt: null } }),
   ]);
   const status =
     connection.status === "connected" || connection.status === "needs_reconnect"
@@ -287,6 +311,7 @@ export async function listStoredMeetings(
   deps: MeetingsDeps,
   actor: Actor,
   cursor?: string,
+  filter: { q?: string; provider?: string; attendee?: string } = {},
 ): Promise<StoredMeetingsPage> {
   // The cursor is the last row's start time and id; rows sort by start time (newest first), then id.
   const at = cursor ? cursor.split("|") : [];
@@ -300,18 +325,155 @@ export async function listStoredMeetings(
         }
       : {};
   const rows = await deps.router.prisma.meeting.findMany({
-    where: { ...owner(actor), deletedAt: null, ...after },
-    select: { id: true, title: true, startedAt: true },
+    where: {
+      ...owner(actor),
+      deletedAt: null,
+      ...(filter.provider ? { provider: filter.provider } : {}),
+      ...(filter.q
+        ? { title: { contains: likeLiteral(filter.q), mode: "insensitive" as const } }
+        : {}),
+      // Attendee emails are stored lowercase (packages/db meetings.ts); jsonb containment.
+      ...(filter.attendee
+        ? { attendees: { array_contains: [{ email: filter.attendee.toLowerCase() }] } }
+        : {}),
+      ...after,
+    },
+    select: { id: true, title: true, startedAt: true, endedAt: true, provider: true },
     orderBy: [{ startedAt: "desc" }, { id: "asc" }],
     take: STORED_MEETINGS_PAGE_SIZE + 1,
   });
   const page = rows.slice(0, STORED_MEETINGS_PAGE_SIZE);
   const last = page[page.length - 1];
   return {
-    items: page.map((row) => ({ ...row, startedAt: row.startedAt.toISOString() })),
+    items: page.map((row) => ({
+      ...row,
+      startedAt: row.startedAt.toISOString(),
+      endedAt: row.endedAt?.toISOString() ?? null,
+    })),
     nextCursor:
       rows.length > page.length && last ? `${last.startedAt.toISOString()}|${last.id}` : null,
   };
+}
+
+const strings = (value: unknown) =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+
+/** The longest the page waits to learn whether a digest can run. */
+const READINESS_TIMEOUT_MS = 1500;
+
+/**
+ * Best effort: resolving the model may refresh a credential over the network. A failure or a slow
+ * answer means "not summarizing", so the meeting itself is never delayed or failed by it.
+ */
+async function digestCanRun(deps: MeetingsDeps, actor: Actor): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), READINESS_TIMEOUT_MS);
+    });
+    const ready = await Promise.race([triageReadiness(deps.router, owner(actor)), timeout]);
+    if (ready === null) getLogger().debug("meetings.get: digest readiness not available");
+    return ready !== null;
+  } catch (error) {
+    getLogger().warn("meetings.get: digest readiness check failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** One of the actor's meetings; anyone else's, in any space, is not found. */
+export async function getStoredMeeting(
+  deps: MeetingsDeps,
+  actor: Actor,
+  meetingId: string,
+): Promise<StoredMeetingDetail> {
+  const row = await deps.router.prisma.meeting.findFirst({
+    where: { id: meetingId, ...owner(actor), deletedAt: null },
+    include: {
+      inboxTodos: {
+        where: owner(actor),
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true, text: true, dueOn: true, doneAt: true },
+      },
+    },
+  });
+  if (!row) throw new ORPCError("NOT_FOUND", { message: "Meeting not found" });
+  const digest =
+    row.digestStatus === "done" ? (row.digest as Record<string, unknown> | null) : null;
+  // Same rule as the Inbox's "digests still to come": only while a digest can run and the meeting is new.
+  const summarizing =
+    (row.digestStatus === null || row.digestStatus === "running") &&
+    row.createdAt.getTime() > Date.now() - DIGEST_WINDOW_MS &&
+    (await digestCanRun(deps, actor));
+  // Commitments that are not the user's; with no known identity none can be told apart, so none are shown.
+  const identity = digest
+    ? await identityEmails(deps.router.prisma, owner(actor))
+    : new Set<string>();
+  const attendees = attendeesOf(row.attendees);
+  const parsed = identity.size > 0 ? MeetingDigestSchema.safeParse(digest) : null;
+  const actionItems = (parsed?.success ? parsed.data.commitments : [])
+    .filter((c) => !isMine(c.owner, attendees, identity))
+    .map((c) => ({ owner: c.owner, text: c.text, due: c.due ?? null }));
+  return {
+    id: row.id,
+    title: row.title,
+    startedAt: row.startedAt.toISOString(),
+    endedAt: row.endedAt?.toISOString() ?? null,
+    provider: row.provider,
+    summary: row.summary,
+    decisions: strings(digest?.decisions),
+    followUps: strings(digest?.followUps),
+    todos: row.inboxTodos.map((todo) => ({
+      id: todo.id,
+      text: todo.text,
+      dueOn: todo.dueOn ? todo.dueOn.toISOString().slice(0, 10) : null,
+      doneAt: todo.doneAt?.toISOString() ?? null,
+    })),
+    transcript: row.transcript,
+    canMergeWithPrevious: !!(await findMergeablePrevious(deps.router.prisma, owner(actor), row)),
+    summarizing,
+    actionItems,
+    // Read from the capture's chunks, so meetings has no column for it.
+    partial:
+      (await deps.router.prisma.meetingCaptureChunk.count({
+        where: { ...owner(actor), status: "failed", capture: { meetingId: row.id } },
+      })) > 0 ||
+      (await deps.router.prisma.meetingCapture.count({
+        where: { ...owner(actor), meetingId: row.id, error: "part_not_transcribed" },
+      })) > 0,
+  };
+}
+
+/** Merges one of the actor's meetings into the previous one; the digest is queued again. */
+export async function mergeStoredMeeting(
+  deps: MeetingsDeps,
+  actor: Actor,
+  meetingId: string,
+): Promise<{ meetingId: string }> {
+  try {
+    const merged = await mergeMeetingWithPrevious(deps.router.prisma, owner(actor), meetingId);
+    for (const key of merged.blobKeys) {
+      await deps.router.jobs
+        .enqueue(dataRoomBlobDeleteJob(actor.spaceId, key, new Date(Date.now() + 60_000)))
+        .catch((error: unknown) =>
+          getLogger().error("recording blob delete enqueue failed", error),
+        );
+    }
+    await deps.router.jobs
+      .enqueue({
+        ...meetingsDigestJob({ ...owner(actor), meetingId: merged.meetingId }),
+        keepExisting: true,
+      })
+      .catch((error: unknown) => getLogger().error("meeting digest enqueue failed", error));
+    return { meetingId: merged.meetingId };
+  } catch (error) {
+    if (error instanceof IsolationError)
+      throw new ORPCError("NOT_FOUND", { message: "Meeting not found" });
+    throw error;
+  }
 }
 
 export async function deleteStoredMeeting(
@@ -320,7 +482,15 @@ export async function deleteStoredMeeting(
   meetingId: string,
 ): Promise<{ ok: true }> {
   try {
-    await deleteMeeting(deps.router.prisma, owner(actor), meetingId);
+    const keys = await deleteMeeting(deps.router.prisma, owner(actor), meetingId);
+    // ponytail: a failed enqueue leaves an orphan blob, as dropNotes does; add a sweep if it shows.
+    for (const key of keys) {
+      await deps.router.jobs
+        .enqueue(dataRoomBlobDeleteJob(actor.spaceId, key, new Date(Date.now() + 60_000)))
+        .catch((error: unknown) =>
+          getLogger().error("recording blob delete enqueue failed", error),
+        );
+    }
   } catch (error) {
     if (error instanceof IsolationError)
       throw new ORPCError("NOT_FOUND", { message: "Meeting not found" });

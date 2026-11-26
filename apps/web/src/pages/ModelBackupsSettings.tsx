@@ -21,7 +21,6 @@ type BackupsState = {
   saving: boolean;
   saved: ModelBackupChoice[];
   draft: ModelBackupChoice[];
-  selectedKey: string;
   error: string | null;
   notice: string | null;
 };
@@ -46,6 +45,8 @@ export function ModelBackupsSettings({
   const activeScopeRef = useRef(activeScopeKey);
   activeScopeRef.current = activeScopeKey;
   const requestGenerationRef = useRef(0);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const focusSaveAfterAddRef = useRef(false);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [state, setState] = useState<BackupsState>({
     scopeKey: activeScopeKey,
@@ -54,7 +55,6 @@ export function ModelBackupsSettings({
     saving: false,
     saved: [],
     draft: [],
-    selectedKey: "",
     error: null,
     notice: null,
   });
@@ -71,7 +71,6 @@ export function ModelBackupsSettings({
   const dirty = currentState ? !sameBackupChoices(currentState.saved, currentState.draft) : false;
   const draftKeys = new Set(currentState?.draft.map(backupChoiceKey) ?? []);
   const addableOptions = options.filter((option) => !draftKeys.has(backupChoiceKey(option)));
-  const addableKey = currentState?.selectedKey ?? "";
   const editable = Boolean(
     currentState?.ready && !currentState.loading && !currentState.saving && selectedSpaceMatches,
   );
@@ -91,7 +90,6 @@ export function ModelBackupsSettings({
       saving: false,
       saved: [],
       draft: [],
-      selectedKey: "",
       error: null,
       notice: null,
     });
@@ -113,7 +111,6 @@ export function ModelBackupsSettings({
           saving: false,
           saved: [...saved],
           draft: [...saved],
-          selectedKey: "",
           error: null,
           notice: null,
         });
@@ -137,6 +134,13 @@ export function ModelBackupsSettings({
     };
   }, [activeScopeKey, reloadNonce, spaceId, t, userId]);
 
+  useEffect(() => {
+    if (focusSaveAfterAddRef.current) {
+      focusSaveAfterAddRef.current = false;
+      saveButtonRef.current?.focus();
+    }
+  }, [state]);
+
   function updateDraft(next: (draft: ModelBackupChoice[]) => ModelBackupChoice[]) {
     if (!editable) return;
     setState((previous) =>
@@ -146,21 +150,22 @@ export function ModelBackupsSettings({
     );
   }
 
-  function addSelected() {
+  function addSelected(selectedKey: string) {
     if (!currentState || !editable || currentState.draft.length >= MAX_MODEL_BACKUPS) return;
-    const option = optionByKey.get(currentState.selectedKey);
+    const option = optionByKey.get(selectedKey);
     if (
       !option ||
       currentState.draft.some((choice) => backupChoiceKey(choice) === backupChoiceKey(option))
     ) {
       return;
     }
+    focusSaveAfterAddRef.current =
+      currentState.draft.length + 1 >= MAX_MODEL_BACKUPS || addableOptions.length === 1;
     setState((previous) =>
       previous.scopeKey === activeScopeKey
         ? {
             ...previous,
             draft: [...previous.draft, { provider: option.provider, modelId: option.modelId }],
-            selectedKey: "",
             error: null,
             notice: null,
           }
@@ -347,7 +352,7 @@ export function ModelBackupsSettings({
                   emptyLabel={t`No matching models`}
                   loadingLabel={t`Loading models…`}
                   className="mt-1.5 w-full text-foreground"
-                  value={addableKey}
+                  value=""
                   options={[
                     { value: "", label: t`Select a connected model` },
                     ...addableOptions.map((option) => ({
@@ -364,33 +369,16 @@ export function ModelBackupsSettings({
                   }
                   onChange={(value) => {
                     if (!editable) return;
-                    setState((previous) =>
-                      previous.scopeKey === activeScopeKey
-                        ? {
-                            ...previous,
-                            selectedKey: value,
-                            error: null,
-                            notice: null,
-                          }
-                        : previous,
-                    );
+                    addSelected(value);
                   }}
                 />
               </div>
               <Button
+                ref={saveButtonRef}
                 type="button"
-                variant="outline"
-                disabled={
-                  !editable ||
-                  currentState.draft.length >= MAX_MODEL_BACKUPS ||
-                  !addableKey ||
-                  !addableOptions.some((option) => backupChoiceKey(option) === addableKey)
-                }
-                onClick={addSelected}
+                disabled={!editable || !dirty}
+                onClick={() => void save()}
               >
-                <Trans>Add</Trans>
-              </Button>
-              <Button type="button" disabled={!editable || !dirty} onClick={() => void save()}>
                 {currentState.saving ? <Trans>Saving…</Trans> : <Trans>Save backups</Trans>}
               </Button>
             </div>

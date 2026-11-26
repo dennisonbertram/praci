@@ -18,6 +18,7 @@ const payloadSchemas = {
     routineId: z.string().min(1),
     scheduledFor: z.string().datetime({ offset: true }),
   }),
+  "routine.retry": z.object({ runId: z.string().min(1) }),
   "computer.update": z.object({ updateId: z.string().min(1) }),
   "computer.sleep": z.object({ computerId: z.string().min(1) }),
   "computer.control-expire": z.object({
@@ -26,6 +27,7 @@ const payloadSchemas = {
   }),
   "skill.teaching-expire": z.object({ skillId: z.string().min(1) }),
   "history.compact": z.object({ threadId: z.string().min(1) }),
+  "goal.check": z.object({ goalId: z.string().min(1), runId: z.string().min(1) }),
   "messaging.deliver": z.object({ runId: z.string().min(1).optional() }),
   "notifications.deliver": z.object({}),
   "notifications.retention": z.object({}),
@@ -34,8 +36,28 @@ const payloadSchemas = {
   "account.export.cleanup": z.object({}),
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
+  "mail.reply.batch": z.object({
+    effectId: z.string().min(1),
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+  }),
+  "pipeline.import": z.object({
+    importId: z.string().min(1),
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+  }),
+  "pipeline.auto_status": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+  }),
+  "pipeline.auto_status.sweep": z.object({}),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "mail.sync": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+  }),
+  "contacts.photos": z.object({
     spaceId: z.string().min(1),
     userId: z.string().min(1),
     connectionId: z.string().min(1),
@@ -53,6 +75,7 @@ const payloadSchemas = {
     messageId: z.string().min(1),
   }),
   "mail.watch.renew": z.object({}),
+  "mail.sync.sweep": z.object({}),
   "devin.refresh": z.object({ serverId: z.string().min(1).optional() }),
   "meetings.sync": z
     .object({
@@ -72,6 +95,13 @@ const payloadSchemas = {
     /** Set on the last job of a batch: when it ends, the rest of the backlog is queued. */
     continue: z.boolean().optional(),
   }),
+  "meetings.followup": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    meetingId: z.string().min(1),
+    /** How many times a busy agent thread has already pushed this follow-up back. */
+    retry: z.number().int().min(0).optional(),
+  }),
   "company.import.run": z.object({
     spaceId: z.string().min(1),
     userId: z.string().min(1),
@@ -85,7 +115,36 @@ const payloadSchemas = {
   }),
   "company.import.recover": z.object({}),
   "company.refresh.tick": z.object({}),
+  "watch.probe": z.object({}),
+  "pages.refresh.tick": z.object({}),
+  "pages.snapshots.retention": z.object({}),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
+  "meetings.capture_transcribe": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    chunkId: z.string().min(1),
+  }),
+  "meetings.capture_finalize": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    captureId: z.string().min(1),
+  }),
+  "meetings.capture_sweep": z.object({}),
+  "omi.assemble": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+  }),
+  "omi.transcribe": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    itemId: z.string().min(1),
+  }),
+  "omi.sort": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    itemId: z.string().min(1),
+  }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
   "dataroom.ingest": dataRoomStepPayload,
   "dataroom.classify": dataRoomStepPayload,
@@ -99,7 +158,7 @@ const payloadSchemas = {
     entries: z.number().int().positive(),
     importId: z.string().min(1),
     name: z.string().min(1),
-    source: z.enum(["upload", "gmail", "drive", "box", "chat"]),
+    source: z.enum(["upload", "scan", "gmail", "drive", "box", "chat", "omi", "meeting"]),
     folderId: z.string().min(1).nullable(),
     sourceConnectionId: z.string().min(1).optional(),
     externalId: z.string().min(1).optional(),
@@ -206,12 +265,24 @@ export function accountExportJob(exportId: string): BackgroundJob {
   };
 }
 
+/**
+ * Jobs a user is waiting on (an agent run, its reply) run before due bulk work such as imports and
+ * mailbox sweeps, so one tenant's backlog does not delay another's chat.
+ */
+const INTERACTIVE_PRIORITY = -1;
+
 export function runContinueJob(runId: string): BackgroundJob {
   return {
     name: "run.continue",
     payload: { runId },
     replaceKey: runJobKey(runId),
+    priority: INTERACTIVE_PRIORITY,
   };
+}
+
+/** One tick of the page-watch probe; the cron runs it every minute, this queues one on demand. */
+export function watchProbeJob(): BackgroundJob {
+  return { name: "watch.probe", payload: {}, replaceKey: "watch.probe" };
 }
 
 export function routineWakeupJob(routineId: string, scheduledFor: Date): BackgroundJob {
@@ -220,6 +291,16 @@ export function routineWakeupJob(routineId: string, scheduledFor: Date): Backgro
     payload: { routineId, scheduledFor: scheduledFor.toISOString() },
     availableAt: scheduledFor,
     replaceKey: routineJobKey(routineId),
+  };
+}
+
+/** Keyed to the failed run, so a repeated enqueue keeps a single retry. */
+export function routineRetryJob(runId: string, availableAt: Date): BackgroundJob {
+  return {
+    name: "routine.retry",
+    payload: { runId },
+    availableAt,
+    replaceKey: `routine.retry:${runId}`,
   };
 }
 
@@ -271,6 +352,7 @@ export function messagingDeliverJob(runId?: string, availableAt?: Date): Backgro
     name: "messaging.deliver",
     payload: runId ? { runId } : {},
     replaceKey: `messaging.deliver:${runId ?? "drain"}`,
+    priority: INTERACTIVE_PRIORITY,
     ...(availableAt ? { availableAt } : {}),
   };
 }
@@ -281,6 +363,15 @@ export function historyCompactJob(threadId: string): BackgroundJob {
     payload: { threadId },
     replaceKey: historyCompactJobKey(threadId),
     maxAttempts: HISTORY_COMPACT_MAX_ATTEMPTS,
+  };
+}
+
+/** One queued check per goal: a newer run's end replaces an older queued check. */
+export function goalCheckJob(goalId: string, runId: string): BackgroundJob {
+  return {
+    name: "goal.check",
+    payload: { goalId, runId },
+    replaceKey: `goal:${goalId}`,
   };
 }
 
@@ -310,6 +401,49 @@ export function mailSearchExpireJob(searchId: string, availableAt: Date): Backgr
     payload: { searchId },
     availableAt,
     replaceKey: mailSearchExpireJobKey(searchId),
+  };
+}
+
+export function mailReplyBatchJobKey(effectId: string): string {
+  return `mail.reply.batch:${effectId}`;
+}
+
+/**
+ * Sends one batch's approved rows in order. Claims are per row, so a second job for the same batch
+ * (a retry while one still runs, or recovery after a worker died) can never send a row twice.
+ */
+export function mailReplyBatchJob(
+  payload: BackgroundJobPayloads["mail.reply.batch"],
+): BackgroundJob {
+  return {
+    name: "mail.reply.batch",
+    payload,
+    replaceKey: mailReplyBatchJobKey(payload.effectId),
+  };
+}
+
+/** Applies one import's queued rows. Rows take turns, so a second job for the import changes nothing. */
+export function pipelineImportJob(
+  payload: BackgroundJobPayloads["pipeline.import"],
+): BackgroundJob {
+  return {
+    name: "pipeline.import",
+    payload,
+    replaceKey: `pipeline.import:${payload.importId}`,
+  };
+}
+
+export function pipelineAutoStatusJobKey(scope: { spaceId: string; userId: string }): string {
+  return `pipeline.auto_status:${scope.spaceId}:${scope.userId}`;
+}
+
+/** One queued auto-status run per user: the key replaces a queued job so the latest run wins. */
+export function pipelineAutoStatusJob(scope: { spaceId: string; userId: string }): BackgroundJob {
+  return {
+    name: "pipeline.auto_status",
+    payload: scope,
+    replaceKey: pipelineAutoStatusJobKey(scope),
+    maxAttempts: 2,
   };
 }
 
@@ -352,6 +486,20 @@ export function mailSyncJob(
     replaceKey: mailSyncJobKey(scope.connectionId),
     maxAttempts: 3,
     ...(availableAt ? { availableAt } : {}),
+  };
+}
+
+/** One queued job per connection; the handler skips a connection fetched within the day. */
+export function contactPhotosJob(scope: {
+  spaceId: string;
+  userId: string;
+  connectionId: string;
+}): BackgroundJob {
+  return {
+    name: "contacts.photos",
+    payload: scope,
+    replaceKey: `contacts.photos:${scope.connectionId}`,
+    maxAttempts: 3,
   };
 }
 
@@ -406,6 +554,86 @@ export function meetingsDigestJob(
     replaceKey: `meetings.digest:${payload.meetingId}`,
     maxAttempts: 3,
     ...(availableAt ? { availableAt } : {}),
+  };
+}
+
+/** One queued follow-up per meeting. */
+export function meetingsFollowupJob(
+  payload: BackgroundJobPayloads["meetings.followup"],
+): BackgroundJob {
+  return {
+    name: "meetings.followup",
+    payload,
+    replaceKey: `meetings.followup:${payload.meetingId}`,
+    maxAttempts: 3,
+  };
+}
+
+/** Runs the follow-up again later, because an agent's thread was busy. Its own key leaves the running job alone. */
+export function meetingsFollowupRetryJob(
+  payload: BackgroundJobPayloads["meetings.followup"],
+  availableAt: Date,
+): BackgroundJob {
+  return {
+    name: "meetings.followup",
+    payload,
+    replaceKey: `meetings.followup:${payload.meetingId}:retry`,
+    availableAt,
+    maxAttempts: 3,
+  };
+}
+
+/** One queued transcription per chunk. */
+export function meetingsCaptureTranscribeJob(
+  payload: BackgroundJobPayloads["meetings.capture_transcribe"],
+): BackgroundJob {
+  return {
+    name: "meetings.capture_transcribe",
+    payload,
+    replaceKey: `meetings.capture_transcribe:${payload.chunkId}`,
+    maxAttempts: 3,
+  };
+}
+
+/** One queued finalize per capture. */
+export function meetingsCaptureFinalizeJob(
+  payload: BackgroundJobPayloads["meetings.capture_finalize"],
+): BackgroundJob {
+  return {
+    name: "meetings.capture_finalize",
+    payload,
+    replaceKey: `meetings.capture_finalize:${payload.captureId}`,
+    maxAttempts: 3,
+  };
+}
+
+/** One queued assembly per pendant connection; a repeat replaces it. */
+export function omiAssembleJob(payload: BackgroundJobPayloads["omi.assemble"]): BackgroundJob {
+  return {
+    name: "omi.assemble",
+    payload,
+    replaceKey: `omi.assemble:${payload.connectionId}`,
+    maxAttempts: 3,
+  };
+}
+
+/** One queued transcription per recording; a repeat replaces it. */
+export function omiTranscribeJob(payload: BackgroundJobPayloads["omi.transcribe"]): BackgroundJob {
+  return {
+    name: "omi.transcribe",
+    payload,
+    replaceKey: `omi.transcribe:${payload.itemId}`,
+    maxAttempts: 3,
+  };
+}
+
+/** One queued sort per recording; a repeat replaces it. */
+export function omiSortJob(payload: BackgroundJobPayloads["omi.sort"]): BackgroundJob {
+  return {
+    name: "omi.sort",
+    payload,
+    replaceKey: `omi.sort:${payload.itemId}`,
+    maxAttempts: 3,
   };
 }
 

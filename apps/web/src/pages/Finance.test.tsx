@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type {
   CashPoint,
   FinanceOverview,
   FinanceTransactionOutput,
   SpendTotals,
 } from "@rakazo/contracts";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -38,7 +40,30 @@ const rpcMock = vi.hoisted(() => ({
   receiptUrl: vi.fn(),
   statements: vi.fn(),
   connect: vi.fn(),
+  chartNotes: vi.fn(),
+  chartNoteAdd: vi.fn(),
+  chartNoteDelete: vi.fn(),
 }));
+const chartNoteTestMode = vi.hoisted(() => ({ enabled: false }));
+vi.mock("../components/finance/charts", async (importOriginal) => {
+  const charts = await importOriginal<typeof import("../components/finance/charts")>();
+  return {
+    ...charts,
+    BurnLines: (props: ComponentProps<typeof charts.BurnLines>) =>
+      chartNoteTestMode.enabled ? (
+        <div>
+          <button type="button" onClick={() => void props.notes?.onDelete("note-1")}>
+            Delete note
+          </button>
+          <button type="button" onClick={() => void props.notes?.onAdd("2026-10-01", "Budget")}>
+            Add note
+          </button>
+        </div>
+      ) : (
+        <charts.BurnLines {...props} />
+      ),
+  };
+});
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
 // The upload itself is tested with StatementImport; here a button stands in for a finished import.
@@ -50,9 +75,11 @@ vi.mock("../components/finance/StatementImport", () => ({
   ),
 }));
 
+import { UpcomingRow } from "../components/finance/UpcomingSubscriptions";
 import { hereCrumb, shortSpaceName, trailFor, WithEndings } from "../components/finance/ui";
 import { resetHideAmountsMemory, setHideAmounts } from "../lib/hide-amounts-preference";
-import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
+import { cryptoSubtitle, FinancePage } from "./Finance";
+import { FinanceTransactionPage } from "./finance/FinanceTransaction";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -66,6 +93,9 @@ const totals = (period: SpendTotals["period"], current: number, previous: number
   previousStart: "2026-09-01",
   previousEnd: "2026-09-15",
 });
+
+i18n.loadAndActivate({ locale: "en", messages: {} });
+const withI18n = (children: ReactNode) => <I18nProvider i18n={i18n}>{children}</I18nProvider>;
 
 /** `count` buckets ending with the one holding 2026-10-14 (a Wednesday), the last one partial; weeks start Monday. */
 const bars = (count: number, size: "day" | "week" | "month" | "quarter" | "year"): CashPoint[] =>
@@ -157,6 +187,7 @@ const connectedOverview = (over: Partial<FinanceOverview> = {}): FinanceOverview
   treasuryYieldLastMonth: { month: "2026-09", netCents: 91_100 },
   lastSyncedAt: "2026-10-14T10:00:00.000Z",
   excludedNonUsdCount: 0,
+  excludedNonUsd: [],
   ...over,
 });
 
@@ -177,7 +208,9 @@ async function show(path: string, onAskAgent?: () => void) {
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={[path]}>
-        <FinancePage onAskAgent={onAskAgent} />
+        <I18nProvider i18n={i18n}>
+          <FinancePage onAskAgent={onAskAgent} />
+        </I18nProvider>
       </MemoryRouter>,
     );
   });
@@ -194,10 +227,12 @@ const button = (name: RegExp | string) =>
   );
 
 beforeEach(() => {
+  chartNoteTestMode.enabled = false;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   rpcMock.refresh.mockResolvedValue({ ok: true });
+  rpcMock.chartNotes.mockResolvedValue([]);
   rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
 });
 afterEach(() => {
@@ -553,10 +588,10 @@ it("caps Breakdown and Upcoming at the same row count and expands inline", async
   expect(container.textContent).not.toContain("Upcoming 13");
 
   const showAll = [...container.querySelectorAll("button")].filter(
-    (b) => b.textContent === "Show all 24",
+    (b) => b.textContent === "See all (24)",
   );
   expect(showAll.length).toBe(1);
-  expect(button("Show all 12")).toBeDefined();
+  expect(button("See all (12)")).toBeDefined();
   await act(async () => showAll[0]?.click());
   expect(rows().upcoming).toBe(24);
   expect(rows().breakdown).toBe(7);
@@ -564,7 +599,32 @@ it("caps Breakdown and Upcoming at the same row count and expands inline", async
   expect(rows().upcoming).toBe(7);
 });
 
-it("previews the same number of Upcoming rows whatever Breakdown shows, and hides Show all when everything fits", async () => {
+it("shows 3 rows on a phone, with See all to Upcoming and Subscriptions and in place for Breakdown", async () => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  try {
+    rpcMock.overview.mockResolvedValue(manyRows());
+    await show("/app/finance");
+    await flush();
+    expect(container.querySelectorAll('a[href^="/app/finance/category/v"]').length).toBe(3);
+    const links = [...container.querySelectorAll("a")]
+      .filter((a) => a.textContent?.startsWith("See all"))
+      .map((a) => a.getAttribute("href"));
+    // Upcoming has its own page; Breakdown counts categories, so it expands in place.
+    expect(links).toContain("/app/finance/upcoming");
+    expect(links).not.toContain("/app/finance/spend?period=month");
+    expect(
+      [...container.querySelectorAll("button")].some((b) => b.textContent === "See all (12)"),
+    ).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("previews the same number of Upcoming rows whatever Breakdown shows, and hides See all when everything fits", async () => {
   const base = manyRows();
   rpcMock.overview.mockResolvedValue({
     ...base,
@@ -574,7 +634,7 @@ it("previews the same number of Upcoming rows whatever Breakdown shows, and hide
   await show("/app/finance");
   await flush();
   expect(container.querySelectorAll('a[href^="/app/finance/category/v"]').length).toBe(6);
-  expect(button(/^Show all/)).toBeUndefined();
+  expect(button(/^See all/)).toBeUndefined();
 
   act(() => root.unmount());
   root = createRoot(container);
@@ -585,7 +645,7 @@ it("previews the same number of Upcoming rows whatever Breakdown shows, and hide
   await show("/app/finance");
   await flush();
   // A short Breakdown (or the other Breakdown mode) does not shorten the Upcoming preview.
-  expect(button("Show all 24")).toBeDefined();
+  expect(button("See all (24)")).toBeDefined();
   expect(
     [...container.querySelectorAll("a")].filter((a) => a.textContent?.includes("Upcoming ")).length,
   ).toBe(7);
@@ -667,6 +727,16 @@ it("shows the figures, syncs once, and lets the period chips change the spend nu
   expect(container.textContent?.replace(/[\s\u2009]+/g, " ")).toContain(
     "Q4 so far · spent Oct 1 – 14",
   );
+});
+
+it("keeps the loaded dashboard and shows the notice when a reload fails", async () => {
+  rpcMock.overview
+    .mockResolvedValueOnce(connectedOverview())
+    .mockRejectedValue(new Error("offline"));
+  await show("/app/finance");
+  await flush();
+  expect(container.textContent).toContain("$50,000");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("offline");
 });
 
 it("keeps the period in the URL, also when the breakdown mode changes", async () => {
@@ -791,6 +861,68 @@ it("refreshes on demand and shows a sync failure with a retry", async () => {
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
 });
 
+it("shows a chart notes load failure and reloads notes when retried", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.chartNotes
+    .mockRejectedValueOnce(new Error("Notes unavailable"))
+    .mockResolvedValueOnce([]);
+  await show("/app/finance");
+  await flush();
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not load");
+  await act(async () => button("Try again")?.click());
+  await flush();
+  expect(rpcMock.chartNotes).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("clears a chart note delete error after a successful delete and a period change", async () => {
+  chartNoteTestMode.enabled = true;
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.chartNoteDelete
+    .mockRejectedValueOnce(new Error("Could not delete note"))
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error("Could not delete note"));
+  await show("/app/finance");
+  await flush();
+
+  await act(async () => button("Delete note")?.click());
+  await flush();
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not delete note");
+
+  await act(async () => button("Delete note")?.click());
+  await flush();
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+
+  await act(async () => button("Delete note")?.click());
+  await flush();
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not delete note");
+  await act(async () =>
+    [...container.querySelectorAll('[role="tab"]')]
+      .find((tab) => tab.textContent === "Week")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+  );
+  await flush();
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("clears a chart note delete error after a successful add", async () => {
+  chartNoteTestMode.enabled = true;
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.chartNoteDelete.mockRejectedValueOnce(new Error("Could not delete note"));
+  rpcMock.chartNoteAdd.mockResolvedValue(undefined);
+  await show("/app/finance");
+  await flush();
+
+  await act(async () => button("Delete note")?.click());
+  await flush();
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not delete note");
+  await act(async () => button("Add note")?.click());
+  await flush();
+  expect(rpcMock.chartNoteAdd).toHaveBeenCalledWith({ day: "2026-10-01", text: "Budget" });
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
 it("shows Syncing on a click even when the refresh answers at once", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
@@ -858,17 +990,19 @@ it("names the space on detail pages too, switches company from there, and puts A
   const onSwitchSpace = vi.fn();
   await act(async () => {
     root.render(
-      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
-        <FinancePage
-          spaces={[
-            { id: "s1", name: "Example Space One" },
-            { id: "s2", name: "Example Space Two" },
-          ]}
-          spaceId="s2"
-          onSwitchSpace={onSwitchSpace}
-          onAskAgent={vi.fn()}
-        />
-      </MemoryRouter>,
+      withI18n(
+        <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+          <FinancePage
+            spaces={[
+              { id: "s1", name: "Example Space One" },
+              { id: "s2", name: "Example Space Two" },
+            ]}
+            spaceId="s2"
+            onSwitchSpace={onSwitchSpace}
+            onAskAgent={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
     );
   });
   await flush();
@@ -902,14 +1036,16 @@ it("shows no company name on a detail page when there is one space", async () =>
   });
   await act(async () => {
     root.render(
-      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
-        <FinancePage
-          spaces={[{ id: "s1", name: "Example Space One" }]}
-          spaceId="s1"
-          onSwitchSpace={vi.fn()}
-          onAskAgent={vi.fn()}
-        />
-      </MemoryRouter>,
+      withI18n(
+        <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+          <FinancePage
+            spaces={[{ id: "s1", name: "Example Space One" }]}
+            spaceId="s1"
+            onSwitchSpace={vi.fn()}
+            onAskAgent={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
     );
   });
   await flush();
@@ -987,6 +1123,127 @@ it("lets a Mercury charge check for a receipt on demand and says No receipt when
   expect(container.textContent).toContain("No receipt");
 });
 
+it("shows a retry when checking for a receipt fails", async () => {
+  const data = spendTransaction(false);
+  data.transaction.provider = "mercury";
+  rpcMock.transaction.mockResolvedValue(data);
+  rpcMock.receiptUrl
+    .mockRejectedValueOnce({ code: "BAD_GATEWAY", message: "provider text" })
+    .mockResolvedValueOnce({ url: "https://files.example.test/r.png", mimeType: "image/png" });
+  await act(async () =>
+    root.render(
+      withI18n(
+        <MemoryRouter initialEntries={["/app/finance/transaction/t1"]}>
+          <FinanceTransactionPage id="t1" />
+        </MemoryRouter>,
+      ),
+    ),
+  );
+  await flush();
+
+  await act(async () => button("Check for receipt")?.click());
+  await flush();
+  expect(container.textContent).toContain("Could not load");
+  expect(container.textContent).toContain("Try again");
+  expect(container.textContent).not.toContain("provider text");
+  await act(async () => button("Try again")?.click());
+  await flush();
+  expect(container.querySelector('a[aria-label="Open receipt"]')).not.toBeNull();
+  expect(rpcMock.receiptUrl).toHaveBeenCalledTimes(2);
+});
+
+it("keeps the failed receipt state after a retry also fails", async () => {
+  const data = spendTransaction(false);
+  data.transaction.provider = "mercury";
+  rpcMock.transaction.mockResolvedValue(data);
+  rpcMock.receiptUrl.mockRejectedValue({ code: "BAD_GATEWAY" });
+  await show("/app/finance/transaction/t1");
+  await flush();
+
+  await act(async () => button("Check for receipt")?.click());
+  await flush();
+  await act(async () => button("Try again")?.click());
+  await flush();
+
+  expect(container.textContent).toContain("Could not load");
+  expect(button("Try again")).not.toBeNull();
+  expect(button("Check for receipt")).toBeFalsy();
+});
+
+it("keeps the failed label and disabled Try again button while retrying", async () => {
+  const data = spendTransaction(false);
+  data.transaction.provider = "mercury";
+  rpcMock.transaction.mockResolvedValue(data);
+  let finishRetry: ((value: { url: string; mimeType: string }) => void) | undefined;
+  rpcMock.receiptUrl.mockRejectedValueOnce({ code: "BAD_GATEWAY" }).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishRetry = resolve;
+      }),
+  );
+  await show("/app/finance/transaction/t1");
+  await flush();
+
+  await act(async () => button("Check for receipt")?.click());
+  await flush();
+  await act(async () => button("Try again")?.click());
+
+  expect(container.textContent).toContain("Could not load");
+  expect(button("Try again")?.disabled).toBe(true);
+  expect(button("Check for receipt")).toBeFalsy();
+  await act(async () =>
+    finishRetry?.({ url: "https://files.example.test/r.png", mimeType: "image/png" }),
+  );
+});
+
+it("uses the receipt URL from the check without fetching it a second time", async () => {
+  const data = spendTransaction(false);
+  data.transaction.provider = "mercury";
+  rpcMock.transaction.mockResolvedValue(data);
+  rpcMock.receiptUrl.mockResolvedValue({
+    url: "https://files.example.test/r.png",
+    mimeType: "image/png",
+  });
+  await act(async () =>
+    root.render(
+      withI18n(
+        <MemoryRouter initialEntries={["/app/finance/transaction/t1"]}>
+          <FinanceTransactionPage id="t1" />
+        </MemoryRouter>,
+      ),
+    ),
+  );
+  await flush();
+
+  await act(async () => button("Check for receipt")?.click());
+  await flush();
+  expect(container.querySelector('a[aria-label="Open receipt"]')).not.toBeNull();
+  expect(rpcMock.receiptUrl).toHaveBeenCalledTimes(1);
+});
+
+it("does not show a checked receipt image while amounts are hidden", async () => {
+  const data = spendTransaction(false);
+  data.transaction.provider = "mercury";
+  rpcMock.transaction.mockResolvedValue(data);
+  rpcMock.receiptUrl.mockResolvedValue({
+    url: "https://files.example.test/r.png",
+    mimeType: "image/png",
+  });
+  setHideAmounts(true);
+  try {
+    await show("/app/finance/transaction/t1");
+    await flush();
+    await act(async () => button("Check for receipt")?.click());
+    await flush();
+
+    expect(container.querySelector('a[aria-label="Open receipt"]')).not.toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+  } finally {
+    setHideAmounts(false);
+    resetHideAmountsMemory();
+  }
+});
+
 it("links a charge with a receipt to the receipt page, which fetches the link on demand", async () => {
   rpcMock.transaction.mockResolvedValue(spendTransaction(true));
   rpcMock.receiptUrl.mockResolvedValue({
@@ -1038,10 +1295,12 @@ it("redraws the Burn chart for the selected period and opens the matching detail
   const home = async () => {
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={["/app/finance"]} key={Math.random()}>
-          <Probe />
-          <FinancePage />
-        </MemoryRouter>,
+        withI18n(
+          <MemoryRouter initialEntries={["/app/finance"]} key={Math.random()}>
+            <Probe />
+            <FinancePage />
+          </MemoryRouter>,
+        ),
       );
     });
     await flush();
@@ -1392,16 +1651,18 @@ it("leaves no empty crumb and no guessed origin on a missing vendor", async () =
   rpcMock.vendor.mockRejectedValue(Object.assign(new Error("Not found"), { code: "NOT_FOUND" }));
   await act(async () => {
     root.render(
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: "/app/finance/vendor/gone",
-            state: { back: { label: "Upcoming", to: "/app/finance#upcoming" } },
-          },
-        ]}
-      >
-        <FinancePage />
-      </MemoryRouter>,
+      withI18n(
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: "/app/finance/vendor/gone",
+              state: { back: { label: "Upcoming", to: "/app/finance#upcoming" } },
+            },
+          ]}
+        >
+          <FinancePage />
+        </MemoryRouter>,
+      ),
     );
   });
   await flush();
@@ -1420,11 +1681,13 @@ it("shows the clicked transaction at once while the rest loads", async () => {
   const row = spendTransaction(false).transaction;
   await act(async () => {
     root.render(
-      <MemoryRouter
-        initialEntries={[{ pathname: "/app/finance/transaction/t1", state: { preview: row } }]}
-      >
-        <FinancePage />
-      </MemoryRouter>,
+      withI18n(
+        <MemoryRouter
+          initialEntries={[{ pathname: "/app/finance/transaction/t1", state: { preview: row } }]}
+        >
+          <FinancePage />
+        </MemoryRouter>,
+      ),
     );
   });
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
@@ -1502,19 +1765,21 @@ it("never shows a category that refunds outweigh as money spent", async () => {
 it("opens a bill's details from its Upcoming row, which has no page of its own", async () => {
   await act(async () =>
     root.render(
-      <MemoryRouter>
-        <UpcomingRow
-          item={{
-            key: "bill-1",
-            kind: "bill",
-            name: "Placeholder Legal LLP",
-            dates: ["2026-10-27"],
-            amountCents: 200_000,
-            billStatus: "APPROVED",
-            dueAt: "2026-10-27",
-          }}
-        />
-      </MemoryRouter>,
+      withI18n(
+        <MemoryRouter>
+          <UpcomingRow
+            item={{
+              key: "bill-1",
+              kind: "bill",
+              name: "Placeholder Legal LLP",
+              dates: ["2026-10-27"],
+              amountCents: 200_000,
+              billStatus: "APPROVED",
+              dueAt: "2026-10-27",
+            }}
+          />
+        </MemoryRouter>,
+      ),
     ),
   );
   const row = container.querySelector("button") as HTMLButtonElement;
@@ -1611,4 +1876,36 @@ it("shows the Crypto card loading, not $0, while a wallet's first sync runs", as
   const card = container.querySelector('a[href="/app/finance/crypto"]');
   expect(card?.textContent).not.toContain("$0");
   expect(card?.querySelector('[aria-label="Loading"]')).not.toBeNull();
+});
+
+describe("syncing on mount", () => {
+  it("skips the sync when the data is fresh, and Refresh still forces one", async () => {
+    const lastSyncedAt = new Date(Date.now() - 60_000).toISOString();
+    rpcMock.overview.mockResolvedValue(connectedOverview({ lastSyncedAt }));
+    await show("/app/finance");
+    await flush();
+    expect(rpcMock.refresh).not.toHaveBeenCalled();
+    await act(async () => button(/^Refresh$/)?.click());
+    await flush();
+    expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("syncs on mount when the crypto data is stale", async () => {
+    const fresh = new Date(Date.now() - 60_000).toISOString();
+    rpcMock.overview.mockResolvedValue(
+      connectedOverview({
+        lastSyncedAt: fresh,
+        crypto: {
+          totalCents: 0,
+          byChain: [],
+          byWallet: [],
+          lastSyncedAt: null,
+          unpricedTokenCount: 0,
+        },
+      }),
+    );
+    await show("/app/finance");
+    await flush();
+    expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+  });
 });

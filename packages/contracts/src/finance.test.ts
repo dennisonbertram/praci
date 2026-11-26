@@ -6,6 +6,8 @@ import {
   CryptoHoldingSchema,
   FINANCE_MCP_ENDPOINTS,
   FINANCE_READ_TOOLS,
+  FinanceChartNoteAddInputSchema,
+  FinanceSpendInputSchema,
   FinanceWalletAddInputSchema,
   financeAgentSpawnKey,
   financeProviderForEndpoint,
@@ -94,5 +96,26 @@ describe("SAFE_READ_TOOLS", () => {
     for (const tools of Object.values(FINANCE_READ_TOOLS))
       for (const name of SAFE_READ_TOOLS.mercury)
         expect(tools as readonly string[]).not.toContain(name);
+  });
+});
+
+describe("finance day inputs", () => {
+  it("rejects a day that is not on the calendar instead of throwing", () => {
+    for (const day of ["2026-13-01", "2026-00-10", "2026-02-31", "2026-02-29"]) {
+      expect(FinanceChartNoteAddInputSchema.safeParse({ day, text: "x" }).success).toBe(false);
+      expect(
+        FinanceSpendInputSchema.safeParse({ period: "month", from: day, to: "2026-03-01" }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts real days, including a leap day", () => {
+    expect(FinanceChartNoteAddInputSchema.safeParse({ day: "2024-02-29", text: "x" }).success).toBe(
+      true,
+    );
+    expect(
+      FinanceSpendInputSchema.safeParse({ period: "month", from: "2026-02-01", to: "2026-02-28" })
+        .success,
+    ).toBe(true);
   });
 });

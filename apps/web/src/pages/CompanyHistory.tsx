@@ -6,6 +6,7 @@ import { companyHistoryItems, layoutCompanyHistory } from "@rakazo/core";
 import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { companyDate } from "../lib/company-format";
+import { companyRelationLabel } from "../lib/company-relation-label";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { todayIso } from "../lib/legal-format";
 
@@ -45,7 +46,7 @@ export function CompanyHistory({
   const levels: CompanyHistoryZoom[] = ["year", "quarter", "month"];
   const changeZoom = (direction: number) =>
     setZoom((current) => levels[Math.max(0, Math.min(2, levels.indexOf(current) + direction))]!);
-  const items = companyHistoryItems(data);
+  const items = companyHistoryItems(data, companyRelationLabel);
   const layout = layoutCompanyHistory(items, zoom, today);
   const labels: Record<CompanyHistoryStream, string> = {
     company: t`Company`,

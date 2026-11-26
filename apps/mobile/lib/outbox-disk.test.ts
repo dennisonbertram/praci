@@ -5,6 +5,7 @@ import type { SendAttempt } from "./thread-feedback";
 import { OUTBOX_MAX_ENTRIES } from "./thread-feedback";
 
 const files = vi.hoisted(() => new Map<string, string>());
+const fault = vi.hoisted(() => ({ tearNextWrite: false }));
 vi.mock("expo-file-system", () => {
   class Directory {
     uri: string;
@@ -36,6 +37,18 @@ vi.mock("expo-file-system", () => {
     get size() {
       return Buffer.byteLength(files.get(this.uri) ?? "");
     }
+    override create(options?: { overwrite?: boolean }) {
+      if (files.has(this.uri) && !options?.overwrite) throw new Error("File exists");
+      files.set(this.uri, "");
+    }
+    override delete() {
+      files.delete(this.uri);
+    }
+    moveSync(target: File, options?: { overwrite?: boolean }) {
+      if (files.has(target.uri) && !options?.overwrite) throw new Error("File exists");
+      files.set(target.uri, files.get(this.uri) ?? "");
+      files.delete(this.uri);
+    }
     async base64() {
       return files.get(this.uri) ?? "";
     }
@@ -43,6 +56,11 @@ vi.mock("expo-file-system", () => {
       return files.get(this.uri);
     }
     write(text: string) {
+      if (fault.tearNextWrite) {
+        fault.tearNextWrite = false;
+        files.set(this.uri, text.slice(0, 4));
+        throw new Error("WRITE_INTERRUPTED");
+      }
       files.set(this.uri, text);
     }
   }
@@ -81,7 +99,10 @@ function attempt(nonce = "nonce-a"): SendAttempt {
     },
   };
 }
-beforeEach(() => files.clear());
+beforeEach(() => {
+  files.clear();
+  fault.tearNextWrite = false;
+});
 it("restores payload, uploaded ids and nonce for an idempotent retry", async () => {
   const original = attempt();
   expect(outboxDisk.admit(original)).toBe(true);
@@ -120,6 +141,64 @@ it("caps the persisted count and wipes every entry", () => {
 it("treats corrupt storage as an empty outbox", () => {
   files.set("cache/outbox/sends-v4.json", "{");
   expect(outboxDisk.load(2, scope)).toEqual([]);
+});
+
+it("keeps the queue and attachments when a save is torn mid-write", async () => {
+  const original = attempt();
+  expect(outboxDisk.admit(original)).toBe(true);
+  outboxDisk.save([original]);
+  fault.tearNextWrite = true;
+  outboxDisk.save([original]);
+  const [restored] = outboxDisk.load(2, scope);
+  expect(restored?.clientNonce).toBe("nonce-a");
+  expect(files.has("cache/outbox/sends-v4.json.tmp")).toBe(false);
+  restored!.artifactIds.clear();
+  await outboxDisk.hydrate(restored!);
+  expect(restored?.payload.attachments[0]?.contentBase64).toBe("aGVsbG8=");
+});
+
+it("does not replay a discarded message after the removal snapshot tears", () => {
+  const original = attempt();
+  original.payload.attachments = [];
+  original.artifactIds.clear();
+  expect(outboxDisk.admit(original)).toBe(true);
+  outboxDisk.save([original]);
+  expect(outboxDisk.markDiscarded!(original)).toBe(true);
+  fault.tearNextWrite = true;
+  outboxDisk.save([]);
+
+  const restored = outboxDisk.load(2, scope);
+  expect(restored).toEqual([]);
+  expect(files.has("cache/outbox/nonce-a.discarded")).toBe(true);
+  outboxDisk.save(restored);
+  expect(outboxDisk.load(3, scope)).toEqual([]);
+  expect(files.has("cache/outbox/nonce-a.discarded")).toBe(false);
+});
+
+it("restores a fully staged save when the swap never completed", () => {
+  outboxDisk.save([attempt()]);
+  files.set("cache/outbox/sends-v4.json.tmp", files.get("cache/outbox/sends-v4.json")!);
+  files.delete("cache/outbox/sends-v4.json");
+  const [restored] = outboxDisk.load(2, scope);
+  expect(restored?.clientNonce).toBe("nonce-a");
+  expect(files.get("cache/outbox/sends-v4.json")).toContain("nonce-a");
+});
+
+it("does not count an interrupted replacement twice against the recovery limit", () => {
+  const original = attempt();
+  expect(outboxDisk.admit(original)).toBe(true);
+  outboxDisk.save([original]);
+  const committed = files.get("cache/outbox/sends-v4.json")!;
+  const nearLimit = committed + " ".repeat(Math.floor(OUTBOX_MAX_BYTES * 0.6) - committed.length);
+  files.set("cache/outbox/sends-v4.json", nearLimit);
+  files.set("cache/outbox/sends-v4.json.tmp", nearLimit);
+
+  const [restored] = outboxDisk.load(2, scope);
+
+  expect(restored?.clientNonce).toBe("nonce-a");
+  expect(files.has("cache/outbox/sends-v4.json")).toBe(true);
+  expect(files.has("cache/outbox/sends-v4.json.tmp")).toBe(false);
+  expect([...files.keys()]).toContain("cache/outbox/nonce-a/0");
 });
 
 it("rejects a full attachment budget without rewriting existing bytes", () => {

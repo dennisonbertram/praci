@@ -1,8 +1,4 @@
-import {
-  isFinanceAgentSpawnKey,
-  isInvestorsAgentSpawnKey,
-  isLegalAgentSpawnKey,
-} from "@rakazo/contracts";
+import { pageAgentDefOf } from "@rakazo/contracts";
 
 /**
  * Photon's terms (3.8(b)) forbid automating financial or legal advice without
@@ -14,10 +10,7 @@ export function messagingProviderBlocksBot(
   spawnKey: string | null | undefined,
 ): boolean {
   return (
-    messagingProviderRestrictsAgents(provider) &&
-    (isFinanceAgentSpawnKey(spawnKey) ||
-      isLegalAgentSpawnKey(spawnKey) ||
-      isInvestorsAgentSpawnKey(spawnKey))
+    messagingProviderRestrictsAgents(provider) && Boolean(pageAgentDefOf(spawnKey)?.photonBlocked)
   );
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ArtifactStore } from "@rakazo/adapter-kit";
-import type { PortalDocument, PortalMe, PortalUpdate } from "@rakazo/contracts";
+import type { EquityAccessView, PortalDocument, PortalMe, PortalUpdate } from "@rakazo/contracts";
+import { EquityAccessLevelSchema, EquityPortalProfileProposalSchema } from "@rakazo/contracts";
 import type { PortalPrincipal, PrismaClient } from "@rakazo/db";
 import {
   endPortalSession,
@@ -8,7 +9,10 @@ import {
   getSharedDocument,
   listPortalDocuments,
   listPortalUpdates,
+  portalHoldings,
   portalIdentity,
+  portalProposeProfileChange,
+  portalRequestAccess,
   resolvePortalSession,
 } from "@rakazo/db";
 import type { Context, Hono, MiddlewareHandler } from "hono";
@@ -32,6 +36,12 @@ export interface PortalStore {
     principal: PortalPrincipal,
     itemId: string,
   ): Promise<{ name: string; mimeType: string; size: number; storageKey: string } | null>;
+  /** The holder's cap table at their access level; null once the portal is closed to them. */
+  holdings(principal: PortalPrincipal): Promise<EquityAccessView | null>;
+  /** Queues a proposed change to the holder's own profile; false when there is no holder. */
+  proposeProfile(principal: PortalPrincipal, proposed: unknown): Promise<boolean>;
+  /** Records a request for a higher level; false when there is nothing to ask for. */
+  requestAccess(principal: PortalPrincipal, level: EquityAccessView["level"]): Promise<boolean>;
 }
 
 export const prismaPortalStore = (prisma: PrismaClient): PortalStore => ({
@@ -42,6 +52,9 @@ export const prismaPortalStore = (prisma: PrismaClient): PortalStore => ({
   updates: (principal) => listPortalUpdates(prisma, principal),
   documents: (principal) => listPortalDocuments(prisma, principal),
   document: (principal, itemId) => getSharedDocument(prisma, principal, itemId),
+  holdings: (principal) => portalHoldings(prisma, principal),
+  requestAccess: (principal, level) => portalRequestAccess(prisma, principal, level),
+  proposeProfile: (principal, proposed) => portalProposeProfileChange(prisma, principal, proposed),
 });
 
 /** Every portal response, including a refusal, is private and never stored by a client or a cache. */
@@ -52,6 +65,7 @@ export const portalNoStore: MiddlewareHandler = async (c, next) => {
 export const PORTAL_PATH = `${PATH}/*`;
 
 const OpenBody = z.object({ token: z.string().min(1).max(512) });
+const AccessRequestBody = z.object({ level: EquityAccessLevelSchema });
 
 /**
  * The investor portal API. Its principal is one investor contact resolved from the session cookie:
@@ -120,6 +134,28 @@ export function mountInvestorPortal(
   });
   get("updates", async (c, principal) => c.json(await store.updates(principal)));
   get("documents", async (c, principal) => c.json(await store.documents(principal)));
+  get("holdings", async (c, principal) => {
+    const view = await store.holdings(principal);
+    return view ? c.json(view) : c.json({ error: "Unauthorized" }, 401);
+  });
+  app.post(`${PATH}/profile`, async (c) => {
+    if (foreign(c)) return c.json({ error: "Forbidden" }, 403);
+    const auth = await authenticate(c);
+    if (!auth?.principal) return c.json({ error: "Unauthorized" }, 401);
+    const body = EquityPortalProfileProposalSchema.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: "Bad request" }, 400);
+    const queued = await store.proposeProfile(auth.principal, body.data);
+    return queued ? c.json({ ok: true }) : c.json({ error: "Nothing to update" }, 409);
+  });
+  app.post(`${PATH}/holdings/request`, async (c) => {
+    if (foreign(c)) return c.json({ error: "Forbidden" }, 403);
+    const auth = await authenticate(c);
+    if (!auth?.principal) return c.json({ error: "Unauthorized" }, 401);
+    const body = AccessRequestBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: "Bad request" }, 400);
+    const asked = await store.requestAccess(auth.principal, body.data.level);
+    return asked ? c.json({ ok: true }) : c.json({ error: "Nothing to request" }, 409);
+  });
   get("documents/:id/content", async (c, principal) => {
     // The share row is checked before anything reaches artifact storage.
     const item = await store.document(principal, c.req.param("id") ?? "");

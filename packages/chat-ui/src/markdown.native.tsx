@@ -35,6 +35,7 @@ import type { ChatMarkdownProps } from "./markdown";
 import {
   HideAmountsContext,
   inlineMarkdownImageSrc,
+  isAppPath,
   LinkFaviconsContext,
   LinkFaviconsPausedContext,
   linkFaviconOrigin,
@@ -239,6 +240,40 @@ async function openSafeLink(url: string) {
   const safeUrl = sanitizeMarkdownUrl(url);
   if (!safeUrl) return;
   if (await Linking.canOpenURL(safeUrl)) await Linking.openURL(safeUrl);
+}
+
+/** Turns an in-app path into the action that opens its screen, or null when the app has none. */
+export type AppLinkResolver = (href: string) => (() => void) | null;
+const AppLinkContext = createContext<AppLinkResolver | undefined>(undefined);
+
+/** Lets in-app links in any ChatMarkdown below open their screens. */
+export function AppLinkProvider({
+  resolve,
+  children,
+}: {
+  resolve: AppLinkResolver;
+  children: ReactNode;
+}) {
+  return <AppLinkContext.Provider value={resolve}>{children}</AppLinkContext.Provider>;
+}
+
+/** An in-app link is tappable only when the app has a screen for it; otherwise its label is plain text. */
+function AppLink({
+  href,
+  style,
+  children,
+}: {
+  href: string;
+  style: StyleProp<TextStyle>;
+  children?: ReactNode;
+}) {
+  const open = useContext(AppLinkContext)?.(href);
+  if (!open) return <Text>{children}</Text>;
+  return (
+    <Text style={style} accessibilityRole="link" onPress={open}>
+      {children}
+    </Text>
+  );
 }
 
 const OpenLinkContext = createContext<(url: string) => void>(() => undefined);
@@ -786,7 +821,15 @@ function renderMarkdownLink(
   styleMap: MarkdownStyleMap,
   block: boolean,
 ) {
-  const href = sanitizeMarkdownUrl(node.attributes.href ?? "");
+  const rawHref = node.attributes.href ?? "";
+  if (!block && isAppPath(rawHref) && !astHasImage(node)) {
+    return (
+      <AppLink key={node.key} href={rawHref} style={styleMap.link}>
+        {children}
+      </AppLink>
+    );
+  }
+  const href = sanitizeMarkdownUrl(rawHref);
   if (!href) return <Text key={node.key}>{children}</Text>;
   const image = soleRemoteImage(node);
   if (image) {

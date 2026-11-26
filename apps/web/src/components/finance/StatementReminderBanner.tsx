@@ -27,13 +27,13 @@ export function StatementReminderBanner({
   return (
     <div
       role="status"
-      className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+      className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
     >
-      <span>
+      <span className="min-w-0">
         {t`Upload ${statement} for ${first.accountName}`}
         {more > 0 ? <span className="ms-1 text-muted-foreground">{t`+${more} more`}</span> : null}
       </span>
-      <Button type="button" variant="outline" size="sm" onClick={onUpload}>
+      <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={onUpload}>
         {t`Upload`}
       </Button>
     </div>

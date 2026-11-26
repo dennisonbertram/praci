@@ -6,6 +6,7 @@ import type { RunDocker, RunDockerResult } from "./docker-cli.js";
 import { classifyDockerFailure, missingImageName } from "./docker-cli.js";
 import type { LocalStackDeps } from "./local-stack.js";
 import {
+  APP_CONTROL_FILE,
   COMPOSE_WAIT_TIMEOUT_S,
   ensureStackEnv,
   ensureStackToken,
@@ -76,12 +77,13 @@ describe("resolveImageTag", () => {
 });
 
 describe("renderStackEnv", () => {
-  it("fills the five secrets and drops the image tag lines of the shipped template", async () => {
+  it("fills the generated secrets and drops the image tag lines of the shipped template", async () => {
     const template = await readFile(path.join(COMPOSE_DIR, STACK_ENV_TEMPLATE), "utf8");
     const rendered = renderStackEnv(template, fakeHex);
     const lines = rendered.split("\n");
 
     expect(lines).toContain(`POSTGRES_PASSWORD=${"ab".repeat(16)}`);
+    expect(lines).toContain(`POSTGRES_APP_PASSWORD=${"ab".repeat(16)}`);
     for (const name of [
       "BETTER_AUTH_SECRET",
       "ENCRYPTION_KEY",
@@ -122,10 +124,14 @@ describe("ensureStackEnv", () => {
     if (process.platform !== "win32") expect((await stat(file)).mode & 0o777).toBe(0o600);
   });
 
-  it("never touches an existing .env", async () => {
-    await writeFile(path.join(dir, STACK_ENV_FILE), "sentinel\n", "utf8");
+  it("keeps an existing .env, appending only secrets added since it was created", async () => {
+    await writeFile(path.join(dir, STACK_ENV_FILE), "sentinel", "utf8");
     await expect(ensureStackEnv(dir, "POSTGRES_PASSWORD=\n", fakeHex)).resolves.toBe("kept");
-    await expect(readFile(path.join(dir, STACK_ENV_FILE), "utf8")).resolves.toBe("sentinel\n");
+    const updated = `sentinel\nPOSTGRES_APP_PASSWORD=${"ab".repeat(16)}\n`;
+    await expect(readFile(path.join(dir, STACK_ENV_FILE), "utf8")).resolves.toBe(updated);
+
+    await expect(ensureStackEnv(dir, "POSTGRES_PASSWORD=\n", fakeHex)).resolves.toBe("kept");
+    await expect(readFile(path.join(dir, STACK_ENV_FILE), "utf8")).resolves.toBe(updated);
   });
 
   it.runIf(process.platform !== "win32")(
@@ -432,6 +438,142 @@ describe("LocalStackController", () => {
     return stack;
   }
 
+  describe("app control bridge", () => {
+    const bridge = () => {
+      const state = {
+        closed: 0,
+        started: 0,
+        saved: [] as { port?: number; token: string }[],
+        busyPorts: new Set<number>(),
+      };
+      return {
+        state,
+        start: async (saved: { port?: number; token: string }) => {
+          state.started += 1;
+          state.saved.push(saved);
+          const port =
+            saved.port && !state.busyPorts.has(saved.port) ? saved.port : 4321 + state.started;
+          return {
+            port,
+            token: saved.token,
+            close: async () => {
+              state.closed += 1;
+            },
+          };
+        },
+      };
+    };
+    const darwin = { platform: "darwin", exists: () => true } as const;
+
+    it("passes the bridge address and token to compose on macOS only", async () => {
+      const fake = bridge();
+      await controller({ ...darwin, startAppControl: fake.start }).start();
+      expect(fake.state.started).toBe(1);
+      // The bridge starts after the docker checks, so `compose up` is the last call.
+      for (const call of [calls.at(-1)]) {
+        expect(call?.args).toContain("up");
+        expect(call?.env).toMatchObject({
+          APP_CONTROL_PROVIDER: "agent-desktop",
+          APP_CONTROL_BRIDGE_URL: "http://host.docker.internal:4322",
+          APP_CONTROL_BRIDGE_TOKEN: "ab".repeat(32),
+        });
+      }
+    });
+
+    it("leaves the variables unset and starts nothing on other platforms", async () => {
+      const fake = bridge();
+      await controller({ startAppControl: fake.start }).start();
+      expect(fake.state.started).toBe(0);
+      for (const call of calls) expect(call.env).not.toHaveProperty("APP_CONTROL_PROVIDER");
+    });
+
+    it("never writes the token to the stack env file", async () => {
+      await controller({ ...darwin, startAppControl: bridge().start }).start();
+      expect(await readFile(path.join(root, "stack", STACK_ENV_FILE), "utf8")).not.toContain(
+        "APP_CONTROL",
+      );
+      // fakeHex makes every secret identical, so also check the dedicated file is private.
+      const file = path.join(root, "stack", APP_CONTROL_FILE);
+      expect(JSON.parse(await readFile(file, "utf8"))).toEqual({
+        port: 4322,
+        token: "ab".repeat(32),
+      });
+      expect((await stat(file)).mode & 0o777).toBe(0o600);
+    });
+
+    it("reuses the saved port and token across starts, and generates a token only once", async () => {
+      const fake = bridge();
+      let n = 0;
+      const randomHex = (bytes: number) => {
+        n += 1;
+        return String(n).padStart(bytes * 2, "0");
+      };
+      const first = controller({ ...darwin, startAppControl: fake.start, randomHex });
+      await first.start();
+      await first.closeAppControl();
+      await controller({ ...darwin, startAppControl: fake.start, randomHex }).start();
+      expect(fake.state.saved[0]?.port).toBeUndefined();
+      expect(fake.state.saved[1]).toEqual({ port: 4322, token: fake.state.saved[0]?.token });
+    });
+
+    it("rotates the token and refuses to reuse the stack when the saved port is taken", async () => {
+      const fake = bridge();
+      let n = 0;
+      const randomHex = (bytes: number) => {
+        n += 1;
+        return String(n).padStart(bytes * 2, "0");
+      };
+      const first = controller({ ...darwin, startAppControl: fake.start, randomHex });
+      await first.start();
+      await first.closeAppControl();
+      const file = path.join(root, "stack", APP_CONTROL_FILE);
+      const before = JSON.parse(await readFile(file, "utf8"));
+      fake.state.busyPorts.add(before.port);
+      const second = controller({ ...darwin, startAppControl: fake.start, randomHex });
+      expect(await second.matchesDesiredStack()).toBe(false);
+      const after = JSON.parse(await readFile(file, "utf8"));
+      expect(after.port).not.toBe(before.port);
+      expect(after.token).not.toBe(before.token);
+      // Still stale until compose up recreates the containers with the new values.
+      expect(await second.matchesDesiredStack()).toBe(false);
+      await second.start();
+      expect(await second.matchesDesiredStack()).toBe(true);
+    });
+
+    it("starts the bridge when relaunch reuses an already-running stack", async () => {
+      const fake = bridge();
+      await controller({ ...darwin, startAppControl: fake.start }).start();
+      const relaunched = controller({ ...darwin, startAppControl: fake.start });
+      expect(await relaunched.matchesDesiredStack()).toBe(true);
+      expect(fake.state.saved[1]?.port).toBe(4322);
+      const other = controller({ startAppControl: fake.start });
+      await other.matchesDesiredStack();
+      expect(fake.state.started).toBe(2);
+    });
+
+    it("closes the bridge when the stack stops or the app quits", async () => {
+      const fake = bridge();
+      const stack = controller({ ...darwin, startAppControl: fake.start });
+      await stack.start();
+      await stack.stop();
+      expect(fake.state.closed).toBe(1);
+      await stack.start();
+      await stack.closeAppControl();
+      expect(fake.state.closed).toBe(2);
+      expect(fake.state.started).toBe(2);
+    });
+
+    it("still starts the stack when the bridge cannot start", async () => {
+      const stack = controller({
+        ...darwin,
+        startAppControl: async () => {
+          throw new Error("no port");
+        },
+      });
+      expect(await stack.start()).toMatchObject({ phase: "ready" });
+    });
+  });
+
   it("pushes every state change so the setup window is never left waiting on a poll", async () => {
     const pushed: string[] = [];
     const stack = controller({ onState: (state) => pushed.push(state.phase) });
@@ -458,6 +600,8 @@ describe("LocalStackController", () => {
     for (const call of calls) {
       expect(call.env).not.toHaveProperty("RAKAZO_IMAGE");
       expect(call.env).not.toHaveProperty("RAKAZO_COMPUTER_IMAGE");
+      // Docker Desktop cannot take the restricted-egress host rules, so the app opts out.
+      expect(call.env.SANDBOX_COMPUTER_EGRESS).toBe("open");
     }
   });
 

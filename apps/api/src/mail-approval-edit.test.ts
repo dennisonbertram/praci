@@ -13,13 +13,46 @@ const stored = {
   body: "Old text.",
 };
 
+const bot = {
+  id: "bot-1",
+  userId: "user-1",
+  spawnKey: null,
+  audience: "internal",
+  firewall: false,
+  archivedAt: null,
+  disabledBuiltinTools: [],
+};
+/** Gmail accounts as the access rules read them: open to every agent, limited to bot-1, or to nobody. */
+const accessRow = (id: string, access: "open" | "bot-1" | "none") => ({
+  id,
+  connectorId: "google",
+  provider: "gmail",
+  status: "connected",
+  allAgents: access === "open",
+  writesEnabled: false,
+  agentBotId: null,
+  privateByDefault: true,
+  botAccess: access === "bot-1" ? [{ botId: "bot-1", canWrite: false }] : [],
+  agentBot: null,
+});
+const accessPrisma = (rows: ReturnType<typeof accessRow>[]) => ({
+  bot: { findFirst: async () => bot },
+  connection: { findMany: async () => rows },
+});
+
 /** A stand-in for the database's atomic claim: only one answer moves an "intended" effect. */
 function setup(
-  options: { kind?: "mail_send" | "mail_draft"; request?: object; write?: boolean } = {},
+  options: {
+    kind?: "mail_send" | "mail_draft";
+    request?: object;
+    write?: boolean;
+    disabledTools?: string[];
+  } = {},
 ) {
   const effect = { status: "intended", result: undefined as unknown };
   const answers: Array<{ answer: string; mailDenial?: unknown }> = [];
   const outcomes: string[] = [];
+  const recorded: Array<{ providerIds?: unknown }> = [];
   const events = {
     findMailApprovalForEdit: vi.fn(async (input: { answeredByUserId: string }) =>
       effect.status === "intended" && input.answeredByUserId === "user-1"
@@ -38,6 +71,7 @@ function setup(
       return true;
     }),
     setMailApprovalOutcome: vi.fn(async (input: { outcome: string; note?: string }) => {
+      recorded.push(input);
       outcomes.push(input.outcome);
       if (input.note) effect.result = { note: input.note };
     }),
@@ -46,7 +80,19 @@ function setup(
     events,
     mailWritesDisabled: options.write === false,
     mail: { listAccounts: async () => [{ id: "conn-1", address: "me@example.test" }] },
-    prisma: { cachedMailMessage: { findFirst: async () => null } },
+    prisma: {
+      ...accessPrisma([accessRow("conn-1", "open"), accessRow("conn-2", "open")]),
+      cachedMailMessage: { findFirst: async () => null },
+      composeSend: {
+        findUnique: async () => ({ threadId: "gt-1", providerMessageId: "gm-1", draftId: "d-1" }),
+      },
+      run: {
+        findFirst: async (args: { where: { userId: string } }) =>
+          args.where.userId === "user-1"
+            ? { botId: "bot-1", bot: { disabledBuiltinTools: options.disabledTools ?? [] } }
+            : null,
+      },
+    },
   } as unknown as MailApprovalEditDeps;
   const sent: ComposeFields[] = [];
   const saved: ComposeFields[] = [];
@@ -70,7 +116,7 @@ function setup(
       compose,
     );
   const allow = () => events.answerRunInput({ answer: "allow" } as never);
-  return { effect, answers, outcomes, events, compose, sent, saved, edit, allow, deps };
+  return { effect, answers, outcomes, recorded, events, compose, sent, saved, edit, allow, deps };
 }
 
 const code = (promise: Promise<unknown>) =>
@@ -87,6 +133,11 @@ describe("answerEditedMailApproval", () => {
     expect(t.effect.result).toMatchObject({ note: expect.stringContaining("sent it themselves") });
     expect(t.answers[0]?.mailDenial).toMatchObject({
       note: expect.stringContaining("not known yet"),
+    });
+    expect(t.recorded[0]?.providerIds).toEqual({
+      threadId: "gt-1",
+      messageId: "gm-1",
+      draftId: "d-1",
     });
     expect(t.compose.send).toHaveBeenCalledTimes(1);
     expect(t.sent[0]).toEqual({
@@ -112,10 +163,13 @@ describe("answerEditedMailApproval", () => {
         ],
       },
       prisma: {
+        ...accessPrisma([accessRow("conn-1", "open"), accessRow("conn-2", "open")]),
+        run: { findFirst: async () => ({ botId: "bot-1", bot: { disabledBuiltinTools: [] } }) },
         cachedMailMessage: {
           findMany: async () => [{ connectionId: "conn-2" }],
           findFirst: async () => ({ id: "cached-1" }),
         },
+        composeSend: { findUnique: async () => null },
       },
     });
     await t.edit({ subject: "Monday" });
@@ -135,11 +189,12 @@ describe("answerEditedMailApproval", () => {
     });
     await t.edit({ account: "conn-2" });
     expect(t.sent[0]).toMatchObject({ connectionId: "conn-2" });
-    // The picked id selects the connection; it is not published on the card.
+    // The card and the agent's result name the account it really went from.
     expect(
-      (t.answers[0] as unknown as { mailDenial: { mail: Record<string, unknown> } }).mailDenial
-        .mail,
-    ).not.toHaveProperty("account");
+      (t.answers[0] as unknown as { mailDenial: { mail: Record<string, unknown> } }).mailDenial.mail
+        .account,
+    ).toBe("sales@example.test");
+    expect((t.effect.result as { note: string }).note).toContain("from sales@example.test.");
   });
 
   it("resolves a picked connection by id even when two labels share a prefix", async () => {
@@ -186,6 +241,79 @@ describe("answerEditedMailApproval", () => {
     expect(t.compose.draftSave).toHaveBeenCalledTimes(1);
     expect(t.compose.send).not.toHaveBeenCalled();
     expect(t.outcomes).toEqual(["saved"]);
+  });
+
+  it("still resolves and wakes the run when recording the outcome fails after the send", async () => {
+    const t = setup();
+    t.events.setMailApprovalOutcome.mockRejectedValueOnce(new Error("db down"));
+    const afterClaim = vi.fn(async () => undefined);
+    await expect(
+      answerEditedMailApproval(
+        t.deps,
+        actor,
+        target,
+        { runId: "run-1", messageId: "message-1", mail: { subject: "Monday" } },
+        afterClaim,
+        t.compose,
+      ),
+    ).resolves.toBeUndefined();
+    expect(t.compose.send).toHaveBeenCalledTimes(1);
+    expect(afterClaim).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a draft now: one send, not a draft save, and the card becomes a sent email", async () => {
+    const t = setup({ kind: "mail_draft" });
+    await t.edit({ send: true });
+    expect(t.compose.send).toHaveBeenCalledTimes(1);
+    expect(t.compose.draftSave).not.toHaveBeenCalled();
+    expect(t.sent[0]).toMatchObject({ clientId: "approval_effect-1", connectionId: "conn-1" });
+    expect(t.outcomes).toEqual(["sent"]);
+    expect(t.effect.status).toBe("denied");
+    expect(t.answers[0]?.mailDenial).toMatchObject({ mail: { tool: "mail_send" } });
+    expect(t.answers[0]?.mailDenial).toMatchObject({
+      note: expect.stringContaining("check Sent"),
+    });
+    // A repeat of the same click finds the call already claimed.
+    expect(await code(t.edit({ send: true }))).toBe("CONFLICT");
+    expect(t.compose.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the agent the person sent it, not edited it, when Send now changed nothing", async () => {
+    const plain = setup({ kind: "mail_draft" });
+    await plain.edit({ send: true });
+    expect((plain.effect.result as { note: string }).note).toContain(
+      "The user sent this email themselves from the approval card. Do not send it again.",
+    );
+    expect(plain.answers[0]?.mailDenial).toMatchObject({
+      note: expect.not.stringContaining("edited"),
+    });
+    const changed = setup({ kind: "mail_draft" });
+    await changed.edit({ send: true, subject: "Monday" });
+    expect((changed.effect.result as { note: string }).note).toContain("edited this email");
+  });
+
+  it("sends a draft now with the person's edits and records an unclear outcome", async () => {
+    const t = setup({ kind: "mail_draft" });
+    t.compose.send.mockResolvedValueOnce({ status: "unknown" } as never);
+    await t.edit({ send: true, subject: "Monday" });
+    expect(t.sent).toHaveLength(0);
+    expect(t.compose.send.mock.calls[0]?.[2]).toMatchObject({ subject: "Monday" });
+    expect(t.outcomes).toEqual(["unknown"]);
+    expect((t.effect.result as { note: string }).note).toContain("Do not send it again");
+  });
+
+  it("does not send a draft now when sending is off for the bot or mail writes are off", async () => {
+    const off = setup({ kind: "mail_draft", disabledTools: ["mail_send"] });
+    expect(await code(off.edit({ send: true }))).toBe("PRECONDITION_FAILED");
+    const writes = setup({ kind: "mail_draft", write: false });
+    expect(await code(writes.edit({ send: true }))).toBe("PRECONDITION_FAILED");
+    // Saving the draft is still allowed while sending is off.
+    await off.edit({ subject: "Monday" });
+    expect(off.compose.draftSave).toHaveBeenCalledTimes(1);
+    for (const t of [writes]) {
+      expect(t.effect.status).toBe("intended");
+      expect(t.compose.send).not.toHaveBeenCalled();
+    }
   });
 
   it("does not send again when the same answer is repeated", async () => {
@@ -310,5 +438,42 @@ describe("answerEditedMailApproval", () => {
     const t = setup({ request: { ...stored, account: "other@example.test" } });
     expect(await code(t.edit())).toBe("BAD_REQUEST");
     expect(t.effect.status).toBe("intended");
+  });
+
+  describe("an account the agent has no access to", () => {
+    const { account: _named, ...unnamed } = stored;
+    const twoAccounts = async () => [
+      { id: "conn-1", address: "hello@example.test" },
+      { id: "conn-2", address: "other@example.test" },
+    ];
+    /** conn-1 is open to bot-1 only; conn-2 is the owner's other mailbox, with no access for any agent. */
+    const limited = (request: object) => {
+      const t = setup({ request });
+      Object.assign(t.deps, { mail: { listAccounts: twoAccounts } });
+      Object.assign(
+        t.deps.prisma,
+        accessPrisma([accessRow("conn-1", "bot-1"), accessRow("conn-2", "none")]),
+      );
+      return t;
+    };
+
+    it("refuses a card answer that picks it, claiming and sending nothing", async () => {
+      const t = limited(unnamed);
+      expect(await code(t.edit({ account: "conn-2" }))).toBe("BAD_REQUEST");
+      expect(t.effect.status).toBe("intended");
+      expect(t.compose.send).not.toHaveBeenCalled();
+    });
+
+    it("refuses it when the agent named it", async () => {
+      const t = limited({ ...stored, account: "other@example.test" });
+      expect(await code(t.edit({ subject: "Monday" }))).toBe("BAD_REQUEST");
+      expect(t.compose.send).not.toHaveBeenCalled();
+    });
+
+    it("still sends from the account it does have", async () => {
+      const t = limited(unnamed);
+      await t.edit({ account: "conn-1" });
+      expect(t.sent[0]).toMatchObject({ connectionId: "conn-1" });
+    });
   });
 });

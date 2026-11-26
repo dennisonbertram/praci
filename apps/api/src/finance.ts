@@ -21,6 +21,7 @@ import type {
   FinanceAccountsOutput,
   FinanceBurnOutput,
   FinanceCategoryOutput,
+  FinanceChartNote,
   FinanceConnectInput,
   FinanceConnectOutput,
   FinanceMonthOutput,
@@ -62,6 +63,7 @@ import {
   cryptoPartsOn,
   detectRecurring,
   earliestDay,
+  excludedNonUsd,
   excludedNonUsdCount,
   monthlyBurn,
   monthlySeries,
@@ -88,7 +90,7 @@ import { notFound } from "./inbox.js";
 export interface FinanceDeps {
   prisma: PrismaClient;
   jobs: JobPublisher;
-  repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+  repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   /** Tells whether a server holds a working login. */
   mcpOAuth: Pick<McpOAuthBroker, "statusFor">;
   /** The `mcp.oauth.begin` logic (redirect check included), shared with that procedure. */
@@ -240,9 +242,10 @@ const toYield = (row: Prisma.FinanceTreasuryYieldGetPayload<object>): TreasuryYi
   netCents: Number(row.netCents),
 });
 
-async function loadTransactions(deps: FinanceDeps, actor: Actor) {
+/** Every transaction the user has, or only one vendor's when `vendorKey` is given (recurring detection judges each vendor on its own rows). */
+async function loadTransactions(deps: FinanceDeps, actor: Actor, vendorKey?: string) {
   const rows = await deps.prisma.financeTransaction.findMany({
-    where: actorScope(actor),
+    where: vendorKey === undefined ? actorScope(actor) : { ...actorScope(actor), vendorKey },
     orderBy: { postedAt: "desc" },
   });
   return rows.map(toTransaction);
@@ -373,6 +376,40 @@ export async function financeConnect(
   }
 }
 
+/**
+ * A server finished sign-in: its old "Sign-in expired" no longer holds, so clear it (the page shows
+ * connected at once) and sync now. A sync that fails again sets the flag back. A failed enqueue only
+ * delays the sync to the next page load.
+ */
+export async function onFinanceServerReconnected(
+  deps: Pick<FinanceDeps, "prisma" | "jobs">,
+  actor: Actor,
+  serverId: string,
+): Promise<void> {
+  try {
+    const server = await deps.prisma.mcpServer.findFirst({
+      where: { id: serverId, ...actorScope(actor) },
+      select: { endpoint: true },
+    });
+    const provider = financeProviderForEndpoint(server?.endpoint);
+    if (!provider) return;
+    const clear = { needsReconnect: false, lastErrorAt: null, lastError: null };
+    await deps.prisma.financeSyncState.updateMany({
+      where: { mcpServerId: serverId, ...actorScope(actor) },
+      data: clear,
+    });
+    // The Mercury SAFE read has its own state row per user, signed in through the same server.
+    if (provider === "mercury") {
+      await deps.prisma.safeSyncState.updateMany({ where: actorScope(actor), data: clear });
+    }
+    await deps.jobs.enqueue(financeSyncJob(actor.userId, actor.spaceId));
+  } catch (error) {
+    getLogger().warn("finance reconnect follow-up failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  }
+}
+
 /** Syncs now (the 15-minute throttle does not apply to an explicit refresh; the claim still does). */
 export async function financeRefresh(
   deps: FinanceDeps,
@@ -421,7 +458,9 @@ async function financeSources(deps: FinanceDeps, actor: Actor, now: Date) {
       status,
       lastSyncedAt: synced?.toISOString() ?? null,
     });
-    if (status !== "ok" && status !== "error") continue;
+    // A stale needsReconnect with a working login still syncs (throttled below), or one failed sync
+    // would hide the source for good: only a successful sync clears the flag.
+    if (login === "reconnect" || login === "none") continue;
     syncedAt.push(synced);
     const old = !synced || now.getTime() - synced.getTime() > STALE_MS;
     // A source that just failed is not retried on every page load.
@@ -545,6 +584,7 @@ export async function financeOverview(
         : null,
     lastSyncedAt,
     excludedNonUsdCount: excludedNonUsdCount(txns),
+    excludedNonUsd: excludedNonUsd(txns).slice(0, 50),
     // Its own card. What counts as cash follows the saved scope.
     crypto,
     ...(statementReminders.length > 0 ? { statementReminders } : {}),
@@ -630,7 +670,7 @@ export async function financeAccountDetail(
     account: { ...account, annualYieldPct: annualYieldPct(account, treasuryYield, now) },
     history: accountBalanceHistory(account, txns, now),
     treasuryYield,
-    transactions: newest(txns, 20),
+    transactions: newest(txns, LIST_LIMIT),
   };
 }
 
@@ -837,6 +877,60 @@ export async function financePreferences(
   return { runwayCrypto: await loadRunwayCrypto(deps.prisma, actor) };
 }
 
+const toChartNote = (
+  row: { id: string; day: string; text: string; userId: string },
+  actor: Actor,
+): FinanceChartNote => ({
+  id: row.id,
+  day: row.day,
+  text: row.text,
+  mine: row.userId === actor.userId,
+});
+
+/** Notes on the Burn chart for a day range: every member of the Space sees them. */
+export async function financeChartNotes(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { from: string; to: string },
+): Promise<FinanceChartNote[]> {
+  const rows = await deps.prisma.financeChartNote.findMany({
+    where: { spaceId: actor.spaceId, day: { gte: input.from, lte: input.to } },
+    orderBy: [{ day: "asc" }, { createdAt: "asc" }],
+    take: 500,
+  });
+  return rows.map((row) => toChartNote(row, actor));
+}
+
+export async function financeChartNoteAdd(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { day: string; text: string },
+): Promise<FinanceChartNote> {
+  const row = await deps.prisma.financeChartNote.create({
+    data: { spaceId: actor.spaceId, userId: actor.userId, day: input.day, text: input.text },
+  });
+  return toChartNote(row, actor);
+}
+
+/** Only the author deletes a note; another member of the Space gets FORBIDDEN, another Space NOT_FOUND. */
+export async function financeChartNoteDelete(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { id: string },
+): Promise<Record<string, never>> {
+  const row = await deps.prisma.financeChartNote.findFirst({
+    where: { id: input.id, spaceId: actor.spaceId },
+    select: { userId: true },
+  });
+  if (!row) throw notFound();
+  if (row.userId !== actor.userId)
+    throw new ORPCError("FORBIDDEN", { message: "Only the author can delete this note" });
+  await deps.prisma.financeChartNote.deleteMany({
+    where: { id: input.id, spaceId: actor.spaceId, userId: actor.userId },
+  });
+  return {};
+}
+
 export async function financeSetPreferences(
   deps: FinanceDeps,
   actor: Actor,
@@ -930,7 +1024,7 @@ export async function financeRecurring(
 ): Promise<FinanceRecurringOutput> {
   const [accounts, txns] = await Promise.all([
     loadAccounts(deps, actor),
-    loadTransactions(deps, actor),
+    loadTransactions(deps, actor, input.key),
   ]);
   const recurring = detectRecurring(txns, nowOf(deps), accounts).find((r) => r.key === input.key);
   if (!recurring) throw notFound();
@@ -1016,7 +1110,7 @@ export async function financeTransaction(
   const transaction = toTransaction(row);
   const [accounts, all] = await Promise.all([
     loadAccounts(deps, actor),
-    loadTransactions(deps, actor),
+    loadTransactions(deps, actor, transaction.vendorKey),
   ]);
   return {
     transaction,

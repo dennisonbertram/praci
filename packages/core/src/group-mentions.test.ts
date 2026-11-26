@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   hasMentionToken,
-  inferHandoffTargetBotId,
   inferHandoffTargetName,
   resolveGroupTargetBotIds,
 } from "./group-mentions.js";
@@ -97,26 +96,21 @@ describe("inferHandoffTargetName", () => {
   });
 });
 
-describe("inferHandoffTargetBotId", () => {
-  it("recognizes hand this to Writer", () => {
-    expect(inferHandoffTargetBotId("hand this to Writer for the draft", members)).toBe("c");
+describe("longest member name wins", () => {
+  const pair = [
+    { id: "ada", name: "Ada" },
+    { id: "ada-copy", name: "Ada copy" },
+  ];
+  it("does not wake the shorter member when the longer one is addressed", () => {
+    expect(resolveGroupTargetBotIds({ text: "@Ada copy draft this", members: pair })).toEqual([
+      "ada-copy",
+    ]);
   });
-
-  it("recognizes @Writer take the draft", () => {
-    expect(inferHandoffTargetBotId("@Writer take the draft", members)).toBe("c");
-  });
-
-  it("resolves Writer from mixed mention prompt", () => {
-    expect(inferHandoffTargetBotId("@BotA hand this to Writer for the draft", members)).toBe("c");
-  });
-
-  it("resolves multi-word handoff targets", () => {
-    expect(
-      inferHandoffTargetBotId("hand this to Research Writer for the draft", [
-        ...members,
-        { id: "research", name: "Research Writer" },
-      ]),
-    ).toBe("research");
+  it("wakes both when both are mentioned separately", () => {
+    expect(resolveGroupTargetBotIds({ text: "@Ada and @Ada copy", members: pair })).toEqual([
+      "ada",
+      "ada-copy",
+    ]);
   });
 });
 

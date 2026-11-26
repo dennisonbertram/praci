@@ -15,6 +15,7 @@ public struct MessageBlock: Codable, Sendable {
     case steps
     case subagent
     case childBot
+    case page
     case cloudAgent
     case skillDraft
     case chart
@@ -28,6 +29,7 @@ public struct MessageBlock: Codable, Sendable {
     case channelMessage
     case botMessageSent
     case botMessageReceived
+    case goal
     case unknown(String)
 
     public init(rawValue: String) {
@@ -45,6 +47,7 @@ public struct MessageBlock: Codable, Sendable {
       case "steps": self = .steps
       case "subagent": self = .subagent
       case "child_bot": self = .childBot
+      case "page": self = .page
       case "cloud_agent": self = .cloudAgent
       case "skill_draft": self = .skillDraft
       case "chart": self = .chart
@@ -58,6 +61,7 @@ public struct MessageBlock: Codable, Sendable {
       case "channel_message": self = .channelMessage
       case "bot_message_sent": self = .botMessageSent
       case "bot_message_received": self = .botMessageReceived
+      case "goal": self = .goal
       default: self = .unknown(rawValue)
       }
     }
@@ -77,6 +81,7 @@ public struct MessageBlock: Codable, Sendable {
       case .steps: "steps"
       case .subagent: "subagent"
       case .childBot: "child_bot"
+      case .page: "page"
       case .cloudAgent: "cloud_agent"
       case .skillDraft: "skill_draft"
       case .chart: "chart"
@@ -90,6 +95,7 @@ public struct MessageBlock: Codable, Sendable {
       case .channelMessage: "channel_message"
       case .botMessageSent: "bot_message_sent"
       case .botMessageReceived: "bot_message_received"
+      case .goal: "goal"
       case .unknown(let rawValue): rawValue
       }
     }

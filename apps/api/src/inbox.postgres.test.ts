@@ -26,6 +26,7 @@ import {
   inboxFeedbackSet,
   inboxGet,
   inboxList,
+  inboxNoReply,
   inboxRefresh,
   inboxTodoSetDone,
   inboxTodosList,
@@ -325,6 +326,45 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
+    });
+
+    it("flags rows whose own headers offer unsubscribe, and not spam-like or targetless mail", async () => {
+      await wipe();
+      const signals = (listUnsubscribe: string[]) => ({
+        listUnsubscribe,
+        oneClick: false,
+        listId: null,
+        bulk: false,
+        autoSubmitted: false,
+        auth: { dkim: "pass", spf: "pass", dmarc: "pass" },
+        dkimCoversUnsubscribe: false,
+        categories: {
+          spam: false,
+          promotions: false,
+          social: false,
+          updates: false,
+          forums: false,
+          important: false,
+        },
+      });
+      const offers = await cache(a, connA, "unsub-1");
+      await prisma.cachedMailMessage.update({
+        where: { id: offers.id },
+        data: { signals: signals(["https://list.example.test/leave"]) },
+      });
+      const spammy = await cache(a, connA, "unsub-2", { pile: "spam" });
+      await prisma.cachedMailMessage.update({
+        where: { id: spammy.id },
+        data: { signals: signals(["https://spam.example.test/leave"]) },
+      });
+      await cache(a, connA, "plain");
+
+      const rows = (await inboxList(deps, a, {})).rows;
+      expect(rows.find((row) => row.id === offers.id)?.canUnsubscribe).toBe(true);
+      expect(rows.find((row) => row.id === spammy.id)?.canUnsubscribe).toBeUndefined();
+      expect(
+        rows.find((row) => row.subject === "Subject plain")?.canUnsubscribe,
+      ).toBeUndefined();
     });
 
     it("keeps spam rows out of the list, the unread count and the thread siblings", async () => {
@@ -1508,6 +1548,227 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(again.touchedAt).not.toBeNull();
     });
 
+    describe("no reply needed", () => {
+      const sender = "bot@store.test";
+      const stat = (extra: { noReplyCount?: number } = {}) =>
+        prisma.mailSenderStat.create({
+          data: {
+            spaceId: a.spaceId,
+            userId: a.userId,
+            connectionId: connA,
+            senderAddress: sender,
+            messageCount: 1,
+            ...extra,
+          },
+        });
+      const countOf = async () =>
+        (
+          await prisma.mailSenderStat.findFirstOrThrow({
+            where: { connectionId: connA, senderAddress: sender },
+          })
+        ).noReplyCount;
+      const authenticated = {
+        listUnsubscribe: [],
+        oneClick: false,
+        listId: null,
+        bulk: false,
+        autoSubmitted: false,
+        auth: { dkim: "pass", spf: "pass", dmarc: "pass" },
+        dkimCoversUnsubscribe: false,
+        categories: {
+          spam: false,
+          promotions: false,
+          social: false,
+          updates: false,
+          forums: false,
+          important: false,
+        },
+      };
+      const asking = async (id: string) => {
+        const row = await cache(a, connA, id, {
+          fromAddress: sender,
+          fromName: "Store Bot",
+          needsReply: true,
+          ...triaged,
+        });
+        // Only mail that passed authentication counts toward a sender.
+        return prisma.cachedMailMessage.update({
+          where: { id: row.id },
+          data: { signals: authenticated },
+        });
+      };
+      const reset = async () => {
+        await wipe();
+        await prisma.mailSenderStat.deleteMany({ where: { connectionId: connA } });
+      };
+
+      it("counts each message once, clears it from Needs reply, and stops the sender on the third", async () => {
+        await reset();
+        await stat();
+        const rows = [await asking("n1"), await asking("n2"), await asking("n3")];
+
+        const results = [];
+        for (const row of rows) results.push(await inboxNoReply(deps, a, { messageId: row.id }));
+        await inboxNoReply(deps, a, { messageId: (rows[0] as { id: string }).id });
+
+        expect(results.map((r) => r.stopped)).toEqual([null, null, "Store Bot"]);
+        expect(await countOf()).toBe(3);
+        expect(
+          (
+            await prisma.cachedMailMessage.findUniqueOrThrow({
+              where: { id: (rows[0] as { id: string }).id },
+            })
+          ).needsReply,
+        ).toBe(false);
+      });
+
+      it("does not count a message whose From failed authentication", async () => {
+        await reset();
+        await stat({ noReplyCount: 2 });
+        const row = await asking("n3b");
+        await prisma.cachedMailMessage.update({
+          where: { id: row.id },
+          data: {
+            signals: { ...authenticated, auth: { dkim: "fail", spf: "fail", dmarc: "fail" } },
+          },
+        });
+
+        expect((await inboxNoReply(deps, a, { messageId: row.id })).stopped).toBeNull();
+
+        expect(await countOf()).toBe(2);
+      });
+
+      it("Undo puts the mail back in Needs reply and takes the count back by one", async () => {
+        await reset();
+        await stat({ noReplyCount: 2 });
+        const row = await asking("n4");
+        expect((await inboxNoReply(deps, a, { messageId: row.id })).stopped).toBe("Store Bot");
+        expect(await countOf()).toBe(3);
+
+        await inboxNoReply(deps, a, { messageId: row.id, undo: true });
+        expect(await countOf()).toBe(2);
+        const saved = await prisma.cachedMailMessage.findUniqueOrThrow({
+          where: { id: row.id },
+        });
+        expect(saved.needsReply).toBe(true);
+        expect(saved.replyDismissedAt).toBeNull();
+
+        // A second Undo is a no-op.
+        await inboxNoReply(deps, a, { messageId: row.id, undo: true });
+        expect(await countOf()).toBe(2);
+      });
+
+      it("Undo of a dismissal below the stop takes the count back to zero", async () => {
+        await reset();
+        await stat();
+        const row = await asking("n4b");
+        await inboxNoReply(deps, a, { messageId: row.id });
+        expect(await countOf()).toBe(1);
+
+        await inboxNoReply(deps, a, { messageId: row.id, undo: true });
+        expect(await countOf()).toBe(0);
+        const saved = await prisma.cachedMailMessage.findUniqueOrThrow({
+          where: { id: row.id },
+        });
+        expect(saved.needsReply).toBe(true);
+        expect(saved.replyDismissedAt).toBeNull();
+      });
+
+      it("Undo on mail that was never dismissed changes nothing", async () => {
+        await reset();
+        await stat({ noReplyCount: 3 });
+        const row = await asking("n4c");
+        await inboxNoReply(deps, a, { messageId: row.id, undo: true });
+        expect(await countOf()).toBe(3);
+        expect(
+          (await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: row.id } }))
+            .needsReply,
+        ).toBe(true);
+      });
+
+      it("Undo of an unauthenticated dismissal restores the mail but keeps the count", async () => {
+        await reset();
+        await stat({ noReplyCount: 2 });
+        const row = await asking("n4d");
+        await prisma.cachedMailMessage.update({
+          where: { id: row.id },
+          data: {
+            signals: { ...authenticated, auth: { dkim: "fail", spf: "fail", dmarc: "fail" } },
+          },
+        });
+        await inboxNoReply(deps, a, { messageId: row.id });
+        expect(await countOf()).toBe(2);
+
+        await inboxNoReply(deps, a, { messageId: row.id, undo: true });
+        expect(await countOf()).toBe(2);
+        const saved = await prisma.cachedMailMessage.findUniqueOrThrow({
+          where: { id: row.id },
+        });
+        expect(saved.needsReply).toBe(true);
+        expect(saved.replyDismissedAt).toBeNull();
+      });
+
+      it("counts a to-do marked done, once, and tells the caller when that stops the sender", async () => {
+        await reset();
+        await stat({ noReplyCount: 2 });
+        const row = await asking("n5");
+        const item = await todo(a, connA, { messageId: row.id });
+
+        const done = await inboxTodoSetDone(deps, a, { id: item.id, done: true });
+        await inboxTodoSetDone(deps, a, { id: item.id, done: false });
+        const again = await inboxTodoSetDone(deps, a, { id: item.id, done: true });
+
+        expect(done.stoppedSender).toBe("Store Bot");
+        expect(done.dismissedReply).toBe(true);
+        expect(again.stoppedSender).toBeUndefined();
+        expect(again.dismissedReply).toBeUndefined();
+        expect(await countOf()).toBe(3);
+      });
+
+      it("does not count a to-do whose thread has a later sent message", async () => {
+        await reset();
+        await stat();
+        const row = await asking("n6");
+        await cache(a, connA, "n6-sent", {
+          threadId: row.threadId,
+          fromSelf: true,
+          inInbox: false,
+          receivedAt: new Date(row.receivedAt.getTime() + 60_000),
+        });
+        const item = await todo(a, connA, { messageId: row.id });
+
+        await inboxTodoSetDone(deps, a, { id: item.id, done: true });
+
+        expect(await countOf()).toBe(0);
+      });
+
+      it("is served through the router for the signed-in user only", async () => {
+        await reset();
+        await stat();
+        const mine = await asking("n9");
+        const theirs = await cache(b, connB, "n10", {
+          fromAddress: sender,
+          needsReply: true,
+          ...triaged,
+        });
+        const client = createRouterClient(
+          createRouter({ ...deps, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+          {
+            context: { actor: a } as never,
+          },
+        );
+
+        expect(await client.inbox.noReply({ messageId: mine.id })).toEqual({ stopped: null });
+        await client.inbox.noReply({ messageId: theirs.id });
+
+        expect(await countOf()).toBe(1);
+        expect(
+          (await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: theirs.id } }))
+            .replyDismissedAt,
+        ).toBeNull();
+      });
+    });
+
     it("setDone cannot reach another user's, another space's or a revoked account's to-do", async () => {
       await wipe();
       const theirs = await todo(b, connB);
@@ -1532,7 +1793,11 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const mine = await todo(a, connA, { text: "Mine" });
       const theirs = await todo(b, connB, { text: "Theirs" });
       const client = createRouterClient(
-        createRouter({ ...deps, ...ready } as unknown as RouterDeps),
+        createRouter({
+          ...deps,
+          ...ready,
+          env: { mailWritesDisabled: false },
+        } as unknown as RouterDeps),
         { context: { actor: a } as never },
       );
 
@@ -1946,10 +2211,10 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         expect(byId("vip-1")).toMatchObject({ feedback: "important", priority: "important" });
         expect(byId("vip-2")).toMatchObject({ feedback: "important", priority: "important" });
         expect(byId("peer")).toMatchObject({ feedback: null, priority: "normal" });
-        // Newer peer mail used to lead Needs reply; the important sender's mail now comes first.
+        // Needs reply lists newest first (d84bb9342); priority no longer reorders it.
         expect(groupInbox(all.rows, new Date()).needsReply.map((r) => r.subject)).toEqual([
-          "Subject vip-2",
           "Subject peer",
+          "Subject vip-2",
         ]);
       });
 
@@ -2310,6 +2575,40 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect((await inboxList(deps, a, {})).rows).toEqual([]);
     });
 
+    it("archiving never counts as a no-reply correction", async () => {
+      const { mine } = await setup();
+      await prisma.cachedMailMessage.updateMany({
+        where: { id: { in: mine.map((r) => r.id) } },
+        data: { needsReply: true },
+      });
+      await prisma.mailSenderStat.create({
+        data: {
+          spaceId: a.spaceId,
+          userId: a.userId,
+          connectionId: connA,
+          senderAddress: "ann@example.test",
+          messageCount: 3,
+        },
+      });
+
+      await inboxArchive(deps, a, { messageId: (mine[0] as { id: string }).id });
+      await inboxArchiveMany(deps, a, { messageIds: mine.slice(1).map((r) => r.id) });
+
+      expect(
+        (
+          await prisma.mailSenderStat.findFirstOrThrow({
+            where: { connectionId: connA, senderAddress: "ann@example.test" },
+          })
+        ).noReplyCount,
+      ).toBe(0);
+      expect(
+        await prisma.cachedMailMessage.count({
+          where: { id: { in: mine.map((r) => r.id) }, replyDismissedAt: { not: null } },
+        }),
+      ).toBe(0);
+      await prisma.mailSenderStat.deleteMany({ where: { connectionId: connA } });
+    });
+
     it("de-duplicates ids and handles every id of a larger selection", async () => {
       await setup();
       const rows = await Promise.all(
@@ -2483,6 +2782,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const client = createRouterClient(
         createRouter({
           prisma,
+          env: { mailWritesDisabled: false },
           mail,
           connectors: { managed: () => connector },
         } as unknown as RouterDeps),
@@ -2534,6 +2834,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         createRouterClient(
           createRouter({
             prisma,
+            env: { mailWritesDisabled: false },
             mail: {
               listAccounts: mail.listAccounts.bind(mail),
               stopWatch: async (account: MailAccount) => stop(account.id),
@@ -2596,6 +2897,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const client = createRouterClient(
         createRouter({
           prisma,
+          env: { mailWritesDisabled: false },
           mail,
           connectors: { managed: () => connector },
         } as unknown as RouterDeps),

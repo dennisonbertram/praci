@@ -25,7 +25,7 @@ export function isComposioEnabled(apiKey: string | undefined): boolean {
   return Boolean(apiKey) && !isVitestRuntime();
 }
 
-const CHANGED_TO_WRITE_MESSAGE =
+export const CHANGED_TO_WRITE_MESSAGE =
   "This tool changed from a read to a change since it was listed, so it was not run. Try again in a new message.";
 
 export function asConnectorTools(input: unknown): ConnectorTool[] {

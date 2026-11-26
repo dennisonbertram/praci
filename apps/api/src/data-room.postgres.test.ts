@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -329,6 +329,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
       status: "pending",
       source: "upload",
       folderId: null,
+      sha256: createHash("sha256").update("quokka report").digest("hex"),
     });
     expect(JSON.stringify(body)).not.toContain("storageKey");
     expect(await blobCount(actors.A.spaceId)).toBe(1);
@@ -344,7 +345,10 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const res = await upload("a", "name=renamed.txt", "quokka report");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
-    expect(body).toMatchObject({ duplicate: true, item: { id: item.id } });
+    expect(body).toMatchObject({
+      duplicate: true,
+      item: { id: item.id, sha256: createHash("sha256").update("quokka report").digest("hex") },
+    });
     expect(await blobCount(actors.A.spaceId)).toBe(1);
     // The first upload is still pending, so the duplicate runs ingest again (the job key dedupes).
     expect(enqueued.filter((job) => job.name === "dataroom.ingest")).toHaveLength(2);
@@ -1750,5 +1754,61 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await repo.processing(actors.a, new Date(Date.now() + 20 * 60_000));
     const after = await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: item.id } });
     expect(after.status).toBe("failed");
+  });
+
+  it("stores scans with their hash and deduplicates concurrent retries within the owner scope", async () => {
+    const bytes = "%PDF-synthetic-scanner-document";
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const uploaded = await upload("a", "name=Uploaded.pdf", bytes, "application/pdf");
+    expect(uploaded.status).toBe(201);
+    const uploadedItem = (await uploaded.json()).item as DataRoomApiItem;
+    const responses = await Promise.all([
+      upload("a", "name=Scan.pdf&source=scan", bytes, "application/pdf"),
+      upload("a", "name=Scan.pdf&source=scan", bytes, "application/pdf"),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 201]);
+    const results = await Promise.all(responses.map((response) => response.json()));
+    expect(results[0].item.id).toBe(results[1].item.id);
+    for (const result of results) expect(result.item).toMatchObject({ source: "scan", sha256 });
+    expect(results[0].item.id).not.toBe(uploadedItem.id);
+    const sameSpaceOtherOwner = await upload(
+      "a2",
+      "name=Scan.pdf&source=scan",
+      bytes,
+      "application/pdf",
+    );
+    expect(sameSpaceOtherOwner.status).toBe(201);
+    expect((await sameSpaceOtherOwner.json()).item.id).not.toBe(results[0].item.id);
+    const other = await upload("b", "name=Scan.pdf&source=scan", bytes, "application/pdf");
+    expect(other.status).toBe(201);
+    expect((await other.json()).item.id).not.toBe(results[0].item.id);
+  });
+
+  it("refuses upload sources other than upload and scan", async () => {
+    for (const source of ["drive", "gmail", "unknown", ""]) {
+      expect((await upload("a", `name=invalid.txt&source=${source}`, "rejected")).status).toBe(400);
+    }
+  });
+
+  it("rejects a scan upload if its captured user no longer owns the session", async () => {
+    const body = "%PDF-synthetic-scope-guard";
+    expect(
+      (
+        await upload(
+          "a",
+          `name=Scan.pdf&source=scan&expectedUserId=${actors.b.userId}`,
+          body,
+          "application/pdf",
+        )
+      ).status,
+    ).toBe(400);
+    const accepted = await upload(
+      "a",
+      `name=Scan.pdf&source=scan&expectedUserId=${actors.a.userId}`,
+      body,
+      "application/pdf",
+    );
+    expect(accepted.status).toBe(201);
+    expect((await accepted.json()).item.source).toBe("scan");
   });
 });

@@ -1,5 +1,6 @@
 import { computerSupportsTerminal, computerSupportsUpdate } from "@rakazo/adapters";
 import type { ComputerStatus } from "@rakazo/contracts";
+import { SandboxKind } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES, computerScreenSize } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 
@@ -74,8 +75,9 @@ export function toComputerStatus(
           computer?.state === "error"
         ? computer.state
         : "stopped";
-  const screen = computerScreenSize(computer?.kind);
-  const kind = (computer?.kind ?? "fake") as ComputerStatus["kind"];
+  const parsedKind = SandboxKind.safeParse(computer?.kind);
+  const kind = parsedKind.success ? parsedKind.data : computer ? "docker" : "fake";
+  const screen = computerScreenSize(kind);
   return {
     botId,
     mode: computer?.scope === "dedicated" ? "dedicated" : "team",

@@ -1,0 +1,75 @@
+[
+  {
+    "id": "update-draft",
+    "audience": "investors",
+    "subject": "Q4 update",
+    "period": "2026-Q4",
+    "body": "Draft body",
+    "status": "draft",
+    "recipientContactIds": ["contact-a"],
+    "fromConnectionId": null,
+    "deliveries": [],
+    "sentAt": null,
+    "createdAt": "2026-11-10T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:00:00.000Z"
+  },
+  {
+    "id": "update-sending",
+    "audience": "board",
+    "subject": "Board update",
+    "period": "2026-11",
+    "body": "Sending body",
+    "status": "sending",
+    "recipientContactIds": ["contact-a"],
+    "fromConnectionId": "connection-a",
+    "deliveries": [{"contactId": "contact-a", "name": "Avery Example", "state": "sending"}],
+    "sentAt": null,
+    "createdAt": "2026-11-10T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:01:00.000Z"
+  },
+  {
+    "id": "update-sent",
+    "audience": "investors",
+    "subject": "Q3 update",
+    "period": "2026-Q3",
+    "body": "Sent body",
+    "status": "sent",
+    "recipientContactIds": ["contact-a"],
+    "fromConnectionId": "connection-a",
+    "deliveries": [{"contactId": "contact-a", "name": "Avery Example", "state": "sent"}],
+    "sentAt": "2026-10-10T12:00:00.000Z",
+    "createdAt": "2026-10-09T12:00:00.000Z",
+    "updatedAt": "2026-10-10T12:00:00.000Z"
+  },
+  {
+    "id": "update-partly-sent",
+    "audience": "investors",
+    "subject": "Q2 update",
+    "period": "2026-Q2",
+    "body": "Partly sent body",
+    "status": "partly_sent",
+    "recipientContactIds": ["contact-a", "contact-b"],
+    "fromConnectionId": "connection-a",
+    "deliveries": [
+      {"contactId": "contact-a", "name": "Avery Example", "state": "failed"},
+      {"contactId": "contact-b", "name": "Blair Example", "state": "unknown"}
+    ],
+    "sentAt": "2026-09-10T12:00:00.000Z",
+    "createdAt": "2026-09-09T12:00:00.000Z",
+    "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+    "id": "update-posted",
+    "audience": "investors",
+    "subject": "Q1 update",
+    "period": "2026-Q1",
+    "body": "Posted body",
+    "status": "posted",
+    "recipientContactIds": [],
+    "fromConnectionId": null,
+    "deliveries": [],
+    "sentAt": "2026-08-10T12:00:00.000Z",
+    "createdAt": "2026-08-09T12:00:00.000Z",
+    "updatedAt": "2026-08-10T12:00:00.000Z"
+  }
+]

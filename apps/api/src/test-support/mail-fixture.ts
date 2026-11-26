@@ -34,6 +34,8 @@ export const bulkSignals: MailSignals = {
 };
 
 export interface CachedMessageOptions {
+  to?: string[];
+  subject?: string;
   threadId: string;
   from: string;
   fromName: string | null;
@@ -221,7 +223,8 @@ export async function createMailFixture(label: string, databaseUrl: string) {
           threadId: extra.threadId ?? providerMessageId,
           fromName: extra.fromName === undefined ? "News" : extra.fromName,
           fromAddress: extra.from ?? "news@lists.example.test",
-          subject: `Subject ${providerMessageId}`,
+          subject: extra.subject ?? `Subject ${providerMessageId}`,
+          toAddresses: extra.to ?? [],
           snippet: `Snippet ${providerMessageId}`,
           receivedAt: extra.receivedAt ?? daysAgo(1),
           unread: extra.unread ?? true,

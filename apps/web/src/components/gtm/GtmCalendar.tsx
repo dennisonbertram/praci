@@ -45,11 +45,22 @@ export function GtmCalendar({
     [from, to, overview.zernioLinked, overview.postingCapability],
   );
   const inWindow = (date: Date) => date >= start && date < end;
+  const data = queue.error ? null : queue.data;
+  // Only queue entries this calendar draws count as copies of a local post; an entry it
+  // skips (outside the window, email-only) must not hide the local one.
+  const queuePosts = (data?.posts ?? []).filter(
+    (post) =>
+      inWindow(new Date(post.scheduledFor)) &&
+      post.platforms.some((platform) => platform.platform !== "email"),
+  );
+  const queuedIds = new Set(queuePosts.map((post) => post.id));
   const entries: Entry[] = Object.values(overview.groups)
     .flat()
     .flatMap((item) => {
       if (!item.scheduledFor || item.category === "outbound_email" || item.channel === "email")
         return [];
+      const proof = item.proof?.startsWith("zernio:") ? item.proof.slice("zernio:".length) : null;
+      if (proof && queuedIds.has(proof)) return [];
       const date = new Date(item.scheduledFor);
       if (!inWindow(date)) return [];
       const href = item.status === "done" && item.proof ? publicProof(item.proof) : null;
@@ -64,11 +75,8 @@ export function GtmCalendar({
         },
       ];
     });
-  const data = queue.error ? null : queue.data;
-  for (const post of data?.posts ?? []) {
+  for (const post of queuePosts) {
     const date = new Date(post.scheduledFor);
-    if (!inWindow(date) || !post.platforms.some((platform) => platform.platform !== "email"))
-      continue;
     const links = post.platforms.flatMap((target) => {
       const knownAccount = overview.channels.some((channel) =>
         channel.accounts.some(

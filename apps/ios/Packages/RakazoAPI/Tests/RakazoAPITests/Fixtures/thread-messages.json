@@ -1,0 +1,87 @@
+{
+  "json": {
+    "threadId": "id-placeholder-1",
+    "messages": [
+      {
+        "id": "id-placeholder-2",
+        "threadId": "id-placeholder-1",
+        "seq": 0,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "Morning. What do I need to know today?"
+          }
+        ],
+        "createdAt": "2026-10-25T13:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-3",
+        "threadId": "id-placeholder-1",
+        "seq": 1,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "Three things. Priya sent the Q3 investor update draft and wants your numbers check by Friday. The Halcyon security questionnaire is due Friday. And the Q3 board consent signature is 5 days overdue."
+          },
+          {
+            "kind": "steps",
+            "steps": [
+              {
+                "label": "Read the Inbox",
+                "count": 1,
+                "summary": "10 unread, 4 need a reply",
+                "lines": [
+                  {
+                    "text": "Priya Placeholder: Q3 investor update draft"
+                  },
+                  {
+                    "text": "Morgan Pretend: MSA redlines"
+                  }
+                ]
+              },
+              {
+                "label": "Checked Legal deadlines",
+                "count": 1,
+                "summary": "1 overdue, 3 due in the next 30 days",
+                "lines": []
+              }
+            ],
+            "durationMs": 4200
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-25T18:24:54.426Z"
+      },
+      {
+        "id": "id-placeholder-5",
+        "threadId": "id-placeholder-1",
+        "seq": 2,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "When is the next board meeting?"
+          }
+        ],
+        "createdAt": "2026-10-25T22:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-6",
+        "threadId": "id-placeholder-1",
+        "seq": 3,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as [Q3 Board Deck](/app/artifacts/id-placeholder-7)."
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-26T03:24:54.426Z"
+      }
+    ],
+    "olderCursor": null
+  }
+}

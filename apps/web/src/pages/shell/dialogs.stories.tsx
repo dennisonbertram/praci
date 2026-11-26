@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import {
+  ArchiveBotsDialog,
   ClearConversationDialog,
   DeleteBotDialog,
   DeleteItemDialog,
@@ -67,6 +68,9 @@ const bot: Bot = {
   audience: "internal",
   externalMessageTargets: [],
   externalComputerTools: false,
+  firewall: false,
+  firewallAskCapabilities: [],
+  proactivity: "medium",
   webhookConfigured: false,
   spawnKey: null,
   runPhase: null,
@@ -149,6 +153,10 @@ export const ClearConversationError: Story = {
 export const ClearConversationClearing: Story = {
   render: () => <ClearConversationDialog bot={bot} onCancel={noop} onConfirm={never} />,
   play: submit("Clear"),
+};
+
+export const ArchiveEmailChats: Story = {
+  render: () => <ArchiveBotsDialog count={12} onCancel={noop} onConfirm={done} />,
 };
 
 const memories = [{ id: "mem_1", scope: "bot", botId: "bot_demo", path: "notes.md", content: "x" }];

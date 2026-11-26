@@ -101,6 +101,9 @@ function Highlight({ text, needle, clip }: { text: string; needle: string; clip?
 /** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
 const SELECTED_ROW = "data-selected:bg-accent";
 
+/** <Command> value while a search is pending and no local row may be opened, so Enter does nothing. */
+const PENDING_VALUE = "pending";
+
 /** Footer key hints: a visible cap on the popover, where Kbd's own bg-muted barely shows. */
 const KEY_CAP = "border border-border bg-background";
 
@@ -122,6 +125,8 @@ export type PaletteLinkGroup = {
   entries: PaletteEntry[];
   icon?: ReactNode;
   fallback?: boolean;
+  /** The search behind this group failed, so its missing rows are not a real "no match". */
+  failed?: boolean;
   /** Last row of the group, for results beyond the ones listed. */
   more?: PaletteEntry;
 };
@@ -154,7 +159,7 @@ export function CommandPalette({
   searchLinks?: (query: string) => Promise<PaletteLinkGroup[]>;
   onOpenPath?: (path: string) => void;
   /** Commands found only by typing; they have no row in the empty palette. */
-  actions?: { label: string; run: () => void }[];
+  actions?: { label: string; keywords?: string; run: () => void }[];
 }) {
   useHideAmounts();
   const [search, setSearch] = useState("");
@@ -188,9 +193,13 @@ export function CommandPalette({
   const [linkGroups, setLinkGroups] = useState<PaletteLinkGroup[]>([]);
   // The query the shown results belong to: while it differs from the typed one, a search is pending.
   const [answered, setAnswered] = useState("");
+  const [failedQuery, setFailedQuery] = useState("");
+  // One letter matches far too much to send to the server; local rows still filter from it.
+  const longEnough = Array.from(query).length >= 2;
   useEffect(() => {
-    if (!needle || !searchLinks) {
+    if (!longEnough || !searchLinks) {
       setLinkGroups([]);
+      setAnswered(needle);
       return;
     }
     let stale = false;
@@ -199,11 +208,13 @@ export function CommandPalette({
         .then((groups) => {
           if (stale) return;
           setLinkGroups(groups);
+          setFailedQuery("");
           setAnswered(needle);
         })
         .catch(() => {
           if (stale) return;
           setLinkGroups([]);
+          setFailedQuery(needle);
           setAnswered(needle);
         });
     }, 200);
@@ -211,7 +222,7 @@ export function CommandPalette({
       stale = true;
       window.clearTimeout(timer);
     };
-  }, [needle, query, searchLinks]);
+  }, [longEnough, needle, query, searchLinks]);
   // A bot is found by its name or role, never by words in its description.
   const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, bot.title);
   const entryScore = (entry: PaletteEntry) =>
@@ -219,7 +230,7 @@ export function CommandPalette({
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
   const shownActions = needle
-    ? ranked(actions, (action) => paletteMatchScore(action.label, needle))
+    ? ranked(actions, (action) => paletteMatchScore(action.label, needle, action.keywords))
     : [];
   const filteredBots = useMemo(
     () =>
@@ -445,13 +456,20 @@ export function CommandPalette({
       return { ...group, entries: [...titles, ...bodies] };
     })
     .sort((a, b) => groupRank(b) - groupRank(a));
+  // An action is a title match: it lists after title-matched link groups and before body-only ones.
+  const titledLinks = directLinks.filter((group) => groupRank(group) >= 1);
+  const bodyLinks = directLinks.filter((group) => groupRank(group) < 1);
   const searching = Boolean(needle && searchLinks && answered !== needle);
+  const searchFailed =
+    !searching && (failedQuery === needle || linkGroups.some((group) => group.failed));
 
   // Direct matches come first, so Enter opens the first row; with none, the catch-all search does.
   const bestValue = (() => {
     if (!needle) return "";
+    // While a newer search runs, the rows on screen belong to the previous query: only local
+    // matches may be opened, so a stale link is never the one Enter chooses.
     // A contact or document named exactly as typed wins; with no page or bot match, the first one does.
-    const linkEntries = directLinks.flatMap((g) => g.entries);
+    const linkEntries = searching ? [] : directLinks.flatMap((g) => g.entries);
     const exact = linkEntries.find((entry) => entry.label.toLowerCase() === needle);
     if (exact) return `link:${exact.id}`;
     const first = sectionOrder[0];
@@ -465,12 +483,32 @@ export function CommandPalette({
           : shownPages[0]
             ? `page:${shownPages[0].id}`
             : "";
-    const last = linkEntries[0] ?? fallbackLinks[0]?.entries[0];
-    return local || (last ? `link:${last.id}` : "");
+    if (local) return local;
+    if (searching) return shownActions[0] ? `action:${shownActions[0].label}` : PENDING_VALUE;
+    const titled = titledLinks[0]?.entries[0];
+    if (titled) return `link:${titled.id}`;
+    if (shownActions[0]) return `action:${shownActions[0].label}`;
+    const last = bodyLinks[0]?.entries[0] ?? fallbackLinks[0]?.entries[0];
+    return last ? `link:${last.id}` : "";
   })();
+  // The rows on screen right now, so a selection made before late results arrived can be kept.
+  const shownValues = new Set<string>();
+  for (const bot of filteredBots) shownValues.add(bot.id);
+  for (const group of shownGroups) shownValues.add(`group:${group.id}`);
+  for (const page of shownPages) shownValues.add(`page:${page.id}`);
+  for (const group of [...titledLinks, ...bodyLinks, ...fallbackLinks]) {
+    for (const entry of group.entries) shownValues.add(`link:${entry.id}`);
+    if (group.more) shownValues.add(`link:${group.more.id}`);
+  }
+  for (const action of shownActions) shownValues.add(`action:${action.label}`);
   const [picked, setPicked] = useState("");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: restart from the best match when the query changes
-  useEffect(() => setPicked(bestValue), [needle, bestValue]);
+  // Only a new query restarts from the best match; late results for the same one keep the arrowed-to row.
+  useEffect(() => setPicked(""), [needle]);
+  // An arrowed-to row stays selected while it is on screen; otherwise follow the best match.
+  const value = picked && shownValues.has(picked) ? picked : bestValue;
+  // cmdk also re-selects the first row whenever the search changes; only a row the person moved to
+  // is a choice, so late results do not undo it.
+  const moved = useRef(false);
 
   return (
     <CommandDialog
@@ -495,8 +533,33 @@ export function CommandPalette({
     >
       <Command
         shouldFilter={false}
-        value={picked || bestValue || undefined}
-        onValueChange={setPicked}
+        value={value || undefined}
+        onKeyDownCapture={(event) => {
+          // The hidden pending row is never a stop for the arrow keys: Up or Home from the first
+          // visible row stays there instead of landing on a row nobody can see.
+          if (event.key === "ArrowUp" || event.key === "Home") {
+            const rows = [
+              ...event.currentTarget.querySelectorAll('[cmdk-item]:not([aria-disabled="true"])'),
+            ];
+            const at = rows.findIndex((row) => row.getAttribute("aria-selected") === "true");
+            const target = event.key === "Home" ? rows[0] : rows[at - 1];
+            if (target?.getAttribute("data-value") === PENDING_VALUE) {
+              event.preventDefault();
+              return;
+            }
+          }
+          if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+            moved.current = true;
+          }
+        }}
+        onPointerMoveCapture={() => {
+          moved.current = true;
+        }}
+        onValueChange={(next) => {
+          if (!moved.current) return;
+          moved.current = false;
+          setPicked(next);
+        }}
         className="rounded-xl! bg-popover"
         data-testid="command-palette"
       >
@@ -529,7 +592,17 @@ export function CommandPalette({
               <Trans>Searching…</Trans>
             </div>
           ) : null}
-          {searching ? null : (
+          {searching && !filteredBots.length && !shownGroups.length && !shownPages.length ? (
+            // Sits first when no local row may be opened: cmdk re-selects the first row on each
+            // search change, and that row would be a stale link Enter must not open.
+            <CommandItem value={PENDING_VALUE} onSelect={() => undefined} className="hidden" />
+          ) : null}
+          {searchFailed ? (
+            <div role="status" className="py-3 text-center text-sm text-muted-foreground">
+              <Trans>Could not search</Trans>
+            </div>
+          ) : null}
+          {searching || searchFailed ? null : (
             <CommandEmpty>
               <Trans>No results</Trans>
             </CommandEmpty>
@@ -539,7 +612,7 @@ export function CommandPalette({
               {section === "bots" ? botsGroup : section === "groups" ? groupsGroup : pagesGroup}
             </Fragment>
           ))}
-          {directLinks.map(linkGroup)}
+          {titledLinks.map(linkGroup)}
           {shownActions.length ? (
             <CommandGroup>
               {shownActions.map((action) => (
@@ -559,6 +632,7 @@ export function CommandPalette({
               ))}
             </CommandGroup>
           ) : null}
+          {bodyLinks.map(linkGroup)}
           {fallbackLinks.map(linkGroup)}
         </CommandList>
         {moreBelow ? (

@@ -1,5 +1,5 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
-import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
+import type { AccountSecurity, AvatarStyle, Bot } from "@rakazo/contracts";
 import {
   BotAvatar,
   Button,
@@ -24,11 +24,16 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
+import { AutoApprovalsList } from "../components/AutoApprovalsList";
+import { AutoReviewSettings } from "../components/AutoReviewSettings";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
 import { DataExportSection } from "../components/DataExport";
 import { DesktopUpdateSection } from "../components/DesktopUpdates";
+import { HiddenBotsList } from "../components/HiddenBotsList";
+import { MeetingRecordingSettings } from "../components/MeetingRecordingSettings";
 import { NotificationSettingsSection } from "../components/NotificationSettings";
+import { PasskeySettings } from "../components/PasskeySettings";
 import { DefaultRunsOnSection } from "../components/RunsOnPicker";
 import { SoftwareUpdateSection } from "../components/SoftwareUpdateSection";
 import { authClient } from "../lib/auth";
@@ -62,6 +67,8 @@ export type SettingsGeneralProps = {
   name: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
+  hiddenBots?: readonly Pick<Bot, "id" | "name" | "color">[];
+  onShowBot?: (botId: string) => void;
   /** The zone agents and new schedules use; the section is hidden without it. */
   timezone?: string;
   onTimezoneChange?: (timezone: string) => Promise<void>;
@@ -77,6 +84,8 @@ export function GeneralSettingsPanels({
   name,
   avatarStyle,
   onAvatarStyleChange,
+  hiddenBots,
+  onShowBot,
   timezone,
   onTimezoneChange,
   messagingEnabled = false,
@@ -88,6 +97,7 @@ export function GeneralSettingsPanels({
   const [accountSecurity, setAccountSecurity] = useState<AccountSecurity | null>(null);
   const [locale, setLocale] = useState<UiLocale>(() => getActiveUiLocale());
   const localeRequestRef = useRef(0);
+  const [localeError, setLocaleError] = useState(false);
   const [appearance, setAppearance] = useState<AppearancePreference>(() =>
     getUiAppearancePreference(),
   );
@@ -117,11 +127,21 @@ export function GeneralSettingsPanels({
   function chooseLocale(next: UiLocale) {
     if (next === locale) return;
     const requestId = ++localeRequestRef.current;
+    setLocaleError(false);
     setLocale(next);
-    void setUiLocale(next).then((activated) => {
-      if (requestId !== localeRequestRef.current) return;
-      setLocale(activated);
-    });
+    // setUiLocale falls back (to English or the active language) instead of throwing when the
+    // catalog cannot load, so a different result means the choice did not take.
+    void setUiLocale(next)
+      .then((activated) => {
+        if (requestId !== localeRequestRef.current) return;
+        setLocale(activated);
+        setLocaleError(activated !== next);
+      })
+      .catch(() => {
+        if (requestId !== localeRequestRef.current) return;
+        setLocale(getActiveUiLocale());
+        setLocaleError(true);
+      });
   }
 
   async function chooseAvatarStyle(next: AvatarStyle) {
@@ -305,6 +325,7 @@ export function GeneralSettingsPanels({
               </div>
             </div>
           </details>
+          {hiddenBots && onShowBot ? <HiddenBotsList bots={hiddenBots} onShow={onShowBot} /> : null}
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <section className="rounded-xl border border-border px-4 py-4">
@@ -316,6 +337,11 @@ export function GeneralSettingsPanels({
               )}
             </h3>
             <UiLocalePicker value={locale} onChange={chooseLocale} />
+            {localeError ? (
+              <p role="alert" className="mt-2 text-[12.5px] text-destructive">
+                <Trans>Could not save</Trans>
+              </p>
+            ) : null}
             {timezone && onTimezoneChange ? (
               <TimezonePicker value={timezone} onChange={onTimezoneChange} />
             ) : null}
@@ -347,6 +373,7 @@ export function GeneralSettingsPanels({
             {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
               <ChangePasswordSection email={email} />
             ) : null}
+            <PasskeySettings />
             <div data-testid="account-access" className="pb-3">
               <AccountAccess onSecurity={setAccountSecurity} />
             </div>
@@ -360,10 +387,15 @@ export function GeneralSettingsPanels({
 export function PrivacySettingsPanels() {
   return (
     <div className="space-y-5">
-      <AiDataSharingSection />
       <section className="rounded-xl border border-border px-4 py-4">
         <ApprovalRulesSettings />
       </section>
+      <AutoApprovalsList />
+      <section className="rounded-xl border border-border px-4 py-4">
+        <AutoReviewSettings />
+      </section>
+      <MeetingRecordingSettings />
+      <AiDataSharingSection />
     </div>
   );
 }
@@ -431,6 +463,7 @@ export function ComputerSettingsPanel({
       <ComputersUnavailableHint
         className="mt-3 text-[13px] leading-relaxed text-muted-foreground"
         sandboxProvider={sandboxProvider}
+        deploymentOwner
         onRecovered={onSandboxProviderChange}
         onRecoveryDismissed={onRecoveryDismissed}
       />

@@ -29,6 +29,12 @@ const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
 // gmail.settings.basic manages filters. It is restricted, so it is requested only when the user first
 // asks for a Gmail filter (`begin` with permission "mail_rules"), never in the default connect.
 export const GMAIL_SETTINGS_BASIC = "https://www.googleapis.com/auth/gmail.settings.basic";
+// Read-only address book scopes for contact photos. Both are optional at connect: an account without
+// them keeps working and simply has no photos. Google classes them as sensitive scopes.
+export const CONTACTS_READONLY = "https://www.googleapis.com/auth/contacts.readonly";
+export const CONTACTS_OTHER_READONLY = "https://www.googleapis.com/auth/contacts.other.readonly";
+const PEOPLE_ORIGIN = "https://people.googleapis.com";
+const PEOPLE_PATHS = ["/v1/people/me/connections", "/v1/otherContacts"];
 const GOOGLE_API_ORIGIN = "https://www.googleapis.com";
 const CALENDAR_EVENTS = "https://www.googleapis.com/auth/calendar.events";
 const DRIVE = "https://www.googleapis.com/auth/drive";
@@ -41,7 +47,15 @@ const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const PROVIDERS = {
   gmail: {
     name: "Gmail",
-    scopes: ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE, GMAIL_MODIFY],
+    scopes: [
+      "openid",
+      "email",
+      GMAIL_READONLY,
+      GMAIL_COMPOSE,
+      GMAIL_MODIFY,
+      CONTACTS_READONLY,
+      CONTACTS_OTHER_READONLY,
+    ],
     required: GMAIL_READONLY,
     origin: GMAIL_ORIGIN,
     paths: ["/"],
@@ -207,7 +221,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
   async complete(
     request: { state: string; code?: string; redirectUrl?: string; provider?: string },
     context: AdapterContext,
-  ): Promise<{ connectionRef: string; secretId: string; scope: string }> {
+  ): Promise<{ connectionRef: string; secretId: string; scope: string; account?: string }> {
     if (!STATE_PATTERN.test(request.state) || !request.code)
       throw new Error("Google authorization is incomplete");
     // Without a provider the grant is Gmail's, as before providers were passed.
@@ -263,7 +277,12 @@ export class GoogleConnector implements ManagedConnectorProvider {
           ciphertext: stored.ciphertext,
         },
       });
-      return { connectionRef: profile.sub, secretId: stored.id, scope: token.scope };
+      return {
+        connectionRef: profile.sub,
+        secretId: stored.id,
+        scope: token.scope,
+        ...(profile.email ? { account: profile.email } : {}),
+      };
     } catch (error) {
       throw new Error(sanitizeConnectorError(error, secrets));
     }
@@ -585,6 +604,11 @@ function isProviderUrl(provider: GoogleProvider, value: string): boolean {
   try {
     const url = new URL(value);
     const { origin, paths } = PROVIDERS[provider];
+    // The Gmail login's token may also read the address book, on two read-only paths.
+    if (provider === "gmail" && url.origin === PEOPLE_ORIGIN)
+      return (
+        !url.username && !url.password && PEOPLE_PATHS.some((prefix) => url.pathname === prefix)
+      );
     return (
       url.origin === origin &&
       !url.username &&

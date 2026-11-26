@@ -15,6 +15,8 @@ import { getLogger } from "@rakazo/logging";
 
 export const TRIAL_DAYS = 7;
 const PRICE_CACHE_MS = 60 * 60 * 1000;
+const PRICE_RETRY_MS = 60 * 1000;
+const PRICE_WAIT_MS = 5 * 1000;
 /** Stripe returns here after checkout; served by the API through the web origin. */
 export const BILLING_RETURN_PATH = "/api/v1/billing/return";
 
@@ -40,18 +42,40 @@ export function createBillingService(deps: {
 }): BillingService {
   const { prisma, provider } = deps;
   const appUrl = `${deps.webOrigin}/app`;
-  let cachedPrice: { value: BillingPrice; expiresAt: number } | undefined;
+  let cachedPrice: { value: BillingPrice | null; expiresAt: number } | undefined;
+  let pendingPrice: Promise<void> | undefined;
+
+  // One shared lookup: a slow or failing provider is asked once, and the last good price
+  // keeps showing while it is down.
+  function refreshPrice(): Promise<void> {
+    pendingPrice ??= provider
+      .getPrice()
+      .then((value) => {
+        cachedPrice = { value, expiresAt: Date.now() + PRICE_CACHE_MS };
+      })
+      .catch((error) => {
+        getLogger().error("billing price lookup failed", error);
+        cachedPrice = {
+          value: cachedPrice?.value ?? null,
+          expiresAt: Date.now() + PRICE_RETRY_MS,
+        };
+      })
+      .finally(() => {
+        pendingPrice = undefined;
+      });
+    return pendingPrice;
+  }
 
   async function price(): Promise<BillingPrice | null> {
-    if (cachedPrice && cachedPrice.expiresAt > Date.now()) return cachedPrice.value;
-    try {
-      const value = await provider.getPrice();
-      cachedPrice = { value, expiresAt: Date.now() + PRICE_CACHE_MS };
-      return value;
-    } catch (error) {
-      getLogger().error("billing price lookup failed", error);
-      return null;
+    if (!cachedPrice || cachedPrice.expiresAt <= Date.now()) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const wait = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, PRICE_WAIT_MS);
+      });
+      await Promise.race([refreshPrice(), wait]);
+      clearTimeout(timer);
     }
+    return cachedPrice?.value ?? null;
   }
 
   async function organization(actor: Actor) {
@@ -146,7 +170,10 @@ export function createBillingService(deps: {
       const { organizationId } = await managedOrganization(actor);
       const account = await billingAccountForOrganization(prisma, organizationId);
       if (!account) throw new ORPCError("NOT_FOUND", { message: "No billing account" });
-      return provider.createPortal({ customerId: account.customerId, returnUrl: appUrl });
+      return provider.createPortal({
+        customerId: account.customerId,
+        returnUrl: `${deps.webOrigin}${BILLING_RETURN_PATH}`,
+      });
     },
 
     sync,

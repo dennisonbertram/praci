@@ -28,4 +28,4 @@ Each connected app lists the bots that use it. **Disconnect** removes the accoun
 
 ## What bots may do with an app
 
-Reading is allowed once an app is connected to a bot. Writing, such as sending a message, creating an event or changing a record, asks you first unless you chose **Always allow**. See [Bots and agents](/docs/bots-and-agents#approvals).
+Reading is allowed once an app is connected to a bot. Writing, such as sending a message, creating an event or changing a record, follows the **Connected apps (write)** row in **Settings, Privacy and approvals**. A background run, such as a routine, always asks before it writes. See [Bots and agents](/docs/bots-and-agents#approvals).

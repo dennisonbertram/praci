@@ -2,14 +2,15 @@
 // Backs up and restores every object under the configured S3 settings (RAKAZO_S3_*), with no
 // dependencies beyond Node. Usage: s3-objects.mjs backup|restore <backup-dir> [--dotenv <path>]
 //
-// backup writes <backup-dir>/objects/<key> and <backup-dir>/objects.manifest.json (key, size, etag).
+// backup writes opaque filenames under <backup-dir>/objects and records their mapping in
+// <backup-dir>/objects.manifest.json. Restore still reads the pre-v2 key-shaped layout.
 // restore PUTs every manifest key back and verifies the bucket afterwards. It never deletes.
 // With no object storage configured, backup writes nothing and exits 0; restore does the same
 // only when the backup has no manifest. Credentials are never printed or written to the manifest.
 // ponytail: single-PUT restore caps an object at 5 GiB; add multipart if larger objects appear.
 import { createHash, createHmac } from "node:crypto";
 import { createReadStream, createWriteStream, existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import https from "node:https";
 import path from "node:path";
@@ -104,6 +105,8 @@ function send(method, key, query = {}, body = null, length = 0) {
   if (body) headers["content-length"] = String(length);
   return new Promise((resolve, reject) => {
     const client = endpoint.protocol === "https:" ? https : http;
+    // Pass the canonical URI as a raw request path. Rebuilding it with URL can
+    // collapse literal `.` / `..` key segments and change the object identity.
     const request = client.request(
       {
         method,
@@ -167,17 +170,35 @@ async function list() {
   return out;
 }
 
-/** Local path for a key; a trailing slash marks an empty folder object. */
-function local(key) {
-  const parts = key.split("/");
-  if (
-    !key ||
-    key.startsWith("/") ||
-    parts.some((p, i) => p === ".." || p === "." || (!p && i < parts.length - 1))
-  ) {
+/** New backups store keys under fixed-length, case-safe SHA-256 filenames. */
+function encodedFile(key) {
+  if (!key) throw new Error("an object key cannot be stored as a file");
+  return `${createHash("sha256").update(key, "utf8").digest("hex")}.object`;
+}
+
+/** Existing manifests have key-shaped paths; accept only the old safe path grammar. */
+function legacyLocal(key) {
+  if (!key || key.includes("\0") || key.startsWith("/")) {
     throw new Error("an object key cannot be stored as a file");
   }
-  return path.join(backupDir, "objects", ...parts);
+  const parts = key.split("/");
+  const names = key.endsWith("/") ? parts.slice(0, -1) : parts;
+  if (names.some((part) => !part || part === "." || part === "..")) {
+    throw new Error("unsafe object key in legacy manifest");
+  }
+  return path.join(backupDir, "objects", ...names);
+}
+
+function restoreFile(entry, manifest) {
+  if (manifest.version === 2) {
+    if (manifest.encoding !== "sha256-hex-v1")
+      throw new Error("unsupported object filename encoding");
+    const expected = encodedFile(entry.key);
+    if (entry.file !== expected) throw new Error("invalid object filename in manifest");
+    return path.join(backupDir, "objects", expected);
+  }
+  if (manifest.version !== undefined) throw new Error("unsupported object manifest version");
+  return legacyLocal(entry.key);
 }
 
 async function backup() {
@@ -186,13 +207,13 @@ async function backup() {
   await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
   let bytes = 0;
+  const manifestEntries = [];
+  const seenFiles = new Map();
   for (const entry of entries) {
-    const file = local(entry.key);
-    if (entry.key.endsWith("/")) {
-      await mkdir(file, { recursive: true });
-      continue;
-    }
-    await mkdir(path.dirname(file), { recursive: true });
+    const filename = encodedFile(entry.key);
+    if (seenFiles.has(filename)) throw new Error("two object keys map to the same backup file");
+    seenFiles.set(filename, entry.key);
+    const file = path.join(dir, filename);
     const response = await check("get", await send("GET", entry.key));
     const md5 = createHash("md5");
     let written = 0;
@@ -200,24 +221,25 @@ async function backup() {
       md5.update(chunk);
       written += chunk.length;
     });
-    await pipeline(response, createWriteStream(file));
+    await pipeline(response, createWriteStream(file, { flags: "wx" }));
     if (written !== entry.size) throw new Error(`object size mismatch for ${entry.key}`);
     // A plain etag is the MD5 of the body; multipart etags (with a dash) cannot be compared.
     if (/^[0-9a-f]{32}$/.test(entry.etag) && md5.digest("hex") !== entry.etag) {
       throw new Error(`object checksum mismatch for ${entry.key}`);
     }
     bytes += written;
+    manifestEntries.push({ ...entry, file: filename });
   }
   // Verify what is on disk against the manifest before declaring success.
-  for (const entry of entries) {
-    const info = await stat(local(entry.key));
-    if (entry.key.endsWith("/") ? !info.isDirectory() : info.size !== entry.size) {
-      throw new Error(`written file does not match the manifest for ${entry.key}`);
+  for (const saved of manifestEntries) {
+    const info = await stat(path.join(dir, ...saved.file.split("/")));
+    if (info.size !== saved.size) {
+      throw new Error(`written file does not match the manifest for ${saved.key}`);
     }
   }
   await writeFile(
     path.join(backupDir, "objects.manifest.json"),
-    `${JSON.stringify({ count: entries.length, bytes, objects: entries }, null, 1)}\n`,
+    `${JSON.stringify({ version: 2, encoding: "sha256-hex-v1", count: entries.length, bytes, objects: manifestEntries }, null, 1)}\n`,
     { mode: 0o600 },
   );
   console.log(`Backed up ${entries.length} objects (${bytes} bytes)`);
@@ -233,14 +255,24 @@ async function restore() {
   if (manifest.count !== manifest.objects.length)
     throw new Error("manifest count does not match its entries");
   for (const entry of manifest.objects) {
-    const file = local(entry.key);
-    const folder = entry.key.endsWith("/");
-    const size = folder ? 0 : (await stat(file)).size;
+    const file = restoreFile(entry, manifest);
+    const legacyFolder = manifest.version !== 2 && entry.key.endsWith("/");
+    const info = await lstat(file);
+    if (legacyFolder && !info.isDirectory())
+      throw new Error(`backup folder marker is invalid for ${entry.key}`);
+    if (!legacyFolder && !info.isFile()) throw new Error(`backup file is invalid for ${entry.key}`);
+    const size = legacyFolder ? 0 : info.size;
     if (size !== entry.size)
       throw new Error(`backup file does not match the manifest for ${entry.key}`);
     await check(
       "put",
-      await send("PUT", entry.key, {}, folder ? Buffer.alloc(0) : createReadStream(file), size),
+      await send(
+        "PUT",
+        entry.key,
+        {},
+        legacyFolder ? Buffer.alloc(0) : createReadStream(file),
+        size,
+      ),
     );
   }
   const found = new Map((await list()).map((o) => [o.key, o]));

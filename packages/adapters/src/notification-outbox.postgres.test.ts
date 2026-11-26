@@ -125,6 +125,7 @@ describePostgres("notification outbox (PostgreSQL)", () => {
       notification: prisma.notification,
       notificationDelivery: prisma.notificationDelivery,
       notificationEndpoint: prisma.notificationEndpoint,
+      notificationPreference: prisma.notificationPreference,
       $queryRaw: prisma.$queryRaw.bind(prisma),
       thread: { findUnique: async () => ({ groupId: "group-9" }) },
     } as never;
@@ -143,6 +144,39 @@ describePostgres("notification outbox (PostgreSQL)", () => {
     expect(channel.sent.map((s) => s.envelope.id)).not.toContain(seen.id);
     expect((await delivery(shown.id)).status).toBe("skipped");
     expect((await delivery(seen.id)).status).toBe("skipped");
+  });
+
+  it("skips a delivery whose channel the user switched off after it was queued", async () => {
+    const off = await attention();
+    const channel = new FakeChannel();
+    await prisma.notificationPreference.upsert({
+      where: { spaceId_userId: { spaceId, userId } },
+      create: { spaceId, userId, channels: { push: false } },
+      update: { channels: { push: false } },
+    });
+    try {
+      await deliverDueNotifications({ prisma, channels: [channel], now: at(31_000) });
+      expect(channel.sent.map((s) => s.envelope.id)).not.toContain(off.id);
+      expect((await delivery(off.id)).status).toBe("skipped");
+    } finally {
+      await prisma.notificationPreference.deleteMany({ where: { spaceId, userId } });
+    }
+  });
+
+  it("still sends when the channel switch is on or was never set", async () => {
+    const on = await attention();
+    await prisma.notificationPreference.upsert({
+      where: { spaceId_userId: { spaceId, userId } },
+      create: { spaceId, userId, channels: { push: true } },
+      update: { channels: { push: true } },
+    });
+    try {
+      const channel = new FakeChannel();
+      await deliverDueNotifications({ prisma, channels: [channel], now: at(31_000) });
+      expect(channel.sent.map((s) => s.envelope.id)).toContain(on.id);
+    } finally {
+      await prisma.notificationPreference.deleteMany({ where: { spaceId, userId } });
+    }
   });
 
   it("retries with backoff and gives up after five attempts", async () => {

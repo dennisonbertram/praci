@@ -2,13 +2,17 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   AgentSkillCatalogEntry,
   Bot,
+  BotAppControl,
   BotAudience,
+  BotProactivity,
   ComputerHost,
   ComputerMode,
   Me,
   ModelCatalogEntry,
   ModelCredential,
+  PermissionLevel,
   ThinkingLevel,
+  UpdateBotAppControl,
   VoiceInfo,
 } from "@rakazo/contracts";
 import {
@@ -16,14 +20,23 @@ import {
   BOT_NAME_MAX_LENGTH,
   BUILTIN_TOOL_NAMES,
   botAudienceEditable,
+  isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 import {
   connectedModelChoices,
+  modelKeyForConnection,
   modelOptionKey,
   parseModelOptionKey,
   resolveSelectableModelId,
 } from "@rakazo/core";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Input,
   NativeSelect,
@@ -35,14 +48,18 @@ import {
 import { ModelPicker } from "@rakazo/ui-web/components/ui/model-picker";
 import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { ApprovalActionsTable } from "../../components/ApprovalActionsTable";
 import { SuccessPop } from "../../components/ai/primitives";
+import { BotAppControlSection } from "../../components/BotAppControlSection";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
+import { PermissionLevelSelect } from "../../components/PermissionLevelSelect";
 import { RunsOnPicker } from "../../components/RunsOnPicker";
 import { botProfilePatch } from "../../lib/bot-profile-patch";
 import { thinkingLevelLabel } from "../../lib/model-catalog";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AvatarStudioPopover } from "./avatar-studio-popover";
+import { BotAccessSection } from "./BotAccessSection";
 import { BotSkillsSection } from "./BotSkillsSection";
 import { BotCredentialsSection } from "./bot-credentials";
 
@@ -59,7 +76,15 @@ type AudiencePatch = {
   audience?: BotAudience;
   externalMessageTargets?: string[];
   externalComputerTools?: boolean;
+  proactivity?: BotProactivity;
+  /** Server-owned; sent only from its own switch, never by another field's save. */
+  firewall?: boolean;
+  permissionLevel?: PermissionLevel | null;
+  /** Local desktop control; sent only when it changed. */
+  appControl?: UpdateBotAppControl;
 };
+
+const NO_APP_CONTROL: BotAppControl = { enabled: false, apps: [], headed: false };
 
 /** The selected segment is a filled ink pill, so Internal/External and Team/Private read at a glance. */
 const SELECTED_SEGMENT =
@@ -104,15 +129,125 @@ function ComputerModePicker({
   );
 }
 
+const CHECK_IN_CADENCES = ["off", "daily", "every_4h"] as const;
+
+export function CheckInSetting({ botId, onChange }: { botId: string; onChange?: () => void }) {
+  const { t } = useLingui();
+  const id = useId();
+  const [cadence, setCadence] = useState<(typeof CHECK_IN_CADENCES)[number]>("off");
+  const [error, setError] = useState(false);
+  const request = useRef(0);
+  useEffect(() => {
+    const current = ++request.current;
+    void rpc.checkIn
+      .get({ botId })
+      .then((value) => {
+        if (current === request.current) setCadence(value.cadence);
+      })
+      .catch(() => undefined);
+  }, [botId]);
+  const labels = { off: t`Off`, daily: t`Daily`, every_4h: t`Every 4 hours` };
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/20 pt-4">
+      <label htmlFor={`${id}-check-in`} className="text-[13.5px] font-medium text-foreground">
+        <Trans>Check in</Trans>
+      </label>
+      <NativeSelect
+        id={`${id}-check-in`}
+        className="w-40"
+        value={cadence}
+        onChange={(event) => {
+          const next = event.target.value as (typeof CHECK_IN_CADENCES)[number];
+          const previous = cadence;
+          const current = ++request.current;
+          setCadence(next);
+          setError(false);
+          rpc.checkIn
+            .set({ botId, cadence: next })
+            .then(() => onChange?.())
+            .catch(() => {
+              if (current !== request.current) return;
+              setCadence(previous);
+              setError(true);
+            });
+        }}
+      >
+        {CHECK_IN_CADENCES.map((value) => (
+          <NativeSelectOption key={value} value={value}>
+            {labels[value]}
+          </NativeSelectOption>
+        ))}
+      </NativeSelect>
+      {error ? (
+        <span role="alert" className="basis-full text-[13px] text-destructive">
+          <Trans>Could not save</Trans>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+const PROACTIVITY_LEVELS = ["low", "medium", "high"] as const;
+
+/** Firewalled and external agents ignore the level, so the select is shown but cannot change. */
+export function ProactivitySetting({
+  value,
+  locked,
+  onChange,
+}: {
+  value: BotProactivity;
+  locked: boolean;
+  onChange: (value: BotProactivity) => void;
+}) {
+  const { t } = useLingui();
+  const id = useId();
+  const labels = { low: t`Low`, medium: t`Medium`, high: t`High` };
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/20 pt-4">
+      <label htmlFor={`${id}-proactivity`} className="text-[13.5px] font-medium text-foreground">
+        <Trans>Proactive</Trans>
+      </label>
+      <NativeSelect
+        id={`${id}-proactivity`}
+        className="w-40"
+        value={value}
+        disabled={locked}
+        aria-describedby={locked ? `${id}-proactivity-note` : undefined}
+        onChange={(event) => onChange(event.target.value as BotProactivity)}
+      >
+        {PROACTIVITY_LEVELS.map((level) => (
+          <NativeSelectOption key={level} value={level}>
+            {labels[level]}
+          </NativeSelectOption>
+        ))}
+      </NativeSelect>
+      {locked ? (
+        <span
+          id={`${id}-proactivity-note`}
+          className="basis-full text-[12px] text-muted-foreground"
+        >
+          <Trans>Not used by firewalled or external agents</Trans>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function BotSettings({
   bot,
   memoryProviderConfigured,
   onSkillsChange,
+  onCheckInChange,
   skillsRefreshKey,
+  focusScratchpadItemId,
+  focusScratchpadNonce,
+  onScratchpadFocusHandled,
   onSave,
   onExport,
   onClear,
   focusName = false,
+  foldable = focusName,
+  onFoldedChange,
   hostComputer,
   messageTargets = [],
   notificationsOff = false,
@@ -128,14 +263,25 @@ export function BotSettings({
   hostComputer?: { defaultHost: ComputerHost };
   /** A bot just created as "New bot": focus and select its name so it gets named first. */
   focusName?: boolean;
+  /** Show the More settings toggle even when the name-only view is off (the user opened it). */
+  foldable?: boolean;
+  /** The user pressed More settings. The parent keeps this, so a rebuilt panel stays as they left it. */
+  onFoldedChange?: (folded: boolean) => void;
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
-  /** Changes when the agent may have created a skill, so the list reloads. */
+  /** The check-in setting changed, so its managed routine appeared, changed or went away. */
+  onCheckInChange?: () => void;
+  /** Changes when a run ends, so skills and open work the agent added reload. */
   skillsRefreshKey?: number;
+  /** An open-work row to bring into view when the panel opens. */
+  focusScratchpadItemId?: string;
+  /** Changes on every request, so choosing the same item again scrolls again. */
+  focusScratchpadNonce?: number;
+  /** The panel showed the chosen row, so the request can be forgotten. */
+  onScratchpadFocusHandled?: () => void;
   memoryProviderConfigured: boolean;
   onSave: (
     patch: {
       name?: string;
-      title?: string;
       description?: string;
       instructions?: string;
       color?: string;
@@ -144,9 +290,11 @@ export function BotSettings({
       runsOn?: ComputerHost;
       memoryScope?: "isolated" | "shared" | null;
       autoSpeak?: boolean;
+      crossSpaceCommunication?: boolean;
       voiceId?: string | null;
       modelProvider?: string | null;
       modelId?: string | null;
+      modelCredentialId?: string | null;
       thinkingLevel?: ThinkingLevel | null;
       disabledBuiltinTools?: string[];
     } & AudiencePatch,
@@ -158,7 +306,16 @@ export function BotSettings({
   const [advancedOpened, setAdvancedOpened] = useState(false);
   const ids = useId();
   const [name, setName] = useState(bot.name);
-  const [title, setTitle] = useState(bot.title);
+  // Like the description, the name compares against what this panel last saved,
+  // not the prop, which can be newer (a rename made elsewhere) or older (a
+  // refresh skipped during a reorder). A rename from elsewhere fills the field
+  // only while it still shows that saved name, never over text being typed.
+  const savedNameRef = useRef(bot.name);
+  useEffect(() => {
+    if (pendingSavesRef.current !== 0 || name !== savedNameRef.current) return;
+    setName(bot.name);
+    savedNameRef.current = bot.name;
+  }, [bot.name, name]);
   const [description, setDescription] = useState(bot.description);
   // A roster refresh can skip replacing bots while a reorder is in flight, so
   // this prop keeps the description from when the panel opened. Later saves
@@ -167,6 +324,10 @@ export function BotSettings({
   const savedDescriptionRef = useRef(bot.description ?? "");
   const [color, setColor] = useState(bot.color);
   const [notifyOnFinish, setNotifyOnFinish] = useState(bot.notifyOnFinish ?? true);
+  const [proactivity, setProactivity] = useState<BotProactivity>(bot.proactivity ?? "medium");
+  useEffect(() => {
+    if (pendingSavesRef.current === 0) setProactivity(bot.proactivity ?? "medium");
+  }, [bot.proactivity]);
   const [computerMode, setComputerMode] = useState(bot.computerMode);
   const [runsOn, setRunsOn] = useState<ComputerHost>(
     bot.runsOn ?? hostComputer?.defaultHost ?? "docker",
@@ -175,11 +336,27 @@ export function BotSettings({
   useEffect(() => setComputerMode(bot.computerMode), [bot.computerMode]);
   const [memoryScope, setMemoryScope] = useState(bot.memoryScope);
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
+  const savedAutoSpeakRef = useRef(bot.autoSpeak);
+  // Follow a change made elsewhere; a save in flight owns the switch until it finishes.
+  useEffect(() => {
+    if (pendingSavesRef.current !== 0) return;
+    setAutoSpeak(bot.autoSpeak);
+    savedAutoSpeakRef.current = bot.autoSpeak;
+  }, [bot.autoSpeak]);
+  const [crossSpaceCommunication, setCrossSpaceCommunication] = useState(
+    bot.crossSpaceCommunication ?? false,
+  );
+  const [appControl, setAppControl] = useState(bot.appControl ?? NO_APP_CONTROL);
+  // Follow the saved settings when nothing is being saved, so a stale copy cannot be edited.
+  useEffect(() => {
+    if (pendingSavesRef.current === 0) setAppControl(bot.appControl ?? NO_APP_CONTROL);
+  }, [bot.appControl]);
   const [voiceId, setVoiceId] = useState(bot.voiceId ?? "");
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [modelKey, setModelKey] = useState(
     bot.modelProvider && bot.modelId ? modelOptionKey(bot.modelProvider, bot.modelId) : "",
   );
+  const [credentialId, setCredentialId] = useState(bot.modelCredentialId ?? "");
   const [thinkingLevel, setThinkingLevel] = useState(bot.thinkingLevel ?? "");
   const [disabledBuiltinTools, setDisabledBuiltinTools] = useState<string[]>(
     bot.disabledBuiltinTools ?? [],
@@ -201,6 +378,13 @@ export function BotSettings({
   useEffect(() => {
     if (pendingSavesRef.current === 0) setAudience(bot.audience);
   }, [bot.audience]);
+  const [firewall, setFirewall] = useState(bot.firewall);
+  // Follow a change made elsewhere; a save in flight owns the switch until it finishes.
+  useEffect(() => {
+    if (pendingSavesRef.current === 0) setFirewall(bot.firewall);
+  }, [bot.firewall]);
+  // Turning it off asks first, so the switch only follows the dialog's answer.
+  const [firewallConfirm, setFirewallConfirm] = useState(false);
   const [allowedTargets, setAllowedTargets] = useState<string[]>(bot.externalMessageTargets);
   const [computerOn, setComputerOn] = useState(bot.externalComputerTools);
   const [grantedConnections, setGrantedConnections] = useState<string[]>([]);
@@ -249,7 +433,6 @@ export function BotSettings({
     (
       patchOverrides?: {
         name?: string;
-        title?: string;
         description?: string;
         color?: string;
         notifyOnFinish?: boolean;
@@ -275,7 +458,23 @@ export function BotSettings({
       .catch(() => undefined);
   }, []);
 
-  const connectedOptions = connectedModelChoices(credentials, catalog);
+  // A pinned connection narrows the model list to what that connection can run.
+  const pinnedCredential = credentials.find((entry) => entry.id === credentialId);
+  const connectedOptions = connectedModelChoices(
+    pinnedCredential ? [pinnedCredential] : credentials,
+    catalog,
+  );
+  // A lost pin is fixed in Advanced > Connection: open it once, without saving.
+  const advancedRef = useRef<HTMLDetailsElement>(null);
+  const openedForLostPin = useRef(false);
+  const scrollToConnection = useRef(false);
+  const pinLost = modelMetaReady && credentialId !== "" && !pinnedCredential;
+  useEffect(() => {
+    if (!pinLost || openedForLostPin.current || !advancedRef.current) return;
+    openedForLostPin.current = true;
+    scrollToConnection.current = true;
+    advancedRef.current.open = true;
+  }, [pinLost]);
   const storedModel = modelKey ? parseModelOptionKey(modelKey) : null;
   const selectedModel = storedModel
     ? {
@@ -318,7 +517,6 @@ export function BotSettings({
   async function executeSave(
     patchOverrides?: {
       name?: string;
-      title?: string;
       description?: string;
       color?: string;
       notifyOnFinish?: boolean;
@@ -328,7 +526,6 @@ export function BotSettings({
   ) {
     const selected = selectedModel;
     const nextName = (patchOverrides?.name !== undefined ? patchOverrides.name : name).trim();
-    const nextTitle = (patchOverrides?.title !== undefined ? patchOverrides.title : title).trim();
     const nextDescription = (
       patchOverrides?.description !== undefined ? patchOverrides.description : description
     ).trim();
@@ -336,15 +533,17 @@ export function BotSettings({
     const nextNotify =
       patchOverrides?.notifyOnFinish !== undefined ? patchOverrides.notifyOnFinish : notifyOnFinish;
 
-    if (nextName) setName(nextName);
-    setTitle(nextTitle);
+    // An empty field is not a rename: it shows the saved name again instead.
+    const nextSavedName = nextName || savedNameRef.current;
+    setName(nextSavedName);
     setDescription(nextDescription);
 
     try {
       setError(null);
       const patch = {
-        name: nextName || bot.name,
-        title: nextTitle,
+        // Only an edited name goes on the wire; other saves must not revert a
+        // rename made on iOS or in another tab.
+        ...(nextSavedName !== savedNameRef.current ? { name: nextSavedName } : {}),
         // One field feeds both, so it only goes on the wire when it changed: a
         // model, thinking or voice save must not overwrite longer instructions,
         // nor fail on a description that is already above its own limit.
@@ -356,16 +555,29 @@ export function BotSettings({
         ...(hostComputer && runsOn !== (bot.runsOn ?? hostComputer.defaultHost) ? { runsOn } : {}),
         memoryScope,
         ...(patchOverrides?.audience !== undefined ? { audience: patchOverrides.audience } : {}),
+        ...(patchOverrides?.proactivity !== undefined
+          ? { proactivity: patchOverrides.proactivity }
+          : {}),
+        ...(patchOverrides?.firewall !== undefined ? { firewall: patchOverrides.firewall } : {}),
+        ...(patchOverrides?.permissionLevel !== undefined
+          ? { permissionLevel: patchOverrides.permissionLevel }
+          : {}),
         ...(patchOverrides?.externalMessageTargets !== undefined
           ? { externalMessageTargets: patchOverrides.externalMessageTargets }
           : {}),
+        ...(patchOverrides?.appControl ? { appControl: patchOverrides.appControl } : {}),
         ...(patchOverrides?.externalComputerTools !== undefined
           ? { externalComputerTools: patchOverrides.externalComputerTools }
           : {}),
-        autoSpeak,
+        // Same rule as the name: an iOS toggle must not be reverted by an
+        // unrelated save.
+        ...(autoSpeak !== savedAutoSpeakRef.current ? { autoSpeak } : {}),
+        crossSpaceCommunication,
         voiceId: voiceId || null,
         modelProvider: selected?.provider ?? null,
         modelId: selected?.modelId ?? null,
+        // Sent as saved even when the connection is gone, so saving other fields keeps the pin.
+        modelCredentialId: selected && credentialId ? credentialId : null,
         ...(modelMetaReady
           ? {
               thinkingLevel: thinkingOptions.length
@@ -407,12 +619,17 @@ export function BotSettings({
         break;
       }
       savedDescriptionRef.current = nextDescription;
+      savedNameRef.current = nextSavedName;
+      savedAutoSpeakRef.current = autoSpeak;
       setSaved(true);
     } catch (err) {
       setError(errorText(err, t`Could not save`));
       setAudience(bot.audience);
+      setProactivity(bot.proactivity ?? "medium");
+      setFirewall(bot.firewall);
       setAllowedTargets(bot.externalMessageTargets);
       setComputerOn(bot.externalComputerTools);
+      setAppControl(bot.appControl ?? NO_APP_CONTROL);
     } finally {
       pendingSavesRef.current -= 1;
       if (pendingSavesRef.current === 0) {
@@ -432,7 +649,6 @@ export function BotSettings({
   function enqueueSave(
     patchOverrides?: {
       name?: string;
-      title?: string;
       description?: string;
       color?: string;
       notifyOnFinish?: boolean;
@@ -457,9 +673,19 @@ export function BotSettings({
     return saveQueueRef.current;
   }
 
+  // The approvals table shows the gate's decision at the agent's effective level, which these
+  // saves change.
+  const [approvalsVersion, setApprovalsVersion] = useState(0);
+  const saveAndReloadApprovals = (patch: Parameters<typeof enqueueSave>[0]) =>
+    void enqueueSave(patch).then(() => setApprovalsVersion((n) => n + 1));
+
   // A bot just created as "New bot" shows only its name until it has replied once.
-  const [unfolded, setUnfolded] = useState(false);
-  const folded = focusName && !unfolded;
+  const [folded, setFolded] = useState(focusName);
+  useEffect(() => setFolded(focusName), [focusName]);
+  // A chosen open-work row lives past the name-only view, so show it rather than hiding it.
+  useEffect(() => {
+    if (focusScratchpadItemId) setFolded(false);
+  }, [focusScratchpadItemId, focusScratchpadNonce]);
 
   return (
     <div data-testid="bot-settings">
@@ -494,18 +720,84 @@ export function BotSettings({
           className="mt-1.5"
         />
       </label>
-      {folded ? (
+      {foldable ? (
         <Button
           variant="ghost"
           size="sm"
+          aria-expanded={!folded}
           className="mt-4 -ms-2.5 text-muted-foreground"
-          onClick={() => setUnfolded(true)}
+          onClick={() => {
+            setFolded(!folded);
+            onFoldedChange?.(!folded);
+          }}
         >
           <Trans>More settings</Trans>
-          <ChevronDown aria-hidden="true" className="size-4" />
+          <ChevronDown
+            aria-hidden="true"
+            className={`size-4 transition-transform ${folded ? "" : "rotate-180"}`}
+          />
         </Button>
-      ) : (
+      ) : null}
+      {folded ? null : (
         <>
+          {isVoiceAgentSpawnKey(bot.spawnKey) ? null : (
+            <label
+              htmlFor={`${ids}-firewall`}
+              className="mt-6 flex items-center justify-between pt-4 border-t border-border/20 pointer-coarse:min-h-11"
+            >
+              <div className="space-y-0.5 pe-4">
+                <div
+                  id={`${ids}-firewall-label`}
+                  className="text-[13.5px] font-medium text-foreground"
+                >
+                  <Trans>Firewall</Trans>
+                </div>
+                <div id={`${ids}-firewall-desc`} className="text-[12px] text-muted-foreground">
+                  <Trans>
+                    Treat everything it reads as untrusted. Sends and changes always ask.
+                  </Trans>
+                </div>
+              </div>
+              <Switch
+                id={`${ids}-firewall`}
+                checked={firewall}
+                aria-labelledby={`${ids}-firewall-label`}
+                aria-describedby={`${ids}-firewall-desc`}
+                onCheckedChange={(checked) => {
+                  if (!checked) {
+                    setFirewallConfirm(true);
+                    return;
+                  }
+                  setFirewall(true);
+                  saveAndReloadApprovals({ firewall: true });
+                }}
+              />
+            </label>
+          )}
+          <AlertDialog open={firewallConfirm} onOpenChange={setFirewallConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  <Trans>Turn off Firewall?</Trans>
+                </AlertDialogTitle>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  <Trans>Cancel</Trans>
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    setFirewallConfirm(false);
+                    setFirewall(false);
+                    saveAndReloadApprovals({ firewall: false });
+                  }}
+                >
+                  <Trans>Turn off</Trans>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <label htmlFor={`${ids}-description`} className={advancedLabelClass}>
             <Trans>Description</Trans>
             <Textarea
@@ -559,6 +851,28 @@ export function BotSettings({
               }}
             />
           </label>
+          <CheckInSetting botId={bot.id} onChange={onCheckInChange} />
+          {isVoiceAgentSpawnKey(bot.spawnKey) ? null : (
+            <ProactivitySetting
+              value={proactivity}
+              locked={firewall || audience === "external"}
+              onChange={(next) => {
+                setProactivity(next);
+                void enqueueSave({ proactivity: next });
+              }}
+            />
+          )}
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <ScratchpadSection
+                botId={bot.id}
+                refreshKey={skillsRefreshKey}
+                focusItemId={focusScratchpadItemId}
+                focusItemNonce={focusScratchpadNonce}
+                onFocusHandled={onScratchpadFocusHandled}
+              />
+            </Suspense>
+          </ErrorBoundary>
           {botAudienceEditable(bot.spawnKey) ? (
             <div data-testid="bot-audience" className="mt-6 border-t border-border/20 pt-4">
               <div className="text-[13.5px] font-medium text-foreground">
@@ -574,7 +888,7 @@ export function BotSettings({
                     onPressedChange={(pressed) => {
                       if (!pressed || audience === value) return;
                       setAudience(value);
-                      void enqueueSave({ audience: value });
+                      saveAndReloadApprovals({ audience: value });
                     }}
                     className={SELECTED_SEGMENT}
                   >
@@ -645,15 +959,39 @@ export function BotSettings({
             refreshKey={skillsRefreshKey}
             onSkillsChange={onSkillsChange}
           />
+          <BotCredentialsSection botId={bot.id} />
+          <BotAccessSection bot={bot} />
+          <section data-testid="bot-approvals" className="mt-6">
+            <div className="mb-2 text-[13.5px] font-medium text-foreground">
+              <Trans>Approvals</Trans>
+            </div>
+            <PermissionLevelSelect
+              agent={{
+                level: bot.permissionLevel ?? null,
+                clamped: firewall || audience === "external",
+                onChange: (permissionLevel) => saveAndReloadApprovals({ permissionLevel }),
+              }}
+            />
+            <div className="mt-3">
+              <ApprovalActionsTable botId={bot.id} refreshKey={approvalsVersion} />
+            </div>
+          </section>
           <details
+            ref={advancedRef}
             data-testid="bot-settings-advanced"
             className="group mt-5 open:pb-3"
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
-              event.currentTarget
-                .querySelector("summary")
-                ?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+              const target = scrollToConnection.current
+                ? event.currentTarget.querySelector('select[id$="-connection"]')
+                : event.currentTarget.querySelector("summary");
+              const block = scrollToConnection.current ? "center" : "nearest";
+              scrollToConnection.current = false;
+              target?.scrollIntoView?.({
+                block,
+                behavior: "smooth",
+              });
             }}
           >
             <summary
@@ -681,17 +1019,53 @@ export function BotSettings({
                   />
                 </div>
               ) : null}
-              <ErrorBoundary fallback={<SectionLoadFailed />}>
-                <Suspense fallback={null}>
-                  <ScratchpadSection botId={bot.id} />
-                </Suspense>
-              </ErrorBoundary>
+              <BotAppControlSection
+                value={appControl}
+                runsOnThisMac={(hostComputer ? runsOn : bot.runsOn) === "this-mac"}
+                onChange={(patch) => {
+                  setAppControl((current) => ({ ...current, ...patch }));
+                  void enqueueSave({ appControl: patch });
+                }}
+              />
               {advancedOpened ? (
                 <ErrorBoundary fallback={<SectionLoadFailed />}>
                   <Suspense fallback={null}>
                     <KnowledgeSection botId={bot.id} />
                   </Suspense>
                 </ErrorBoundary>
+              ) : null}
+              {credentials.length > 1 || credentialId ? (
+                <label htmlFor={`${ids}-connection`} className={advancedLabelClass}>
+                  <Trans>Connection</Trans>
+                  <NativeSelect
+                    id={`${ids}-connection`}
+                    className="mt-2 w-full"
+                    value={credentialId}
+                    onChange={(event) => {
+                      const next = credentials.find((entry) => entry.id === event.target.value);
+                      saveOnChange(() => {
+                        setCredentialId(next?.id ?? "");
+                        setThinkingLevel("");
+                        if (next)
+                          setModelKey(modelKeyForConnection(next, catalog, selectedModelKey));
+                      });
+                    }}
+                  >
+                    <NativeSelectOption value="">{t`Space default`}</NativeSelectOption>
+                    {credentialId && !pinnedCredential ? (
+                      <NativeSelectOption value={credentialId}>
+                        {t`Signed out or removed`}
+                      </NativeSelectOption>
+                    ) : null}
+                    {credentials.map((entry) => (
+                      <NativeSelectOption key={entry.id} value={entry.id}>
+                        {entry.authKind === "oauth"
+                          ? t`${entry.label} (Subscription)`
+                          : entry.label}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </label>
               ) : null}
               <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
                 <Trans>Model</Trans>
@@ -802,6 +1176,19 @@ export function BotSettings({
                   onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
                 />
               </label>
+              <label
+                htmlFor={`${ids}-cross-space`}
+                className="mt-5 flex cursor-pointer items-center justify-between gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
+              >
+                <Trans>Allow cross-space bot communication</Trans>
+                <Switch
+                  id={`${ids}-cross-space`}
+                  checked={crossSpaceCommunication}
+                  onCheckedChange={(checked) =>
+                    saveOnChange(() => setCrossSpaceCommunication(checked))
+                  }
+                />
+              </label>
               {voices.length ? (
                 <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
                   <Trans>Voice</Trans>
@@ -857,7 +1244,6 @@ export function BotSettings({
                   />
                 </label>
               ))}
-              {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
             </div>
           </details>
           {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}

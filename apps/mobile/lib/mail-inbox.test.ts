@@ -15,6 +15,7 @@ import {
   listMailActions,
   listMailInbox,
   listMailTodos,
+  markNoReply,
   moveMailMessages,
   refreshMailInbox,
   todoDueLabel,
@@ -116,4 +117,13 @@ it("moves messages in slices of 50 and returns each slice's batch id for Undo", 
   ]);
   expect(result.done).toHaveLength(120);
   expect(result.batchIds).toEqual(["batch-1", "batch-2", "batch-3"]);
+});
+
+it("says a message needs no reply, and undoes the stop", async () => {
+  await markNoReply("m1");
+  await markNoReply("m1", true);
+  expect(rpc.mock.calls).toEqual([
+    ["inbox/noReply", { messageId: "m1" }],
+    ["inbox/noReply", { messageId: "m1", undo: true }],
+  ]);
 });

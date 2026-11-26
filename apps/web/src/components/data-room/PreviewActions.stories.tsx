@@ -65,3 +65,21 @@ export const PdfOnPhone: Story = {
     </div>
   ),
 };
+
+/** A document the browser cannot show falls back to its extracted text instead of the file icon. */
+export const ExtractedText: Story = {
+  args: {
+    item: {
+      ...readyItem,
+      name: "Sample term sheet.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      previewText:
+        "SAMPLE TERM SHEET\n\nExample Co and Sample Ltd\n\nInvestment: $1,250,000.00 for an invented stake.\nBoard: one invented seat.\n\nThis excerpt is invented text for the story.",
+    },
+  },
+  render: (args) => (
+    <div className="w-full max-w-xl">
+      <FileViewer item={args.item} file={{ url: "", failed: false }} />
+    </div>
+  ),
+};

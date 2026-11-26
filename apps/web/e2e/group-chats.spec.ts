@@ -147,7 +147,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(
     page.getByTestId("mention-chip").filter({ hasText: "Research Writer" }),
   ).toBeVisible();
-  await composer.fill("turn the sources into a draft. @Res");
+  await composer.fill(`${await composer.inputValue()}turn the sources into a draft. @Res`);
   await page.getByRole("option", { name: "@Researcher", exact: true }).click();
   await expect(page.getByTestId("mention-chip").filter({ hasText: "Researcher" })).toBeVisible();
   await composer.fill(`${await composer.inputValue()}gather sources.`);
@@ -179,7 +179,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(
     page.getByTestId("mention-chip").filter({ hasText: "Research Writer" }),
   ).toBeVisible();
-  await composer.fill("ask me which city to use");
+  await composer.fill(`${await composer.inputValue()}ask me which city to use`);
   await composer.press("Enter");
   // threads/get can observe waiting_input before the shell realtime feed paints the ask card.
   await expect
@@ -297,4 +297,22 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await page.getByRole("link", { name: "Go to Praci" }).click();
   await expect(page.getByRole("textbox", { name: /Message/ })).toBeVisible();
+});
+
+test("a newly opened group's sidebar row scrolls into view", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 520 });
+  await signup(page, `group-scroll-${Date.now()}@rakazo.test`, "password12", "Group Scroll");
+  await completeOnboarding(page);
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+  const botIds = [];
+  for (const name of ["Scroll A", "Scroll B", "Scroll C", "Scroll D", "Scroll E"]) {
+    botIds.push(await createBot(page, name));
+  }
+  const group = await rpc<{ id: string }>(page, "groups/create", {
+    name: "Below the fold",
+    botIds: botIds.slice(0, 2),
+  });
+  await page.goto(`/app/g/${group.id}`);
+  await expect(page.locator(`[data-roster-chat][data-roster-row="${group.id}"]`)).toBeInViewport();
 });

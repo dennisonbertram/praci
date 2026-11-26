@@ -96,10 +96,28 @@ export interface ModelCredentialFailedState {
   expires: number;
 }
 
+/**
+ * The scope a portable memory file restores to, declared explicitly so a path alone never
+ * decides where a document lands. Versioned: importers refuse versions they do not know
+ * rather than guessing.
+ */
+export interface PortableMemory {
+  version: 1;
+  scope: "bot" | "user";
+  /** Owning bot of a bot-scope document. */
+  botId?: string;
+}
+
 export interface PortableFile {
   path: string;
   content: Uint8Array;
   executable?: boolean;
+  /**
+   * Set only by MemoryStore.exportMarkdown: the scope this file restores to. Files
+   * without it are never reinterpreted — a memory import keeps their path verbatim — so
+   * a file merely named `user/x` or `bot/y/z` is a file, not a scope claim.
+   */
+  memory?: PortableMemory;
 }
 
 export interface ComputerRef {
@@ -266,6 +284,8 @@ export interface ConnectorTool {
   inputSchema: Record<string, unknown>;
   /** Declared effect. `false` forces approval; `true` never relaxes the name-based gate. */
   readOnly?: boolean;
+  /** The provider's own read-only annotation (MCP readOnlyHint), kept for ordinary bots. Only a connected-app watch reads it. */
+  readOnlyHint?: boolean;
   /** Provider-reported display-only pricing metadata. */
   reportedCost?: { description: string; discount?: string };
   /** In-process routing metadata. It is never exposed to the model. */
@@ -322,7 +342,7 @@ export interface ConnectorCapabilities {
 export type ConnectorCatalogItem = Omit<ConnectionCatalogItem, "description" | "category">;
 
 export interface MemoryReadRequest {
-  scope: "bot" | "user";
+  scope: "bot" | "user" | "company";
   botId?: string;
   path?: string;
 }
@@ -334,12 +354,18 @@ export interface MemorySnapshot {
     content: string;
     revision: number;
     updatedAt?: string;
+    /** Fading inputs (see memory-strength.ts); absent from stores that do not track them. */
+    kind?: string;
+    useCount?: number;
+    lastUsedAt?: string;
+    pinned?: boolean;
   }>;
 }
 
 export interface MemorySearchRequest {
   query: string;
-  scope: "bot" | "user" | "all";
+  /** "all" means bot and user memory; company context is searched only by naming it. */
+  scope: "bot" | "user" | "company" | "all";
   botId?: string;
 }
 
@@ -354,12 +380,16 @@ export const MEMORY_REVISION_CONFLICT_ERROR =
   "Shared memory changed since it was read. Read the latest version and save again.";
 
 export interface MemoryCommitRequest {
-  scope: "bot" | "user";
+  scope: "bot" | "user" | "company";
   botId?: string;
   path: string;
   content: string;
   /** When set, commit fails if the live document revision is no longer this value. */
   expectedRevision?: number;
+  /** How fast the memory fades; kept as is when omitted (new documents are facts). */
+  kind?: "preference" | "fact" | "task";
+  /** The owner wrote this by hand: the memory is pinned and never fades. */
+  byOwner?: boolean;
   sourceRunId?: string;
   sourceThreadId?: string;
 }
@@ -372,6 +402,7 @@ export interface MemoryRevision {
 }
 
 export interface MemoryExportRequest {
+  /** "all" means bot and user memory. */
   scope: "bot" | "user" | "all";
   botId?: string;
 }
@@ -405,6 +436,9 @@ export interface SemanticMemoryResult {
 
 export interface SemanticMemoryForgetRequest {
   id: string;
+  /** Same scope as recall: providers delete only facts inside these namespaces. */
+  scope: DurableMemoryScope;
+  botId: string;
   reason?: string;
   /** Entity/namespace from a prior recall citation, when the backend scopes deletes. */
   entity?: string;
@@ -521,6 +555,11 @@ export interface AgentRunRequest {
   tools: ConnectorTool[];
   /** Optional child-tool boundary for identities with restricted helper access. */
   subagentToolNames?: ReadonlySet<string>;
+  /**
+   * Asked before each run_subagent call, which the runtime starts itself and so never reaches the
+   * executor's approval gate. A returned string refuses the call and is shown to the model.
+   */
+  subagentDenial?: () => Promise<string | undefined>;
   /** False prevents helpers from requesting a different model recipient. */
   subagentModelSelectionAllowed?: boolean;
   model: AgentRunModel;
@@ -535,6 +574,12 @@ export interface AgentRunRequest {
   /** Resolve an explicitly requested helper model within the active user and space scope. */
   resolveModel?: (provider: string, modelId: string) => Promise<AgentRunModel>;
   resumeFromCheckpoint?: string;
+  /** Opaque runtime transcript, persisted only on the server. */
+  turnCheckpoint?: string;
+  /** Cheap per-call capture; serialize only when persisting that call’s human pause. */
+  onCheckpoint?: (capture: () => string, executionId: string) => Promise<void>;
+  /** Human answer or takeover outcome for the pending interaction. Never secret input. */
+  resumeToolResult?: { content: Array<{ type: "text"; text: string }> };
   script?: ScriptedTurn[];
   /**
    * FYI bot-message wakes and scheduled routines may finish with no text.
@@ -553,6 +598,12 @@ export interface AgentRunRequest {
    * the thread's meeting mark and the model's data-sharing consent.
    */
   beforeModelRequest?: () => Promise<void>;
+  /**
+   * Awaited with the raw output (stdout and stderr, unformatted) of a shell command that finished
+   * after its turn, before it is handed to the model. A rejection stops the run: the executor
+   * records the texts in the run's read record.
+   */
+  recordLateOutput?: (texts: string[]) => Promise<void>;
   executeTool?: (
     name: string,
     args: Record<string, unknown>,
@@ -600,7 +651,8 @@ export type UsageOperationKind =
   | "subagent"
   | "compaction"
   | "triage"
-  | "company_import";
+  | "company_import"
+  | "goal_check";
 
 export interface ModelCallObserver {
   beforeCall(call: {
@@ -625,11 +677,12 @@ export type AgentRuntimeEvent =
   | { type: "tool"; name: string; args: Record<string, unknown>; executionId: string }
   | {
       type: "ask";
+      executionId?: string;
       text: string;
       detail?: string;
       actions?: Array<{ id: string; label: string }>;
     }
-  | { type: "takeover"; reason: string }
+  | { type: "takeover"; reason: string; executionId?: string }
   | ({
       type: "usage";
       /** Producer-side onUsage completed; consumers must not account it again. */
@@ -741,11 +794,15 @@ export function capTranscriptionContext(context: TranscriptionContext): Transcri
 export interface BackgroundJobPayloads {
   "run.continue": { runId: string };
   "routine.wakeup": { routineId: string; scheduledFor: string };
+  /** Run a failed routine run once more; the payload names the failed run. */
+  "routine.retry": { runId: string };
   "computer.sleep": { computerId: string };
   "computer.update": { updateId: string };
   "computer.control-expire": { computerId: string; leaseId: string };
   "skill.teaching-expire": { skillId: string };
   "history.compact": { threadId: string };
+  /** Judges a goal after the run `runId` of its thread ended. */
+  "goal.check": { goalId: string; runId: string };
   "messaging.deliver": { runId?: string };
   /** Sends due external notification deliveries; run every minute by the worker's cron. */
   "notifications.deliver": Record<string, never>;
@@ -761,10 +818,20 @@ export interface BackgroundJobPayloads {
   "cloud_agent.poll": { agentId: string };
   /** Deletes a saved mail search (and its rows) once it has expired. */
   "mail.search.expire": { searchId: string };
+  /** Sends the approved rows of one reply batch; one queued job per batch. */
+  "mail.reply.batch": { effectId: string; spaceId: string; userId: string };
+  /** Applies the rows of one approved list import; one queued job per import. */
+  "pipeline.import": { importId: string; spaceId: string; userId: string };
+  /** Derives a user's open pipeline records' status and next call from cached mail and calendar; one job per user and space. */
+  "pipeline.auto_status": { spaceId: string; userId: string };
+  /** Enqueues `pipeline.auto_status` for every user with open records; run by the worker's cron. */
+  "pipeline.auto_status.sweep": Record<string, never>;
   /** Classifies a user's new inbox mail and syncs their to-dos; one queued job per user and space. */
   "inbox.triage": { userId: string; spaceId: string };
   /** Syncs one mail connection into the cache; one queued job per connection. */
   "mail.sync": { spaceId: string; userId: string; connectionId: string };
+  /** Fetches the profile photos of a connected account's contacts; one queued job per connection, at most daily. */
+  "contacts.photos": { spaceId: string; userId: string; connectionId: string };
   /** Files the document attachments of one newly synced message into the Data room; one queued job per message. */
   "mail.attachments": {
     spaceId: string;
@@ -783,12 +850,17 @@ export interface BackgroundJobPayloads {
   };
   /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
   "mail.watch.renew": Record<string, never>;
+  "mail.sync.sweep": Record<string, never>;
   /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
   "devin.refresh": { serverId?: string };
   "company.import.run": { spaceId: string; userId: string; runId: string };
   "company.import.unit": { spaceId: string; userId: string; runId: string; unitId: string };
   "company.import.recover": Record<string, never>;
   "company.refresh.tick": Record<string, never>;
+  /** Checks the page watches that are due (no model); run every minute by the worker's cron. */
+  "watch.probe": Record<string, never>;
+  "pages.refresh.tick": Record<string, never>;
+  "pages.snapshots.retention": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   /** Names exactly one source: a Connection or an MCP server. */
   "meetings.sync": {
@@ -800,7 +872,21 @@ export interface BackgroundJobPayloads {
   };
   /** Extracts commitments from a stored meeting; the handler is filled in by the digest slice. */
   "meetings.digest": { spaceId: string; userId: string; meetingId: string; continue?: boolean };
+  /** Files a freshly digested meeting in Data room > Recordings. Ids only. */
+  "meetings.followup": { spaceId: string; userId: string; meetingId: string; retry?: number };
   "finance.sync": { userId: string; spaceId: string };
+  /** Turns a pendant connection's uploaded records into audio recordings in the Data room. Ids only. */
+  /** Transcribes one chunk of a meeting capture. Ids only. */
+  "meetings.capture_transcribe": { spaceId: string; userId: string; chunkId: string };
+  /** Stores a finished capture as a meeting once its chunks are settled. Ids only. */
+  "meetings.capture_finalize": { spaceId: string; userId: string; captureId: string };
+  /** Finishes captures that stopped sending chunks. */
+  "meetings.capture_sweep": Record<string, never>;
+  "omi.assemble": { spaceId: string; userId: string; connectionId: string };
+  /** Transcribes one Omi recording in the Data room. Ids only. */
+  "omi.transcribe": { spaceId: string; userId: string; itemId: string };
+  /** Sorts one transcribed Omi recording into meetings, notes and trash. Ids only. */
+  "omi.sort": { spaceId: string; userId: string; itemId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
   "dataroom.blob.delete": { spaceId: string; storageKey: string };
   /** Pipeline steps for one Data room item, in order; each queues the next. */
@@ -824,7 +910,7 @@ export interface BackgroundJobPayloads {
     /** The import that reports progress. */
     importId: string;
     name: string;
-    source: "upload" | "gmail" | "drive" | "box" | "chat";
+    source: "upload" | "scan" | "gmail" | "drive" | "box" | "chat" | "omi" | "meeting";
     folderId: string | null;
     sourceConnectionId?: string;
     externalId?: string;
@@ -898,8 +984,15 @@ export type BackgroundJob = {
      * replaced. Omit to replace, which is what an explicit continue does.
      */
     keepExisting?: boolean;
+    /**
+     * With `keepExisting`, still replace a job a worker locked at or before this
+     * time. A worker that died never unlocks its job, so it would never run again.
+     */
+    replaceLockedBefore?: Date;
     /** Cap retried executions; omit to use the job queue's default. */
     maxAttempts?: number;
+    /** Lower runs first among due jobs; omit for the default 0. */
+    priority?: number;
   };
 }[BackgroundJobName];
 
@@ -1452,7 +1545,9 @@ export type MeetingSourceErrorKind =
   | "mapping"
   | "rate_limit"
   | "unavailable"
-  | "not_found";
+  | "not_found"
+  /** The source's read budget for this run is spent; the run stops and the next continues. */
+  | "budget";
 
 /** A meeting source failed. The message is a short reason, never a vendor payload. */
 export class MeetingSourceError extends Error {
@@ -1553,6 +1648,8 @@ export interface WebFetchResult {
   title: string;
   text: string;
   truncated: boolean;
+  /** Set when the site served a bot wall instead of the page; `text` is then empty. */
+  wall?: { kind: "transient" | "needs_person"; status: number; reason: string };
 }
 
 /** Page-level browser on the bot computer (DOM refs), not a hosted browser vendor. */
@@ -1610,6 +1707,8 @@ export type BrowserActStep =
       text: string;
       /** Refuse the step unless the page is on this origin when it is applied. */
       origin?: string;
+      /** Which part of a saved login `text` is; a password is typed only into a password field. */
+      field?: "username" | "password";
     };
 
 export interface BrowserActRequest {
@@ -1635,9 +1734,25 @@ export interface BrowserActResult {
 export type PageBrowserCommand =
   | { command: "navigate"; url: string }
   | { command: "snapshot" }
+  | { command: "focus" }
   | { command: "act"; actions: BrowserActStep[] };
 
-export type PageBrowserResult = Partial<BrowserSnapshotResult & BrowserActResult> & { ok: boolean };
+/** The field with keyboard focus in the page: facts only, the caller decides what they mean. */
+export interface PageBrowserFocus {
+  hasFocus: boolean;
+  tag?: string;
+  type?: string;
+  autocomplete?: string;
+  name?: string;
+  id?: string;
+  label?: string;
+  placeholder?: string;
+}
+
+export type PageBrowserResult = Partial<BrowserSnapshotResult & BrowserActResult> & {
+  ok: boolean;
+  focus?: PageBrowserFocus;
+};
 
 /** Vendor-neutral status for a remote cloud coding agent. */
 export type CloudAgentStatus = "running" | "finished" | "failed" | "cancelled";
@@ -1714,6 +1829,25 @@ export interface AutoReviewRequest {
   userTask: string;
   botDescription: string;
   matchingRules: AutoReviewMatchingRule[];
+  /**
+   * A web_fetch to a site the run was not given. `args` is then only the full URL, and
+   * `userTask` only the owner's own words (their message or the routine's instructions), never
+   * tool results or inbound messages, so injected text cannot argue for the site.
+   */
+  newSite?: boolean;
+  /** An internal write of content an agent that read outside text produced; `args` holds it. */
+  untrustedContent?: boolean;
+  /**
+   * A fetch the deterministic exfiltration check flagged (with `newSite`, so `args` is only the
+   * URL). `indicators` are kinds, lengths and short hashes, never private text. The review may
+   * only clear the flag; it never sees what the run read, only an outline of what it can read.
+   */
+  exfilFlag?: {
+    reason: string;
+    indicators: string[];
+    canRead: string[];
+    readOutsideContent: boolean;
+  };
 }
 
 export interface AutoReviewResult {

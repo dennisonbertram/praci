@@ -1,7 +1,7 @@
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import { BotAvatar, GroupAvatar } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
-import { LoadingState } from "./primitives";
+import { LoadingState, Shimmer } from "./primitives";
 
 /** Lightweight peer event shown without exposing the exchanged message body. */
 export function CollaborationMarker({
@@ -10,12 +10,15 @@ export function CollaborationMarker({
   identity,
   label,
   onClick,
+  pending,
 }: {
   ariaLabel: string;
   color: string;
   identity: string;
   label: string;
   onClick: () => void;
+  /** The peer has not answered yet: shimmer the label. */
+  pending?: boolean;
 }) {
   return (
     <div className="flex justify-start">
@@ -28,7 +31,7 @@ export function CollaborationMarker({
       >
         <BotAvatar color={color} identity={identity} size={16} />
         <span dir="auto" className="truncate">
-          {label}
+          {pending ? <Shimmer>{label}</Shimmer> : label}
         </span>
         <ChevronRight aria-hidden size={14} strokeWidth={1.8} className="shrink-0 rtl:rotate-180" />
       </button>

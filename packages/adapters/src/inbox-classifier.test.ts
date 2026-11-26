@@ -481,9 +481,10 @@ interface Case {
 const cases: Case[] = [
   {
     subject: "Lunch Friday?",
-    expected: { category: "personal", priority: "important", needsReply: true },
-    llm: { category: "personal", priority: "important", needsReply: true },
-    typesafe: { category: "personal", needsResponse: 0.9, priority: 2 },
+    // "personal" means nothing to answer, so Needs reply drops it (e66002092); a question is "reply".
+    expected: { category: "reply", priority: "important", needsReply: true },
+    llm: { category: "reply", priority: "important", needsReply: true },
+    typesafe: { category: "reply", needsResponse: 0.9, priority: 2 },
   },
   {
     subject: "Your October newsletter",

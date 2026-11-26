@@ -45,12 +45,12 @@ const pointer = (type: string, x: number) =>
   });
 
 it("resizes with the arrow keys within the minimum and the half-page maximum", () => {
-  expect(width()).toBe("244");
+  expect(width()).toBe("350");
   key("ArrowRight");
-  expect(width()).toBe("276");
+  expect(width()).toBe("382");
   key("ArrowLeft");
   key("ArrowLeft");
-  expect(width()).toBe("212");
+  expect(width()).toBe("318");
   key("Home");
   expect(width()).toBe("180");
   key("ArrowLeft");
@@ -59,6 +59,14 @@ it("resizes with the arrow keys within the minimum and the half-page maximum", (
   expect(width()).toBe("500");
   key("ArrowRight");
   expect(width()).toBe("500");
+});
+
+it("keeps a remembered width instead of the 35% default", () => {
+  localStorage.setItem("rakazo:data-room-folders-width", "260");
+  act(() => root.unmount());
+  root = createRoot(container);
+  act(() => root.render(tree()));
+  expect(width()).toBe("260");
 });
 
 it("takes its maximum from the body, not from its own column width", () => {
@@ -85,7 +93,7 @@ it("shows a narrower width when the body shrinks, and keeps the saved one", () =
 it("resizes by dragging, remembers the width and resets on double-click", () => {
   pointer("pointerdown", 100);
   pointer("pointermove", 160);
-  expect(width()).toBe("304");
+  expect(width()).toBe("410");
   pointer("pointermove", 5000);
   expect(width()).toBe("500");
   pointer("pointerup", 5000);
@@ -102,6 +110,6 @@ it("resizes by dragging, remembers the width and resets on double-click", () => 
   act(() => {
     handle()?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
   });
-  expect(width()).toBe("244");
-  expect(localStorage.getItem("rakazo:data-room-folders-width")).toBe("244");
+  expect(width()).toBe("350");
+  expect(localStorage.getItem("rakazo:data-room-folders-width")).toBe("350");
 });

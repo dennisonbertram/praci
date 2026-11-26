@@ -115,6 +115,12 @@ export const mockSource: CapabilityInstall = {
   secretConfigured: false,
   config: {},
   createdAt: STAMP,
+  agentBotId: "bot_ada",
+  allAgents: false,
+  agentShared: false,
+  writesEnabled: false,
+  usableBotIds: ["bot_ada"],
+  writeBotIds: [],
 };
 
 export const mockAssignments: BotMcpServer[] = [
@@ -143,6 +149,7 @@ export function mockIntegrations(extra: Partial<IntegrationsData> = {}): Integra
     financeSources: [],
     setup: null,
     catalogFailed: false,
+    meetingsFailed: false,
     feedEnabled: false,
     refresh: async () => undefined,
     ...extra,

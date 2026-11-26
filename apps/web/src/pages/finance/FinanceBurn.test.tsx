@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { FinanceBurnOutput } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -22,6 +24,7 @@ vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
 import { FinanceBurnPage, fromFirstData } from "./FinanceBurn";
 
+i18n.loadAndActivate({ locale: "en", messages: {} });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const month = (m: string, outCents: number) => ({
@@ -82,9 +85,11 @@ it("adds Brex to By account so the shares cover all spend, and hides months befo
   rpcMock.burn.mockResolvedValue(burn);
   await act(async () =>
     root.render(
-      <MemoryRouter>
-        <FinanceBurnPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/app/finance/burn?by=account"]}>
+          <FinanceBurnPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   await act(async () => {});
@@ -125,9 +130,11 @@ it("leaves an account that took in more than it spent out of By account and its 
   } satisfies FinanceBurnOutput);
   await act(async () =>
     root.render(
-      <MemoryRouter>
-        <FinanceBurnPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/app/finance/burn?by=account"]}>
+          <FinanceBurnPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   await act(async () => {});

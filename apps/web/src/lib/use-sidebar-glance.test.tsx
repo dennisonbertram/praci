@@ -117,6 +117,23 @@ it("does not mark anything seen on a page with no unseen notifications", async (
   expect(seen.counts).toEqual({ finance: 1 });
 });
 
+it("refreshes unseen counts when an unattended tab regains focus", async () => {
+  attended = false;
+  rpc.notifications.unseenCounts
+    .mockResolvedValueOnce({ counts: { finance: 1 } })
+    .mockResolvedValue({ counts: {} });
+  act(() => root.render(<Probe pathname="/app" />));
+  await flush();
+  expect(seen.counts).toEqual({ finance: 1 });
+  const callsBeforeFocus = rpc.notifications.unseenCounts.mock.calls.length;
+
+  setAttended(true);
+  await flush();
+
+  expect(rpc.notifications.unseenCounts).toHaveBeenCalledTimes(callsBeforeFocus + 1);
+  expect(seen.counts).toEqual({});
+});
+
 it("waits to mark a page seen until the tab is focused", async () => {
   attended = false;
   rpc.notifications.unseenCounts.mockResolvedValue({ counts: { legal: 1 } });

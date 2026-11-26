@@ -1,19 +1,33 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { PageAgentKind } from "@rakazo/contracts";
+import { PAGE_AGENTS, pageAgentKindOf } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { dataRoomAgentSuggestions } from "../lib/data-room-agent";
 import { investorsAgentSuggestions } from "../lib/investors-agent";
-
-export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room" | "legal" | "investors";
+import { scannerAgentSuggestions } from "../lib/scanner-agent";
 
 /** Which page agent a bot is, from the spawn key its page created it with (null for other bots). */
 export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKind | null {
-  if (spawnKey?.startsWith("inbox-agent:")) return "inbox";
-  if (spawnKey?.startsWith("finance-agent:")) return "finance";
-  if (spawnKey?.startsWith("carta-agent:")) return "carta";
-  if (spawnKey?.startsWith("data-room-agent:")) return "data-room";
-  if (spawnKey?.startsWith("legal-agent:")) return "legal";
-  if (spawnKey?.startsWith("investors-agent:")) return "investors";
-  return null;
+  const kind = pageAgentKindOf(spawnKey);
+  return kind && PAGE_AGENTS[kind].page ? kind : null;
+}
+
+/** The page agents with an introduction below; GTM and Company open their pages without one. */
+type IntroKind = Exclude<PageAgentKind, "gtm" | "company" | "company-importer" | "voice">;
+const INTRO_KINDS: ReadonlySet<PageAgentKind> = new Set<IntroKind>([
+  "inbox",
+  "finance",
+  "carta",
+  "data-room",
+  "scanner",
+  "legal",
+  "investors",
+]);
+
+/** The page agent kind a bot's empty thread introduces, or null when it has no introduction. */
+export function pageAgentIntroKind(spawnKey: string | null | undefined): IntroKind | null {
+  const kind = pageAgentKindOf(spawnKey);
+  return kind && INTRO_KINDS.has(kind) ? (kind as IntroKind) : null;
 }
 
 /**
@@ -24,7 +38,7 @@ export function PageAgentIntro({
   kind,
   onAsk,
 }: {
-  kind: PageAgentKind;
+  kind: IntroKind;
   onAsk: (text: string) => void;
 }) {
   const { t } = useLingui();
@@ -41,17 +55,19 @@ export function PageAgentIntro({
             t`What did we spend last month?`,
             t`Which bills are unpaid?`,
           ]
-        : kind === "data-room"
-          ? dataRoomAgentSuggestions()
-          : kind === "legal"
-            ? [
-                t`Which contracts renew in the next 90 days?`,
-                t`What deadlines are coming up?`,
-                t`Which contracts have the highest value?`,
-              ]
-            : kind === "investors"
-              ? investorsAgentSuggestions()
-              : [t`Who owns what in the company?`, t`How much of the option pool is left?`];
+        : kind === "scanner"
+          ? scannerAgentSuggestions()
+          : kind === "data-room"
+            ? dataRoomAgentSuggestions()
+            : kind === "legal"
+              ? [
+                  t`Which contracts renew in the next 90 days?`,
+                  t`What deadlines are coming up?`,
+                  t`Which contracts have the highest value?`,
+                ]
+              : kind === "investors"
+                ? investorsAgentSuggestions()
+                : [t`Who owns what in the company?`, t`How much of the option pool is left?`];
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 px-4 py-5 md:px-7">
       <p className="text-sm text-muted-foreground">
@@ -64,6 +80,8 @@ export function PageAgentIntro({
           <Trans>
             I read your bank and card accounts and answer questions about cash, spending and runway.
           </Trans>
+        ) : kind === "scanner" ? (
+          <Trans>I name and classify scans, and answer questions about them.</Trans>
         ) : kind === "data-room" ? (
           <Trans>
             I search and read the documents in your Data room and answer questions about them.

@@ -10,7 +10,11 @@ const change: TicketChange = {
   assigneeBotId: "bot-1",
   wakeAssignee: true,
 };
-function setup(ticketBoardEnabled: boolean, status = "todo") {
+function setup(
+  ticketBoardEnabled: boolean,
+  status = "todo",
+  liveRun: { id: string } | null = null,
+) {
   const notify = vi.fn(async () => {});
   const enqueue = vi.fn(async () => {});
   const createRun = vi.fn(async () => ({ id: "run-1" }));
@@ -28,7 +32,7 @@ function setup(ticketBoardEnabled: boolean, status = "todo") {
       findFirst: vi.fn(async () => ({ id: "bot-1", userId: "user-1", thread: { id: "thread-1" } })),
     },
     task: { create: createTask },
-    run: { create: createRun },
+    run: { create: createRun, findFirst: vi.fn(async () => liveRun) },
   };
   const transaction = vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx));
   const changes = createTicketChangeNotifier({
@@ -83,6 +87,13 @@ describe("ticket changes", () => {
     await s.changes({ ...change, wakeAssignee: false });
     expect(s.notify).toHaveBeenCalledTimes(1);
     expect(s.transaction).not.toHaveBeenCalled();
+    expect(s.enqueue).not.toHaveBeenCalled();
+  });
+  it("does not queue a second run while one for the same ticket is live", async () => {
+    const s = setup(true, "todo", { id: "run-live" });
+    await s.changes(change);
+    expect(s.createTask).not.toHaveBeenCalled();
+    expect(s.createRun).not.toHaveBeenCalled();
     expect(s.enqueue).not.toHaveBeenCalled();
   });
   it("does not wake an unassigned ticket", async () => {

@@ -1,7 +1,7 @@
 import { useLingui } from "@lingui/react/macro";
 import type { ConnectionCatalogItem, IntegrationSetupState } from "@rakazo/contracts";
 import { Button, Input } from "@rakazo/ui-web";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { appKey } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
@@ -50,6 +50,19 @@ export function ConnectAppsStep({
   const [more, setMore] = useState(false);
   const [choice, setChoice] = useState<SetupChoice | undefined>();
   const [serversAdded, setServersAdded] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const previousError = useRef(data.error);
+
+  useEffect(() => {
+    if (previousError.current && !data.error) searchRef.current?.focus();
+    previousError.current = data.error;
+  }, [data.error]);
+
+  const retry = () => {
+    setRetrying(true);
+    void data.refresh().finally(() => setRetrying(false));
+  };
 
   const used = new Set(
     data.connections
@@ -85,50 +98,73 @@ export function ConnectAppsStep({
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-foreground">{t`Connect your apps`}</h1>
-      <Input
-        aria-label={t`Search integrations`}
-        placeholder={t`Search integrations`}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      {rows.length ? (
-        <ul className="overflow-hidden rounded-xl border border-border">
-          {rows.map(({ key, name, item, via }) => (
-            <li
-              key={key}
-              className="flex min-h-14 items-center gap-3 border-b border-border px-3.5 py-2 last:border-0"
-            >
-              <AppLogo name={name} logo={item?.logo} size="sm" />
-              <span className="min-w-0 flex-1 truncate">{name}</span>
-              {item && used.has(appKey(item)) ? (
-                <span className="text-sm text-success">{t`Connected`}</span>
-              ) : item ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t`Connect ${name}`}
-                  onClick={() => setConnecting(item)}
-                >
-                  {t`Connect`}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t`Set up ${name}`}
-                  onClick={() => {
-                    setChoice(via);
-                    setMore(true);
-                  }}
-                >
-                  {t`Set up`}
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
+      {data.error ? (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+          <span>{data.error}</span>
+          <Button size="sm" variant="ghost" disabled={retrying} onClick={retry}>
+            {t`Try again`}
+          </Button>
+        </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t`No matching apps`}</p>
+        <>
+          {data.catalogFailed ? (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-2 text-sm text-destructive"
+            >
+              <span>{t`Could not load the app list. Reload to try again.`}</span>
+              <Button size="sm" variant="ghost" disabled={retrying} onClick={retry}>
+                {t`Try again`}
+              </Button>
+            </div>
+          ) : null}
+          <Input
+            ref={searchRef}
+            aria-label={t`Search integrations`}
+            placeholder={t`Search integrations`}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {rows.length ? (
+            <ul className="overflow-hidden rounded-xl border border-border">
+              {rows.map(({ key, name, item, via }) => (
+                <li
+                  key={key}
+                  className="flex min-h-14 items-center gap-3 border-b border-border px-3.5 py-2 last:border-0"
+                >
+                  <AppLogo name={name} logo={item?.logo} size="sm" />
+                  <span className="min-w-0 flex-1 truncate">{name}</span>
+                  {item && used.has(appKey(item)) ? (
+                    <span className="text-sm text-success">{t`Connected`}</span>
+                  ) : item ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t`Connect ${name}`}
+                      onClick={() => setConnecting(item)}
+                    >
+                      {t`Connect`}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t`Set up ${name}`}
+                      onClick={() => {
+                        setChoice(via);
+                        setMore(true);
+                      }}
+                    >
+                      {t`Set up`}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t`No matching apps`}</p>
+          )}
+        </>
       )}
       <details
         className="text-sm"
@@ -153,8 +189,8 @@ export function ConnectAppsStep({
         </div>
       </details>
       <div className="flex gap-3">
-        {connectedAny ? <Button onClick={onDone}>{t`Continue`}</Button> : null}
-        <Button variant={connectedAny ? "ghost" : "outline"} onClick={onDone}>
+        {connectedAny && !data.error ? <Button onClick={onDone}>{t`Continue`}</Button> : null}
+        <Button variant={connectedAny && !data.error ? "ghost" : "outline"} onClick={onDone}>
           {t`Skip for now`}
         </Button>
       </div>

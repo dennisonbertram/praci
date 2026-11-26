@@ -21,9 +21,9 @@ describe("create_ui_artifact", () => {
     expect(tool({ disabledBuiltinTools: ["create_ui_artifact"] })).toBeUndefined();
   });
 
-  it("is approved like the other tools that create a file", () => {
+  it("runs in a background run: it writes only inside Rakazo", () => {
     expect(unattendedTriggerToolRequiresApproval("webhook", "create_ui_artifact", false)).toBe(
-      unattendedTriggerToolRequiresApproval("webhook", "create_spreadsheet", false),
+      false,
     );
   });
 

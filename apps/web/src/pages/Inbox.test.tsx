@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { InboxListOutput, MailRow } from "@rakazo/contracts";
 import type { ComponentProps, ReactNode } from "react";
 import { act } from "react";
@@ -26,15 +28,23 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   refresh: vi.fn(),
   feedback: vi.fn(),
+  track: vi.fn(),
+  untrack: vi.fn(),
   archive: vi.fn(),
   unarchive: vi.fn(),
   archiveMany: vi.fn(),
   unarchiveMany: vi.fn(),
+  moveMany: vi.fn(),
   markRead: vi.fn(),
+  markReadMany: vi.fn(),
+  noReply: vi.fn(),
+  unsubscribe: vi.fn(),
   askAgent: vi.fn(),
   todos: vi.fn(),
   setDone: vi.fn(),
   connections: vi.fn(),
+  check: vi.fn(),
+  waiting: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -42,15 +52,22 @@ vi.mock("../lib/rpc", () => ({
       list: rpcMock.list,
       refresh: rpcMock.refresh,
       feedback: rpcMock.feedback,
+      track: rpcMock.track,
+      untrack: rpcMock.untrack,
       archive: rpcMock.archive,
       unarchive: rpcMock.unarchive,
       archiveMany: rpcMock.archiveMany,
       unarchiveMany: rpcMock.unarchiveMany,
+      moveMany: rpcMock.moveMany,
       markRead: rpcMock.markRead,
+      markReadMany: rpcMock.markReadMany,
+      noReply: rpcMock.noReply,
+      unsubscribe: rpcMock.unsubscribe,
       askAgent: rpcMock.askAgent,
       todos: { list: rpcMock.todos, setDone: rpcMock.setDone },
     },
-    connections: { list: rpcMock.connections },
+    connections: { list: rpcMock.connections, check: rpcMock.check },
+    scratchpad: { waitingOnYou: rpcMock.waiting, update: vi.fn() },
   },
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
@@ -94,17 +111,11 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onAskAgentPanel,
     onReplyDone,
     replyDoneText,
+    moves,
+    onMove,
+    onUnsubscribe,
     notice,
-  }: {
-    messageId: string | null;
-    onClose: () => void;
-    onArchive?: () => void;
-    onMoveToInbox?: () => void;
-    onAskAgentPanel?: () => Promise<unknown>;
-    onReplyDone?: () => void;
-    replyDoneText?: string;
-    notice?: ReactNode;
-  }) =>
+  }: Parameters<typeof actual.InboxMessageDialog>[0]) =>
     messageId ? (
       <div role="dialog" data-testid="message">
         {messageId}
@@ -132,6 +143,16 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog move
           </button>
         ) : null}
+        {moves?.map((op) => (
+          <button key={op} type="button" onClick={() => onMove?.(op)}>
+            {`dialog ${op}`}
+          </button>
+        ))}
+        {onUnsubscribe ? (
+          <button type="button" onClick={() => void onUnsubscribe(false)}>
+            dialog unsubscribe
+          </button>
+        ) : null}
         <div data-testid="notice">{notice}</div>
       </div>
     ) : null;
@@ -140,6 +161,8 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
       realDialog.on ? actual.InboxMessageDialog(props) : Fake(props),
   };
 });
+
+i18n.loadAndActivate({ locale: "en", messages: {} });
 vi.mock("../components/inbox/InboxRow", () => ({
   InboxGroup: ({
     title,
@@ -148,6 +171,8 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onMark,
     onArchive,
     onRead,
+    onTrack,
+    onNoReply,
     selectedId,
     todoDue,
   }: {
@@ -158,6 +183,8 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onMark?: (id: string, mark: "noise" | null) => void;
     onArchive?: (id: string) => void;
     onRead?: (id: string, read: boolean) => void;
+    onTrack?: (id: string, tracked: boolean) => void;
+    onNoReply?: (id: string) => void;
     selectedId?: string;
   }) => [
     title && rows.length ? <h2 key="title">{title}</h2> : null,
@@ -183,6 +210,16 @@ vi.mock("../components/inbox/InboxRow", () => ({
         {onArchive ? (
           <button type="button" onClick={() => onArchive(row.id)}>
             archive {row.id}
+          </button>
+        ) : null}
+        {onTrack ? (
+          <button type="button" onClick={() => onTrack(row.id, true)}>
+            track {row.id}
+          </button>
+        ) : null}
+        {onNoReply && row.needsReply === true ? (
+          <button type="button" onClick={() => onNoReply(row.id)}>
+            no-reply {row.id}
           </button>
         ) : null}
         <button type="button" data-unread={row.unread} onClick={() => onRead?.(row.id, row.unread)}>
@@ -249,7 +286,9 @@ async function render(
     root.render(
       <MemoryRouter initialEntries={entries} initialIndex={index}>
         <Probe />
-        <InboxPage onConnectMail={connectMail} onRefreshed={() => {}} paused={false} {...props} />
+        <I18nProvider i18n={i18n}>
+          <InboxPage onConnectMail={connectMail} onRefreshed={() => {}} paused={false} {...props} />
+        </I18nProvider>
       </MemoryRouter>,
     ),
   );
@@ -265,13 +304,12 @@ const press = (key: string, target: Element | Document = document.body) =>
     vi.setSystemTime(Date.now() + 200); // j/k are throttled to one step per 150ms
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
   });
-// The account choice lives in the Filter menu, as a radio group under "Account".
+// The account choice is a tab row at the top of the list.
 const pickAccount = async (name: string) => {
-  await click(document.querySelector('[data-testid="inbox-filter"]'));
-  const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+  const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
     (el) => el.textContent === name,
   );
-  await click(item);
+  await click(tab);
 };
 
 const click = (el: Element | null | undefined) =>
@@ -292,7 +330,10 @@ beforeEach(() => {
   vi.setSystemTime(clock);
   rpcMock.refresh.mockResolvedValue({});
   rpcMock.todos.mockResolvedValue({ todos: [] });
+  rpcMock.waiting.mockResolvedValue([]);
   rpcMock.feedback.mockResolvedValue({});
+  rpcMock.track.mockResolvedValue({});
+  rpcMock.untrack.mockResolvedValue({});
   rpcMock.archive.mockResolvedValue({ ok: true });
   rpcMock.unarchive.mockResolvedValue({ ok: true });
   rpcMock.archiveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
@@ -303,9 +344,21 @@ beforeEach(() => {
     done: messageIds,
     failed: [],
   }));
+  rpcMock.moveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
+    batchId: "batch-1",
+    done: messageIds,
+    failed: [],
+  }));
   rpcMock.markRead.mockResolvedValue({ ok: true });
+  rpcMock.markReadMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
+    done: messageIds,
+    failed: [],
+  }));
+  rpcMock.noReply.mockResolvedValue({ stopped: null });
+  rpcMock.unsubscribe.mockResolvedValue({ status: "done", method: "one_click" });
   rpcMock.list.mockResolvedValue(list([row("a"), row("b"), row("c")]));
   rpcMock.connections.mockResolvedValue([{ provider: "gmail", status: "connected" }]);
+  rpcMock.check.mockResolvedValue({ needsReconnect: true });
 });
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
@@ -360,9 +413,133 @@ it("shows a cached list at once while its key is refetched", async () => {
 it("reverts an optimistic mark when saving fails", async () => {
   rpcMock.feedback.mockRejectedValue(new Error("nope"));
   const c = await render();
+  const listCalls = rpcMock.list.mock.calls.length;
   await click(byText(c, "noise a"));
+  await dwell(1);
   expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("");
   expect(c.querySelector('[role="alert"]')).not.toBeNull();
+  expect(rpcMock.list.mock.calls).toHaveLength(listCalls);
+});
+
+it("clears a list load error after a successful reload", async () => {
+  rpcMock.list.mockRejectedValue(new Error("list unavailable"));
+  const c = await render();
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("list unavailable");
+
+  rpcMock.list.mockResolvedValue(list([row("recovered")]));
+  vi.setSystemTime(Date.now() + 60_000);
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+  await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+
+  expect(c.textContent).toContain("Subject recovered");
+  expect(c.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("keeps an action error when its list reload succeeds", async () => {
+  const c = await render();
+  rpcMock.markRead.mockRejectedValue(new Error("mark read failed"));
+  await click(byText(c, "read a"));
+  await act(async () => Promise.resolve());
+
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("mark read failed");
+  expect(c.textContent).toContain("Subject a");
+});
+
+it("queues read changes for a message and ignores an older failure", async () => {
+  let rejectFirst: (cause: Error) => void = () => {};
+  let resolveSecond: (value: unknown) => void = () => {};
+  rpcMock.markRead
+    .mockReturnValueOnce(new Promise((_, reject) => (rejectFirst = reject)))
+    .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+  const c = await render();
+  await press("j");
+  await press("u");
+  await press("u");
+  expect(rpcMock.markRead).toHaveBeenCalledTimes(1);
+  expect(c.querySelector("button[data-unread]")?.getAttribute("data-unread")).toBe("true");
+  await act(async () => rejectFirst(new Error("old read failed")));
+  expect(rpcMock.markRead).toHaveBeenCalledTimes(2);
+  expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: false });
+  await act(async () => resolveSecond({ ok: true }));
+  expect(c.querySelector("button[data-unread]")?.getAttribute("data-unread")).toBe("true");
+  expect(c.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("queues feedback changes for a message and ignores an older failure", async () => {
+  let rejectFirst: (cause: Error) => void = () => {};
+  let resolveSecond: (value: unknown) => void = () => {};
+  rpcMock.feedback
+    .mockReturnValueOnce(new Promise((_, reject) => (rejectFirst = reject)))
+    .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+  const c = await render();
+  await click(byText(c, "noise a"));
+  await click(byText(c.querySelector('[role="status"]') as HTMLElement, "Undo"));
+  expect(rpcMock.feedback).toHaveBeenCalledTimes(1);
+  expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("");
+  await act(async () => rejectFirst(new Error("old mark failed")));
+  expect(rpcMock.feedback).toHaveBeenCalledTimes(2);
+  expect(rpcMock.feedback).toHaveBeenLastCalledWith({ messageId: "a", mark: null });
+  await act(async () => resolveSecond({ ok: true }));
+  expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("");
+  expect(c.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("reports a read failure while tracking the same message", async () => {
+  let rejectRead: (cause: Error) => void = () => {};
+  let resolveTrack: (value: unknown) => void = () => {};
+  rpcMock.markRead.mockReturnValue(new Promise((_, reject) => (rejectRead = reject)));
+  rpcMock.track.mockReturnValue(new Promise((resolve) => (resolveTrack = resolve)));
+  const c = await render();
+  const listCalls = rpcMock.list.mock.calls.length;
+  await press("j");
+  await press("u");
+  await click(byText(c, "track a"));
+  expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "a", read: true });
+  expect(rpcMock.track).toHaveBeenCalledWith({ messageId: "a" });
+  await act(async () => resolveTrack({ ok: true }));
+  await act(async () => rejectRead(new Error("read failed while tracking")));
+  await dwell(1);
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("read failed while tracking");
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(listCalls);
+});
+
+it("reloads after feedback succeeds while a later read change is pending", async () => {
+  let resolveFeedback: (value: unknown) => void = () => {};
+  rpcMock.feedback.mockReturnValue(new Promise((resolve) => (resolveFeedback = resolve)));
+  rpcMock.markRead.mockReturnValue(new Promise(() => {}));
+  const c = await render();
+  const listCalls = rpcMock.list.mock.calls.length;
+  await press("j");
+  await click(byText(c, "noise a"));
+  await press("u");
+  expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "a", read: true });
+  await act(async () => resolveFeedback({ ok: true }));
+  await dwell(1);
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(listCalls);
+});
+
+it("restores a failed feedback change while a later read change is pending without reloading", async () => {
+  let rejectFeedback: (cause: Error) => void = () => {};
+  rpcMock.feedback.mockReturnValue(new Promise((_, reject) => (rejectFeedback = reject)));
+  rpcMock.markRead.mockReturnValue(new Promise(() => {}));
+  const c = await render();
+  const listCalls = rpcMock.list.mock.calls.length;
+  await press("j");
+  await click(byText(c, "noise a"));
+  await press("u");
+  expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "a", read: true });
+  await act(async () => rejectFeedback(new Error("feedback failed")));
+  await dwell(1);
+  expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("");
+  expect(c.querySelector("[data-toast-avoid]")).toBeNull();
+  expect(c.textContent).not.toContain("Mail from Dana is now marked as noise");
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("feedback failed");
+  expect(rpcMock.list.mock.calls).toHaveLength(listCalls);
 });
 
 it("marks the row at once and offers Undo", async () => {
@@ -506,6 +683,30 @@ it("completes a hidden reply to-do from the open mail", async () => {
   expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
 });
 
+it("lists the mail again after a to-do is finished, so the row leaves Needs reply", async () => {
+  const hidden = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan about section 9",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+  rpcMock.todos.mockResolvedValue({ todos: [hidden] });
+  rpcMock.setDone.mockResolvedValue({ ...hidden, doneAt: new Date().toISOString() });
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  const before = rpcMock.list.mock.calls.length;
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: false })]));
+  await click(byText(document.body, "dialog reply done"));
+  await dwell(50);
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(before);
+});
+
 it("names the due date on the open mail's completion control", async () => {
   const dated = {
     id: "t1",
@@ -587,6 +788,101 @@ it("does not say Sent when a Needs reply mail is archived instead of sent", asyn
   await act(async () => window.dispatchEvent(new Event("rakazo:inbox-changed")));
   await dwell(100);
   expect(c.textContent).not.toContain("Sent. Moved out of Needs reply");
+});
+
+it("offers Undo on No reply needed and puts the row back under Needs reply", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  const headings = () => [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings()).toContain("Needs reply");
+  // The reload after the call lists the mail as the server now has it: out of Needs reply.
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await click(byText(c, "no-reply a"));
+  expect(rpcMock.noReply).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.textContent).toContain("No reply needed");
+  expect(headings()).not.toContain("Needs reply");
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await click(byText(c, "Undo"));
+  expect(rpcMock.noReply).toHaveBeenLastCalledWith({ messageId: "a", undo: true });
+  expect(headings()).toContain("Needs reply");
+});
+
+it("says when a dismissal stopped Needs reply for the sender, and z reverses it", async () => {
+  rpcMock.noReply.mockResolvedValue({ stopped: "Dana" });
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  await click(byText(c, "no-reply a"));
+  expect(c.textContent).toContain("Stopped Needs reply for Dana");
+  await press("z");
+  expect(rpcMock.noReply).toHaveBeenLastCalledWith({ messageId: "a", undo: true });
+});
+
+it("offers Undo when finishing a reply to-do, restoring the to-do and the mail", async () => {
+  const hidden = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan about section 9",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  rpcMock.todos.mockResolvedValue({ todos: [hidden] });
+  rpcMock.setDone.mockResolvedValue({
+    ...hidden,
+    doneAt: new Date().toISOString(),
+    dismissedReply: true,
+  });
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(document.body, "dialog reply done"));
+  expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
+  expect(c.textContent).toContain("No reply needed");
+  rpcMock.setDone.mockResolvedValue({ ...hidden, doneAt: null });
+  await click(byText(c, "Undo"));
+  expect(rpcMock.setDone).toHaveBeenLastCalledWith({ id: "t1", done: false });
+  expect(rpcMock.noReply).toHaveBeenCalledWith({ messageId: "a", undo: true });
+});
+
+it("does not offer Undo when finishing a to-do dismissed no mail", async () => {
+  const hidden = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan about section 9",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  rpcMock.todos.mockResolvedValue({ todos: [hidden] });
+  rpcMock.setDone.mockResolvedValue({ ...hidden, doneAt: new Date().toISOString() });
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(document.body, "dialog reply done"));
+  expect(c.querySelector("[data-toast-avoid]")).toBeNull();
+  expect(c.textContent).not.toContain("No reply needed");
+});
+
+it("dismisses the focused row with n only when it needs a reply, and never while typing", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  await press("j");
+  await press("j");
+  await press("n");
+  expect(rpcMock.noReply).not.toHaveBeenCalled();
+  await press("k");
+  await press("n");
+  expect(rpcMock.noReply).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.textContent).toContain("No reply needed");
+  rpcMock.noReply.mockClear();
+  await press("n", c.querySelector("input") as Element);
+  expect(rpcMock.noReply).not.toHaveBeenCalled();
 });
 
 it("archives the selected row with e, moves the selection on, and keeps it out of the list", async () => {
@@ -675,6 +971,19 @@ it("shows a slow search even when a reload starts while it is loading", async ()
   expect(c.textContent).toContain("Invoice");
 });
 
+it("z undoes the archive that e just made, once", async () => {
+  const c = await render();
+  await press("j");
+  await press("e");
+  expect(c.querySelector('[data-row-id="a"]')).toBeNull();
+  await press("z");
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.querySelector('[data-row-id="a"]')).not.toBeNull();
+  expect(c.querySelector('[role="status"]')?.textContent).toBe("");
+  await press("z");
+  expect(rpcMock.unarchive).toHaveBeenCalledTimes(1);
+});
+
 it("offers Undo after an archive, which restores the thread and reloads the list", async () => {
   const c = await render();
   await click(byText(c, "archive b"));
@@ -699,6 +1008,34 @@ it("waits for a slow archive to finish before Undo restores the thread", async (
   expect(rpcMock.unarchive).not.toHaveBeenCalled();
   await act(async () => finish({ ok: true }));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });
+});
+
+it("Undo brings the row back at once, before the server or the list answers", async () => {
+  const c = await render();
+  await click(byText(c, "archive b"));
+  expect(c.querySelector('[data-row-id="b"]')).toBeNull();
+  rpcMock.unarchive.mockReturnValue(new Promise(() => {}));
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  await click(byText(c.querySelector('[role="status"]') as HTMLElement, "Undo"));
+  expect(c.querySelector('[data-row-id="b"]')).not.toBeNull();
+});
+
+it("Undo while the archive is still running brings the row back at once", async () => {
+  rpcMock.archive.mockReturnValue(new Promise(() => {}));
+  const c = await render();
+  await click(byText(c, "archive b"));
+  await click(byText(c.querySelector('[role="status"]') as HTMLElement, "Undo"));
+  expect(c.querySelector('[data-row-id="b"]')).not.toBeNull();
+});
+
+it("a failed Undo removes the row again and shows the error", async () => {
+  const c = await render();
+  await click(byText(c, "archive b"));
+  rpcMock.unarchive.mockRejectedValue(new Error("Gmail said no"));
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  await click(byText(c.querySelector('[role="status"]') as HTMLElement, "Undo"));
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("Gmail said no");
+  expect(c.querySelector('[data-row-id="b"]')).toBeNull();
 });
 
 it("skips Undo when the archive itself failed", async () => {
@@ -925,6 +1262,19 @@ it("a burst of 140 j presses in the open message moves one row and marks only it
   expect(location.search).toBe("?mail=b");
   expect(rpcMock.markRead).toHaveBeenCalledTimes(1);
   expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "b", read: true });
+});
+
+it("u in the open message marks it unread and it stays unread after the read dwell", async () => {
+  realDialog.on = true;
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  await dwell(100);
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "u", bubbles: true }));
+  });
+  await dwell(1000);
+  expect(c.querySelector('[data-testid="message"]')).toBeNull();
+  expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: false });
 });
 
 it("keeps a mark's Undo on screen long enough to reach it", async () => {
@@ -1387,6 +1737,41 @@ it("Undo after Move to Inbox waits for the move before archiving again", async (
   expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
 });
 
+it("Undo puts the row back only into the list it left, not into another account's", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockImplementation(async (input: { connectionId?: string }) =>
+    input.connectionId === "c2"
+      ? list([row("s1", { connectionId: "c2" })], { accounts })
+      : list([row("a"), row("b")], { accounts }),
+  );
+  const c = await render();
+  await pickAccount("Sales");
+  await pickAccount("All");
+  await press("j");
+  await press("e");
+  await pickAccount("Sales");
+  // No reload follows, so what shows is what Undo put back at once.
+  rpcMock.unarchive.mockReturnValue(new Promise(() => {}));
+  await click(byText(c.querySelector('[role="status"]') as HTMLElement, "Undo"));
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.textContent).not.toContain("Subject a");
+});
+
+it("z after Move to Inbox archives again without a new Undo, so a second z does nothing", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { inInbox: false })]));
+  const c = await render(["/app/inbox?q=old&mail=a"]);
+  await click(byText(c, "dialog move"));
+  await click(byText(c, "close"));
+  await press("z");
+  expect(rpcMock.archive).toHaveBeenCalledTimes(1);
+  expect(c.querySelector('[role="status"]')?.textContent).toBe("");
+  await press("z");
+  expect(rpcMock.unarchive).toHaveBeenCalledTimes(1);
+});
+
 it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", async () => {
   rpcMock.list.mockResolvedValue(
     list([row("a")], { failedAccounts: ["Me"], reconnectAccounts: ["Me"] }),
@@ -1398,6 +1783,16 @@ it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", as
   await click(byText(c, "Reconnect Gmail"));
   expect(connectMail).toHaveBeenCalledTimes(1);
   expect(c.textContent).not.toContain("Try again");
+});
+
+it("tests the sign-in before insisting on a reconnect and reloads when it works", async () => {
+  rpcMock.check.mockResolvedValue({ id: "Me", needsReconnect: false });
+  rpcMock.list
+    .mockResolvedValueOnce(list([row("a")], { failedAccounts: ["Me"], reconnectAccounts: ["Me"] }))
+    .mockResolvedValue(list([row("a")]));
+  const c = await render();
+  await vi.waitFor(() => expect(rpcMock.check).toHaveBeenCalledWith({ connectionId: "Me" }));
+  await vi.waitFor(() => expect(c.querySelector('[role="alert"]')).toBeNull());
 });
 
 it("explains a rate-limited Inbox with no mail, and shows Try again working", async () => {
@@ -1520,6 +1915,105 @@ const meetingTodo = (id: string, text: string, extra: Record<string, unknown> = 
   ...extra,
 });
 const sourceOn = { source: true, syncing: false, ready: true };
+
+it("keeps cached to-dos and meetings when a refetch fails", async () => {
+  const todo = meetingTodo("t1", "Send the notes");
+  rpcMock.todos.mockResolvedValue({ enabled: true, todos: [todo], meetings: sourceOn });
+  rpcMock.list.mockResolvedValue(
+    list([], {
+      accounts: [],
+      enabled: false,
+      triageBlocked: { reason: "needs_consent" } as never,
+    }),
+  );
+  const c = await render(["/app/inbox?pile=important"]);
+  await dwell(1);
+  expect(c.textContent).toContain("To do");
+  expect(c.textContent).toContain("Send the notes");
+
+  rpcMock.todos.mockRejectedValue(new Error("todos unavailable"));
+  rpcMock.list.mockResolvedValue(
+    list([], { accounts: [], enabled: false, syncedAt: "2026-10-13T00:00:00.000Z" }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  expect(c.textContent).toContain("To do");
+  expect(c.textContent).toContain("Send the notes");
+});
+
+it("keeps the first sort running when a cached to-do refetch fails", async () => {
+  const todo = meetingTodo("t1", "Send the notes");
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
+  rpcMock.todos
+    .mockResolvedValueOnce({ todos: [todo], meetings: sourceOn })
+    .mockRejectedValueOnce(new Error("todos unavailable"));
+  const c = await render(["/app/inbox?pile=important"]);
+  await dwell(1);
+  const sorting = () => c.textContent?.includes("Sorting your mail…");
+  expect(sorting()).toBe(true);
+
+  rpcMock.list.mockResolvedValue(
+    list([row("a"), row("b")], {
+      triagePending: true,
+      syncedAt: "2026-10-13T00:00:00.000Z",
+    }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(1);
+
+  expect(rpcMock.todos).toHaveBeenCalledTimes(2);
+  expect(sorting()).toBe(true);
+});
+
+it("clears sort-ending after a failed to-do refetch so a later changed answer stays held", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  const firstTodo = meetingTodo("t1", "First follow-up");
+  const nextTodo = meetingTodo("t2", "Second follow-up");
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { accounts, triagePending: true }));
+  rpcMock.todos
+    .mockResolvedValueOnce({ todos: [firstTodo], meetings: sourceOn })
+    .mockRejectedValueOnce(new Error("todos unavailable"))
+    .mockResolvedValueOnce({ todos: [firstTodo, nextTodo], meetings: sourceOn });
+  const c = await render(["/app/inbox?pile=important"]);
+  await dwell(1);
+  expect(c.textContent).toContain("Sorting your mail…");
+
+  rpcMock.list.mockResolvedValue(
+    list([row("a", { needsReply: true }), row("b")], {
+      accounts,
+      triagePending: false,
+      syncedAt: "2026-10-13T00:00:00.000Z",
+    }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(1);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  expect(c.textContent).toContain("First follow-up");
+
+  rpcMock.list.mockResolvedValue(
+    list([row("a", { needsReply: true }), row("b")], {
+      accounts,
+      triagePending: false,
+      syncedAt: "2026-10-14T00:00:00.000Z",
+    }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(1);
+  expect(c.textContent).toContain("First follow-up");
+  expect(c.textContent).not.toContain("Second follow-up");
+
+  await act(async () => go("/app/inbox?pile=important&filter=unread"));
+  await act(async () => go("/app/inbox?pile=important"));
+  expect(c.textContent).toContain("Second follow-up");
+});
 
 it("shows a meeting-only user's follow-ups above Connect mail, with no mail page and no consent prompt", async () => {
   rpcMock.list.mockResolvedValue(
@@ -1647,7 +2141,9 @@ it("keeps the chosen account tab after leaving the Inbox and coming back", async
   ] as InboxListOutput["accounts"];
   rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
   const c = await render();
-  expect(c.querySelectorAll('[role="tab"]')).toHaveLength(3);
+  expect([...c.querySelectorAll('[role="tab"]')].map((el) => el.textContent)).toEqual(
+    expect.arrayContaining(["All", "Me", "Sales"]),
+  );
   await pickAccount("Sales");
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: "c2" }));
   for (const cleanup of cleanups.splice(0)) await cleanup();
@@ -1656,6 +2152,34 @@ it("keeps the chosen account tab after leaving the Inbox and coming back", async
   expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "c2" }));
   // Back to All for the tests that follow.
   await pickAccount("All");
+});
+
+it("shows no account tabs with one account", async () => {
+  const c = await render();
+  expect(c.textContent).not.toContain("Me");
+  expect([...c.querySelectorAll('[role="tab"]')].map((el) => el.textContent)).not.toContain("All");
+});
+
+it("falls back to All when the chosen account is gone", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
+  const c = await render();
+  await pickAccount("Sales");
+  rpcMock.list.mockImplementation(async (input: { connectionId?: string }) => {
+    if (input.connectionId === "c2") throw new Error("gone");
+    return list([row("a")], { accounts });
+  });
+  await pickAccount("Me");
+  await pickAccount("Sales");
+  expect(rpcMock.list).toHaveBeenLastCalledWith(
+    expect.not.objectContaining({ connectionId: "c2" }),
+  );
+  const all = [...c.querySelectorAll('[role="tab"]')].find((el) => el.textContent === "All");
+  expect(all?.getAttribute("aria-selected")).toBe("true");
+  rpcMock.list.mockResolvedValue(list([row("a")]));
 });
 
 it("polls refresh while it reports syncing and reloads the list once when it stops", async () => {
@@ -1800,6 +2324,21 @@ describe("selecting rows", () => {
     expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["a", "b"] });
   });
 
+  it("Undo brings the whole selection back at once, and a failed Undo removes it again", async () => {
+    const c = await pickTwo(await render());
+    await press("e");
+    expect(c.querySelector('[data-row-id="a"]')).toBeNull();
+    rpcMock.unarchiveMany.mockResolvedValue({
+      done: ["a"],
+      failed: [{ messageId: "b", reason: "unavailable" }],
+    });
+    rpcMock.list.mockReturnValue(new Promise(() => {}));
+    await click(byText(toast(c), "Undo"));
+    expect(c.querySelector('[data-row-id="a"]')).not.toBeNull();
+    expect(c.querySelector('[data-row-id="b"]')).toBeNull();
+    expect(c.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
   it("undoes only the threads that were archived, and reloads the list for a partial failure", async () => {
     rpcMock.archiveMany.mockResolvedValue({
       done: ["a"],
@@ -1812,6 +2351,50 @@ describe("selecting rows", () => {
     expect(rpcMock.list.mock.calls.length).toBeGreaterThan(lists);
     await click(byText(toast(c), "Undo"));
     expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["a"] });
+  });
+
+  it("counts only successfully archived rows in the Undo toast after a partial failure", async () => {
+    let finish: (result: unknown) => void = () => {};
+    rpcMock.archiveMany.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const c = await render();
+    await press("j");
+    await press("x");
+    await press("j");
+    await press("x");
+    await press("j");
+    await press("x");
+    await press("e");
+    expect(toast(c).textContent).toContain("Archived 3");
+    await act(async () =>
+      finish({ done: ["a", "b"], failed: [{ messageId: "c", reason: "unavailable" }] }),
+    );
+    await dwell(1);
+    expect(toast(c).textContent).toContain("Archived 2");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("Couldn't archive 1");
+  });
+
+  it("counts only successfully moved rows in the Undo toast after a partial failure", async () => {
+    let finish: (result: unknown) => void = () => {};
+    rpcMock.moveMany.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const c = await render();
+    await press("j");
+    await press("x");
+    await press("j");
+    await press("x");
+    await press("j");
+    await press("x");
+    await click(c.querySelector('button[aria-label="Spam"]'));
+    expect(toast(c).textContent).toContain("Marked 3 as spam");
+    await act(async () =>
+      finish({
+        batchId: "batch-1",
+        done: ["a", "b"],
+        failed: [{ messageId: "c", reason: "unavailable" }],
+      }),
+    );
+    await dwell(1);
+    expect(toast(c).textContent).toContain("Marked 2 as spam");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("Couldn't archive 1");
   });
 
   it("skips Undo when the whole archive failed, and shows the error", async () => {
@@ -1836,6 +2419,107 @@ describe("selecting rows", () => {
     await press("e");
     expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
     expect(rpcMock.archiveMany).not.toHaveBeenCalled();
+  });
+
+  it("Mark read marks only the unread checked rows, in one call, and the dot goes at once", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([row("a"), row("b", { unread: false }), row("c", { unread: false })]),
+    );
+    const c = await pickTwo(await render());
+    const button = c.querySelector('button[aria-label="Mark read"]');
+    expect(button).not.toBeNull();
+    await click(button);
+    expect(rpcMock.markReadMany).toHaveBeenCalledTimes(1);
+    expect(rpcMock.markReadMany).toHaveBeenCalledWith({ messageIds: ["a"], read: true });
+    expect(rpcMock.markRead).not.toHaveBeenCalled();
+    expect(c.querySelector('[data-unread="true"]')).toBeNull();
+    // The selection stays: the user may archive next.
+    expect(c.textContent).toContain("2 selected");
+  });
+
+  it("Mark unread sends every checked id with read: false", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([row("a", { unread: false }), row("b", { unread: false }), row("c")]),
+    );
+    const c = await pickTwo(await render());
+    expect(c.querySelector('button[aria-label="Mark read"]')).toBeNull();
+    const button = c.querySelector('button[aria-label="Mark unread"]');
+    expect(button).not.toBeNull();
+    await click(button);
+    expect(rpcMock.markReadMany).toHaveBeenCalledTimes(1);
+    expect(rpcMock.markReadMany).toHaveBeenCalledWith({ messageIds: ["a", "b"], read: false });
+    expect(rpcMock.markRead).not.toHaveBeenCalled();
+  });
+
+  it("u marks the checked rows in one markReadMany call", async () => {
+    const c = await pickTwo(await render());
+    await press("u");
+    expect(rpcMock.markReadMany).toHaveBeenCalledTimes(1);
+    expect(rpcMock.markReadMany).toHaveBeenCalledWith({ messageIds: ["a", "b"], read: true });
+    expect(rpcMock.markRead).not.toHaveBeenCalled();
+    // The checked rows lose the dot; the unchecked one keeps it.
+    expect(byText(c, "read a")?.getAttribute("data-unread")).toBe("false");
+    expect(byText(c, "read b")?.getAttribute("data-unread")).toBe("false");
+    expect(byText(c, "read c")?.getAttribute("data-unread")).toBe("true");
+  });
+
+  it("a failed markReadMany shows the error and reloads the list", async () => {
+    rpcMock.markReadMany.mockRejectedValue(new Error("mark many failed"));
+    const c = await pickTwo(await render());
+    const lists = rpcMock.list.mock.calls.length;
+    await press("u");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("mark many failed");
+    expect(rpcMock.list.mock.calls.length).toBeGreaterThan(lists);
+    expect(c.querySelector('[data-unread="true"]')).not.toBeNull();
+  });
+
+  it("a failed spam, archive-many or archive call leaves no success toast", async () => {
+    rpcMock.moveMany.mockRejectedValue(new Error("move failed"));
+    let c = await pickTwo(await render());
+    await click(c.querySelector('button[aria-label="Spam"]'));
+    expect(toast(c).textContent).not.toContain("Marked 2 as spam");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("move failed");
+    await cleanups.pop()?.();
+
+    rpcMock.archiveMany.mockRejectedValue(new Error("archive failed"));
+    c = await pickTwo(await render());
+    await press("e");
+    expect(toast(c).textContent).not.toContain("Archived 2");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("archive failed");
+    await cleanups.pop()?.();
+
+    rpcMock.archive.mockRejectedValue(new Error("archive one failed"));
+    c = await render();
+    await press("j");
+    await press("e");
+    expect(toast(c).textContent).not.toContain('Archived "Subject a"');
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("archive one failed");
+  });
+
+  it("the open message offers its moves, and Unsubscribe only on mail that offers it", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([
+        row("n", { pile: "newsletters", canUnsubscribe: true, fromAddress: "news@example.test" }),
+        row("a"),
+      ]),
+    );
+    const c = await render();
+    await click(c.querySelector('[data-row-id="n"]'));
+    // The row offers unsubscribe: the page passes the call to the dialog.
+    await click(byText(c, "dialog unsubscribe"));
+    expect(rpcMock.unsubscribe).toHaveBeenCalledWith({
+      connectionId: "c1",
+      address: "news@example.test",
+    });
+    // Choosing Spam moves the one message and closes the dialog.
+    await click(byText(c, "dialog spam"));
+    expect(rpcMock.moveMany).toHaveBeenCalledWith({ op: "spam", messageIds: ["n"] });
+    expect(c.querySelector('[data-testid="message"]')).toBeNull();
+
+    // A row that offers no unsubscribe gets no handler at all.
+    await click(c.querySelector('[data-row-id="a"]'));
+    expect(byText(c, "dialog spam")).not.toBeNull();
+    expect(byText(c, "dialog unsubscribe")).toBeUndefined();
   });
 
   it("archives from the Spam pile with allowSpam, and never sends spam-pile mail from other piles", async () => {
@@ -1974,4 +2658,69 @@ it("shows the rows from the start of a slow first sort, and the stall notice lat
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("lists open to-dos that bots saved for the person", async () => {
+  rpcMock.waiting.mockResolvedValue([
+    {
+      id: "t1",
+      botId: "b1",
+      botName: "Ada",
+      title: "Sign the form",
+      waitingOn: "you",
+      dueAt: null,
+    },
+  ]);
+  const c = await render();
+  await dwell();
+  expect(c.textContent).toContain("Sign the form");
+});
+
+describe("refresh when the tab becomes visible", () => {
+  const setVisibility = (state: "visible" | "hidden") => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+  const advance = (ms: number) =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+
+  afterEach(() => {
+    delete (document as { visibilityState?: unknown }).visibilityState;
+    vi.useRealTimers();
+  });
+
+  it("syncs once when the tab shows again after more than a minute hidden", async () => {
+    vi.useFakeTimers();
+    await render();
+    setVisibility("hidden");
+    await advance(61_000);
+    const syncs = rpcMock.refresh.mock.calls.length;
+    setVisibility("visible");
+    await advance(0);
+    expect(rpcMock.refresh.mock.calls.length).toBe(syncs + 1);
+  });
+
+  it("does not sync again when the tab shows within a minute of the last sync", async () => {
+    vi.useFakeTimers();
+    await render();
+    setVisibility("hidden");
+    await advance(20_000);
+    const syncs = rpcMock.refresh.mock.calls.length;
+    setVisibility("visible");
+    await advance(0);
+    expect(rpcMock.refresh.mock.calls.length).toBe(syncs);
+  });
+
+  it("does nothing while the page is paused", async () => {
+    vi.useFakeTimers();
+    await render(undefined, undefined, { paused: true });
+    setVisibility("hidden");
+    await advance(61_000);
+    const syncs = rpcMock.refresh.mock.calls.length;
+    setVisibility("visible");
+    await advance(0);
+    expect(rpcMock.refresh.mock.calls.length).toBe(syncs);
+  });
 });

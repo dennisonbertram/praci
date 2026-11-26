@@ -1,0 +1,32 @@
+import type { EquityOptionGrant } from "@rakazo/contracts";
+
+/** An invented outstanding grant for stories and tests. */
+export const demoOptionGrant = (overrides: Partial<EquityOptionGrant> = {}): EquityOptionGrant => ({
+  id: "grant-1",
+  label: "ES-40",
+  stakeholderId: "sh-1",
+  stakeholderName: "Ada Example",
+  planId: "plan-1",
+  planName: "2026 Stock Plan",
+  status: "outstanding",
+  optionType: "iso",
+  quantity: "48000",
+  exercisePrice: "0.10",
+  grantDate: "2025-01-06",
+  exercisedQuantity: "0",
+  canceledQuantity: "0",
+  outstandingQuantity: "48000",
+  vestedQuantity: "12000",
+  vestingSchedule: null,
+  shareClassId: "sc-common",
+  expirationDate: null,
+  boardApprovedOn: null,
+  postTerminationExerciseMonths: 3,
+  earlyExercise: false,
+  acceptanceStatus: "accepted",
+  canceledOn: null,
+  adminNotes: null,
+  createdAt: "2025-01-06T00:00:00.000Z",
+  updatedAt: "2025-01-06T00:00:00.000Z",
+  ...overrides,
+});

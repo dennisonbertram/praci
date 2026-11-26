@@ -1,0 +1,1 @@
+These nine files are pre-build planning stories, written from design boards before the SwiftUI app existed; they describe planned screens, not built behavior, and are kept for reference only (the current stories are in the parent folder).

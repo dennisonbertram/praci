@@ -155,6 +155,7 @@ export function ModelSettingsOverlay({
   const resetOpenAiCompatibleProbe = modelProbe.reset;
   const [codeCopied, copyOAuthCode] = useCopyText();
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [pending, setPending] = useState<"connect" | "default" | "disconnect" | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +171,7 @@ export function ModelSettingsOverlay({
   const refreshRevisionRef = useRef(0);
   const selectionRevisionRef = useRef(0);
   const selectedLabelRef = useRef<string | undefined>(undefined);
+  const selectedProviderRef = useRef("");
 
   const {
     oauth,
@@ -184,9 +186,16 @@ export function ModelSettingsOverlay({
     onClearError: () => setError(null),
     onError: setError,
     onFinished: async (controller) => {
-      await refresh();
-      if (controller.signal.aborted) return;
-      setNotice(t`Connected and using ${selectedLabelRef.current ?? "this model"}.`);
+      try {
+        const next = await refresh();
+        if (controller.signal.aborted) return;
+        setNotice(connectedNotice(next?.credentials));
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setNotice(t`Saved.`);
+        setLoadFailed(true);
+        setError(errorText(err, t`Could not load model settings`));
+      }
     },
   });
 
@@ -194,20 +203,43 @@ export function ModelSettingsOverlay({
     onClearError: () => setError(null),
     onError: setError,
     onConnected: async () => {
-      await refresh();
-      setNotice(t`Connected and using ${selectedLabelRef.current ?? "this model"}.`);
+      try {
+        const next = await refresh();
+        setNotice(connectedNotice(next?.credentials));
+      } catch (err) {
+        setNotice(t`Saved.`);
+        setLoadFailed(true);
+        setError(errorText(err, t`Could not load model settings`));
+      }
     },
   });
+
+  // A connection that is not the space default must not claim it is in use.
+  function connectedNotice(next: ModelCredential[] | undefined, label = selectedLabelRef.current) {
+    return next?.find((entry) => entry.provider === selectedProviderRef.current)?.isDefault ===
+      false
+      ? t`Connected.`
+      : t`Connected and using ${label ?? "this model"}.`;
+  }
 
   async function refresh() {
     const refreshRevision = ++refreshRevisionRef.current;
     const selectionRevision = selectionRevisionRef.current;
-    const [nextCatalog, nextCredentials, nextMe] = await Promise.all([
-      rpc.models.list(),
-      rpc.models.credentials(),
-      rpc.me(),
-    ]);
-    if (refreshRevision !== refreshRevisionRef.current) return;
+    let nextCatalog: ModelCatalogEntry[];
+    let nextCredentials: ModelCredential[];
+    let nextMe: Me;
+    try {
+      [nextCatalog, nextCredentials, nextMe] = await Promise.all([
+        rpc.models.list(),
+        rpc.models.credentials(),
+        rpc.me(),
+      ]);
+    } catch (err) {
+      if (refreshRevision !== refreshRevisionRef.current) return undefined;
+      throw err;
+    }
+    if (refreshRevision !== refreshRevisionRef.current) return undefined;
+    setLoadFailed(false);
     const nextProvider =
       provider && nextCatalog.some((entry) => entry.provider === provider)
         ? provider
@@ -262,13 +294,17 @@ export function ModelSettingsOverlay({
       setAccountId(nextCredential?.accountId ?? "");
       setGatewayId(nextCredential?.gatewayId ?? "");
     }
+    return { credentials: nextCredentials, me: nextMe, catalog: nextCatalog };
   }
 
   useEffect(() => {
     // A superseded first load resolves with nothing; only the live one ends loading.
     let live = true;
     void refresh()
-      .catch((err: unknown) => setError(errorText(err, t`Could not load model settings`)))
+      .catch((err: unknown) => {
+        setLoadFailed(true);
+        setError(errorText(err, t`Could not load model settings`));
+      })
       .finally(() => {
         if (live) setLoading(false);
       });
@@ -278,6 +314,20 @@ export function ModelSettingsOverlay({
       modelProbe.invalidate();
     };
   }, []);
+
+  async function retryLoad() {
+    setLoading(true);
+    setError(null);
+    try {
+      await refresh();
+      setError(null);
+    } catch (err) {
+      setLoadFailed(true);
+      setError(errorText(err, t`Could not load model settings`));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const groups = useMemo(() => {
     const grouped = new Map<string, ModelCatalogEntry[]>();
@@ -369,6 +419,7 @@ export function ModelSettingsOverlay({
   const modelsForProvider = catalog.filter((entry) => entry.provider === provider);
   const selected = modelsForProvider.find((entry) => entry.id === modelId) ?? modelsForProvider[0];
   selectedLabelRef.current = selected?.label;
+  selectedProviderRef.current = selected?.provider ?? "";
   const selectedProviderName = selected?.providerName ?? selected?.provider ?? "";
   const disconnectName = selectedProviderName;
   const hostCredentialSource = me?.hostCredentialSource ?? "";
@@ -488,6 +539,8 @@ export function ModelSettingsOverlay({
       nextProvider === OPENAI_COMPATIBLE_PROVIDER_ID ? (nextCredential?.baseUrl ?? "") : "",
     );
     detailScrollRef.current?.scrollTo({ top: 0 });
+    // On a narrow screen the detail sits below the list; on desktop it is already in view.
+    detailScrollRef.current?.scrollIntoView({ block: "nearest" });
     setApiKey("");
     setAccountId(nextCredential?.accountId ?? "");
     setGatewayId(nextCredential?.gatewayId ?? "");
@@ -527,7 +580,9 @@ export function ModelSettingsOverlay({
       },
       onError: (err) => {
         if (!preflightStillCurrent(revision)) return;
-        setPreflightFailure(classifyModelConnectionFailure(err, { modelId }));
+        setPreflightFailure(
+          classifyModelConnectionFailure(err, { modelId, secrets: [apiKey.trim()] }),
+        );
         setNotice(null);
       },
     });
@@ -596,24 +651,30 @@ export function ModelSettingsOverlay({
     setNotice(null);
     setPending("default");
     try {
-      await rpc.models.setDefault({
-        provider: selected.provider,
-        modelId: activeModelId,
-        // Catalog connections keep the space default effort on the preference;
-        // openai-compatible still owns its level inside the stored endpoint config.
-        ...(!isOpenAiCompatible
-          ? {
-              thinkingLevel: clampCatalogThinkingLevel(
-                thinkingLevel,
-                selected.thinkingLevels,
-              ) as ThinkingLevel | null,
-            }
-          : {}),
-      });
-      await refresh();
+      try {
+        await rpc.models.setDefault({
+          provider: selected.provider,
+          modelId: activeModelId,
+          // Catalog connections keep the space default effort on the preference;
+          // openai-compatible still owns its level inside the stored endpoint config.
+          ...(!isOpenAiCompatible
+            ? {
+                thinkingLevel: clampCatalogThinkingLevel(
+                  thinkingLevel,
+                  selected.thinkingLevels,
+                ) as ThinkingLevel | null,
+              }
+            : {}),
+        });
+      } catch (err) {
+        setError(errorText(err, t`Could not change the default model`));
+        return;
+      }
       setNotice(isOpenAiCompatible ? t`Model updated.` : t`Now using ${selected.label}.`);
+      await refresh();
     } catch (err) {
-      setError(errorText(err, t`Could not change the default model`));
+      setLoadFailed(true);
+      setError(errorText(err, t`Could not load model settings`));
     } finally {
       setPending(null);
     }
@@ -707,16 +768,22 @@ export function ModelSettingsOverlay({
               label: selected.providerName ?? selected.provider,
             },
       );
-      setApiKey("");
-      await refresh();
-      detailScrollRef.current?.scrollTo({ top: 0 });
-      setNotice(
-        isOpenAiCompatible || savingLimitOnly
-          ? t`Saved.`
-          : t`Connected and using ${selected.label}.`,
-      );
     } catch (err) {
       setError(errorText(err, t`Could not connect this provider`));
+      setPending(null);
+      return;
+    }
+    setApiKey("");
+    setNotice(t`Saved.`);
+    try {
+      const next = await refresh();
+      detailScrollRef.current?.scrollTo({ top: 0 });
+      if (!isOpenAiCompatible && !savingLimitOnly) {
+        setNotice(connectedNotice(next?.credentials, selected.label));
+      }
+    } catch (err) {
+      setLoadFailed(true);
+      setError(errorText(err, t`Could not load model settings`));
     } finally {
       setPending(null);
     }
@@ -728,13 +795,34 @@ export function ModelSettingsOverlay({
     setError(null);
     setNotice(null);
     setPending("disconnect");
+    const wasDefault = credential.isDefault;
     try {
       await rpc.models.disconnect({ provider: selected.provider });
       setApiKey("");
       setThinkingLevel(null);
-      await refresh();
+      setCredentials((current) => current.filter((entry) => entry.provider !== selected.provider));
+      const name = selected.providerName ?? selected.provider;
+      setNotice(t`Disconnected ${name}.`);
+      let next: Awaited<ReturnType<typeof refresh>>;
+      try {
+        next = await refresh();
+      } catch (err) {
+        setLoadFailed(true);
+        setError(errorText(err, t`Could not load model settings`));
+        return;
+      }
       detailScrollRef.current?.scrollTo({ top: 0 });
-      setNotice(t`Disconnected ${selected.providerName ?? selected.provider}.`);
+      const fallback = next
+        ? (next.catalog.find(
+            (entry) =>
+              entry.provider === next.me.defaultProvider && entry.id === next.me.defaultModel,
+          )?.label ?? next.me.defaultModel)
+        : "";
+      setNotice(
+        wasDefault && fallback
+          ? t`Disconnected ${name}. Bots now use ${fallback}.`
+          : t`Disconnected ${name}.`,
+      );
     } catch (err) {
       setError(errorText(err, t`Could not disconnect this provider`));
     } finally {
@@ -1360,9 +1448,22 @@ export function ModelSettingsOverlay({
           className="rk-scroll min-w-0 flex-1 shrink-0 min-[1040px]:min-h-0 min-[1040px]:shrink min-[1040px]:overflow-y-auto"
         >
           {error ? (
-            <p className="mb-4 text-sm text-destructive" role="alert">
-              {error}
-            </p>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+              {loadFailed ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => void retryLoad()}
+                >
+                  <Trans>Try again</Trans>
+                </Button>
+              ) : null}
+            </div>
           ) : null}
           {notice ? (
             <p className="mb-4 text-sm text-success" role="status">
@@ -1429,7 +1530,10 @@ export function ModelSettingsOverlay({
                         emptyLabel={t`No matching models`}
                         loadingLabel={t`Loading models…`}
                         options={[
-                          ...probeModels.map((id) => ({ value: id, label: id })),
+                          ...probeModels.map((id) => ({
+                            value: id,
+                            label: id,
+                          })),
                           { value: "", label: t`Other model…` },
                         ]}
                       />
@@ -1598,8 +1702,8 @@ export function ModelSettingsOverlay({
                       <DisclosureChevron />
                       <Trans>Use your own key</Trans>
                     </summary>
-                    <div className="mt-5">{connectionControls}</div>
-                    <div className="mt-6">{catalogModelConfig}</div>
+                    <div className="mt-5">{catalogModelConfig}</div>
+                    <div className="mt-6">{connectionControls}</div>
                   </details>
                 </>
               ) : (
@@ -1607,8 +1711,8 @@ export function ModelSettingsOverlay({
                   <p className="text-sm leading-[1.5] text-muted-foreground">
                     <Trans>Connect {selectedProviderName} to use it as your personal model.</Trans>
                   </p>
-                  {connectionControls}
-                  <div className="mt-6">{catalogModelConfig}</div>
+                  <div className="mt-5">{catalogModelConfig}</div>
+                  <div className="mt-6">{connectionControls}</div>
                 </>
               )}
             </>
@@ -1625,7 +1729,9 @@ export function ModelSettingsOverlay({
               credentials={credentials}
             />
           ) : null}
-          <EmbeddingModelField />
+          {me?.defaultProvider || credentials.some((entry) => entry.isDefault) ? (
+            <EmbeddingModelField key={me?.defaultProvider ?? ""} />
+          ) : null}
         </div>
       </div>
       <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
@@ -1762,6 +1868,7 @@ function EmbeddingModelField() {
       setValue(result.modelId ?? "");
     } catch (err) {
       setFailed(errorText(err, t`Could not save the embedding model`));
+      setValue(saved ?? "");
     } finally {
       setSaving(false);
     }

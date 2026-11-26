@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import {
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -9,7 +10,7 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { BurnLines, LineChart } from "../../components/finance/charts";
 import {
@@ -67,6 +68,9 @@ export function FinanceBurnPage() {
   const q = useFinanceQuery(() => rpc.finance.burn(), []);
   const navigate = useNavigate();
   const rowProps = useRowNavigate();
+  // The tab lives in the URL, so Back from an account returns to the Account tab.
+  const [params, setParams] = useSearchParams();
+  const by = params.get("by") === "account" ? "account" : "category";
   const data = q.data;
   const first = data?.windowMonths[0];
   const last = data?.windowMonths.at(-1);
@@ -116,20 +120,37 @@ export function FinanceBurnPage() {
               </div>
             ) : null}
           </Section>
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
-            <Section
-              title={<Trans>Where it went</Trans>}
-              action={
-                first && last ? (
+          <Section
+            title={<Trans>Where it went</Trans>}
+            action={
+              <>
+                {first && last ? (
                   <span className="text-xs text-muted-foreground">
                     {monthShort(first)}–{monthShort(last)}
                   </span>
-                ) : null
-              }
-            >
+                ) : null}
+                <div className="flex gap-1">
+                  {(["category", "account"] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      size="xs"
+                      variant={by === mode ? "default" : "outline"}
+                      className="rounded-full"
+                      aria-pressed={by === mode}
+                      onClick={() =>
+                        setParams(mode === "account" ? { by: mode } : {}, { replace: true })
+                      }
+                    >
+                      {mode === "category" ? <Trans>Category</Trans> : <Trans>Account</Trans>}
+                    </Button>
+                  ))}
+                </div>
+              </>
+            }
+          >
+            {by === "category" ? (
               <BreakdownRows rows={data.whereItWent} to={(row) => financePath.category(row.key)} />
-            </Section>
-            <Section title={<Trans>By account</Trans>}>
+            ) : (
               <Table compact>
                 <TableBody>
                   {spentAccounts.map(({ account, cents }) => (
@@ -172,8 +193,8 @@ export function FinanceBurnPage() {
                   ) : null}
                 </TableBody>
               </Table>
-            </Section>
-          </div>
+            )}
+          </Section>
           <Section title={<Trans>By month</Trans>}>
             <Table compact>
               <TableHeader>

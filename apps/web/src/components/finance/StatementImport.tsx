@@ -55,31 +55,45 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
   const patch = (key: number, next: Partial<Item>) =>
     setItems((all) => all.map((i) => (i.key === key ? { ...i, ...next } : i)));
 
-  useEffect(() => {
-    let live = true;
+  const [loadFailed, setLoadFailed] = useState(false);
+  const live = useRef(true);
+
+  const load = () => {
     rpc.finance
       .statements()
       .then(({ statements }) => {
-        if (!live) return;
-        const past = statements
-          .filter((s) => s.status === "imported" || s.status === "review")
-          .map(
-            (statement): Item => ({
-              key: ++counter.current,
-              name: statement.fileName,
-              state: statement.status === "review" ? "review" : "imported",
-              // Its account exists by now, so it is not shown as a new one.
-              statement:
-                statement.status === "imported"
-                  ? { ...statement, createsAccount: false }
-                  : statement,
-            }),
-          );
-        setItems((all) => [...past, ...all]);
+        if (!live.current) return;
+        setLoadFailed(false);
+        setItems((all) => {
+          // An upload made before a retry is already listed; skip what is there.
+          const known = new Set(all.flatMap((i) => (i.statement ? [i.statement.id] : [])));
+          const past = statements
+            .filter((s) => (s.status === "imported" || s.status === "review") && !known.has(s.id))
+            .map(
+              (statement): Item => ({
+                key: ++counter.current,
+                name: statement.fileName,
+                state: statement.status === "review" ? "review" : "imported",
+                // Its account exists by now, so it is not shown as a new one.
+                statement:
+                  statement.status === "imported"
+                    ? { ...statement, createsAccount: false }
+                    : statement,
+              }),
+            );
+          return [...past, ...all];
+        });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live.current) setLoadFailed(true);
+      });
+  };
+
+  useEffect(() => {
+    live.current = true;
+    load();
     return () => {
-      live = false;
+      live.current = false;
     };
   }, []);
 
@@ -201,6 +215,14 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
           }}
         />
       </label>
+      {loadFailed ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Trans>Could not load</Trans>
+          <Button type="button" variant="outline" size="sm" onClick={load}>
+            <Trans>Try again</Trans>
+          </Button>
+        </div>
+      ) : null}
       {items.length > 0 ? (
         <ul className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
           {[...groups.entries()].map(([key, rows]) => (

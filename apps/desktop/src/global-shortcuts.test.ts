@@ -72,7 +72,7 @@ describe("desktop shortcuts vs Wispr Flow defaults", () => {
   for (const platform of ["darwin", "win32"] as const) {
     it(`uses none of Flow's ${platform} defaults in the application menu`, () => {
       const accelerators = collectAccelerators(
-        buildApplicationMenuTemplate(platform, "Praci", handlers),
+        buildApplicationMenuTemplate(platform, "Praci", handlers, true),
       );
       // Menu accelerators only fire while Praci is focused.
       expect(accelerators).toEqual(["CmdOrCtrl+,", "CmdOrCtrl+Shift+K"]);

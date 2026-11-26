@@ -47,7 +47,13 @@ let root: ReturnType<typeof createRoot>;
 const onDone = vi.fn();
 
 function Where() {
-  return <span data-testid="where">{useLocation().pathname}</span>;
+  const location = useLocation();
+  return (
+    <>
+      <span data-testid="where">{location.pathname}</span>
+      <span data-testid="search">{location.search}</span>
+    </>
+  );
 }
 
 beforeEach(() => {
@@ -80,7 +86,7 @@ async function render(connections: unknown[], catalog = offers("gmail", "googled
   rpcMock.catalog.mockResolvedValue(catalog);
   await act(async () => {
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/app/data-room"]}>
         <ImportSources folderId="f1" onDone={onDone} />
         <Where />
       </MemoryRouter>,
@@ -146,6 +152,9 @@ it("sends a not connected Email item to the Gmail page", async () => {
   await choose("From email");
   expect(document.querySelector('[data-testid="where"]')?.textContent).toBe(
     "/app/integrations/app/google/gmail",
+  );
+  expect(document.querySelector('[data-testid="search"]')?.textContent).toBe(
+    "?connect=1&next=%2Fapp%2Fdata-room",
   );
 });
 

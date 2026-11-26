@@ -56,6 +56,7 @@ async function readQuestion(
   deps: DevinRefreshDeps,
   serverId: string,
   sessionId: string,
+  unreachableBudget: { spent: boolean },
 ): Promise<{ question: string; messageId: string } | null> {
   try {
     const text = await deps.callTool(
@@ -70,7 +71,14 @@ async function readQuestion(
       : null;
   } catch (error) {
     // One session the key may not read is not a connection problem.
-    if (devinFailureOf(error, { phase: "session" }) === "session_forbidden") return null;
+    const failure = devinFailureOf(error, { phase: "session" });
+    if (failure === "session_forbidden") return null;
+    // One session that fails to read (deleted since the listing, a timeout) keeps the rest of
+    // the refresh. A second failure in the same run looks like an outage and fails the run.
+    if (failure === "unreachable" && !unreachableBudget.spent) {
+      unreachableBudget.spent = true;
+      return null;
+    }
     throw error;
   }
 }
@@ -233,6 +241,8 @@ export async function refreshDevinConnection(
         // A later page failing keeps what was read, unless the key or the rate limit is the
         // cause: those fail the run like a first-page failure.
         if (page === 0 || devinFailureOf(error, { phase }) !== "unreachable") throw error;
+        // A later page that could not be read counts as skipped data.
+        skipped += 1;
         break;
       }
       if (!cursor) {
@@ -249,6 +259,7 @@ export async function refreshDevinConnection(
         row,
       ]),
     );
+    const unreachableBudget = { spent: false };
     const rows: Array<Omit<Prisma.DevinSessionCreateManyInput, "serverId" | "spaceId">> = [];
     for (const session of listed) {
       const kind = devinKindOf(session.status, session.statusDetail);
@@ -267,7 +278,7 @@ export async function refreshDevinConnection(
         before.devinUpdatedAt < updatedAt ||
         before.question === null;
       if (kind === "needs_you" && changed) {
-        const read = await readQuestion(deps, serverId, session.id);
+        const read = await readQuestion(deps, serverId, session.id, unreachableBudget);
         question = read?.question ?? null;
         // A failed read forgets the old id: it belongs to an earlier question.
         readFailed = !read;
@@ -375,6 +386,8 @@ export async function refreshDevinConnection(
   return result.failed ? "failed" : "refreshed";
 }
 
+const REFRESH_CONCURRENCY = 5;
+
 /** The `devin.refresh` job: cron passes no payload and refreshes every connection, a payload names one. */
 export async function runDevinRefreshJob(
   deps: DevinRefreshDeps,
@@ -388,9 +401,17 @@ export async function runDevinRefreshJob(
           select: { serverId: true },
         })
       ).map((row) => row.serverId);
-  for (const serverId of serverIds) {
-    await refreshDevinConnection(deps, serverId).catch((error) =>
-      getLogger().error("devin.refresh error", error),
-    );
-  }
+  // A few at a time, so one tenant's slow server does not delay everyone behind it.
+  let next = 0;
+  const worker = async () => {
+    while (next < serverIds.length) {
+      const serverId = serverIds[next++] as string;
+      await refreshDevinConnection(deps, serverId).catch((error) =>
+        getLogger().error("devin.refresh error", error),
+      );
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(REFRESH_CONCURRENCY, serverIds.length) }, worker),
+  );
 }

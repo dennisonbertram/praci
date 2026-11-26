@@ -21,7 +21,20 @@ public enum ServerEndpoint {
     }
   }
 
+  /// The local development address. Release builds do not offer it as a default (`builtInURL`);
+  /// it only stands in for an endpoint that the first-launch screen has not asked for yet.
   public static let `defaultURL` = URL(string: "http://127.0.0.1:3100")!
+
+  #if DEBUG
+    public static let builtInURL: URL? = defaultURL
+  #else
+    public static let builtInURL: URL? = nil
+  #endif
+
+  /// The server to use at launch: the saved one, else the built-in one. Nil means ask the user.
+  public static func launchEndpoint(saved: String?, builtIn: URL? = builtInURL) -> URL? {
+    saved.flatMap { try? normalize($0) } ?? builtIn
+  }
 
   public static func normalize(_ input: String) throws -> URL {
     let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -16,6 +16,7 @@ import {
   Skeleton,
 } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
+import { ErrorNotice } from "../components/ErrorNotice";
 import { useFinanceQuery } from "../components/finance/ui";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -72,12 +73,7 @@ export function CompanyPrivacy({
             <Trans>Company privacy</Trans>
           </DialogTitle>
           {privacy.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {privacy.error}
-              <Button variant="link" onClick={privacy.reload}>
-                <Trans>Retry</Trans>
-              </Button>
-            </p>
+            <ErrorNotice message={privacy.error} onRetry={privacy.reload} className="" />
           )}
           {!privacy.data && !privacy.error && <Skeleton className="h-24" />}
           {privacy.data && (
@@ -99,7 +95,7 @@ export function CompanyPrivacy({
                     <p className="truncate">{source.label}</p>
                     <p className="text-xs text-muted-foreground">
                       {source.blocked ? (
-                        <Trans>Disconnected</Trans>
+                        <Trans>Imports stopped</Trans>
                       ) : (
                         <Trans>{source.evidenceCount} evidence records</Trans>
                       )}
@@ -114,7 +110,7 @@ export function CompanyPrivacy({
                         : setConfirm(source)
                     }
                   >
-                    {source.blocked ? <Trans>Reconnect</Trans> : <Trans>Disconnect</Trans>}
+                    {source.blocked ? <Trans>Allow imports</Trans> : <Trans>Disconnect</Trans>}
                   </Button>
                 </div>
               ))}

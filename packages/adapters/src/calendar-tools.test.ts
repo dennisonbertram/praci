@@ -22,11 +22,19 @@ const accounts: CalendarAccount[] = [
   { id: "c1", connectorId: "google", accountRef: "a", label: "alice@example.test" },
 ];
 
-function setup(list = accounts, idempotencyKey?: string) {
+function setup(
+  list = accounts,
+  idempotencyKey?: string,
+  decorate?: (response: ReturnType<CalendarApiEmulator["handle"]>, method: string) => unknown,
+) {
   const calendar = new CalendarApiEmulator(["a", "b"]);
   const connector = {
     proxy: async (request: Parameters<CalendarApiEmulator["handle"]>[0]) =>
-      calendar.handle(request),
+      decorate
+        ? (decorate(calendar.handle(request), request.method) as ReturnType<
+            CalendarApiEmulator["handle"]
+          >)
+        : calendar.handle(request),
   } as unknown as ManagedConnectorProvider;
   const run = (name: string, args: Record<string, unknown> = {}) =>
     calendarToolFromTool(
@@ -99,6 +107,61 @@ describe("calendar tools", () => {
     expect(await run("calendar_delete_event", { eventId: created.event.id })).toEqual({
       deleted: true,
     });
+  });
+
+  it("refuses attendee lists with non-emails and still clears with an empty list", async () => {
+    const { calendar, run } = setup();
+    calendar.seed("a", {
+      id: "e1",
+      summary: "Sync",
+      start: timed("2026-10-02T09:00:00Z"),
+      end: timed("2026-10-02T09:15:00Z"),
+      attendees: [{ email: "bob@example.test" }],
+    });
+    expect(await run("calendar_update_event", { eventId: "e1", attendees: ["Bob"] })).toEqual({
+      error: "attendees must be email addresses",
+    });
+    expect(calendar.requests.some((r) => r.method === "PATCH")).toBe(false);
+    expect(
+      await run("calendar_create_event", {
+        summary: "Lunch",
+        start: timed("2026-10-03T12:00:00Z"),
+        end: timed("2026-10-03T13:00:00Z"),
+        attendees: ["bob@example.test", "Bob"],
+      }),
+    ).toEqual({ error: "attendees must be email addresses" });
+    expect(calendar.requests.some((r) => r.method === "POST")).toBe(false);
+    await run("calendar_update_event", { eventId: "e1", attendees: [] });
+    const patch = calendar.requests.find((r) => r.method === "PATCH");
+    expect(patch?.body).toEqual({ attendees: [] });
+  });
+
+  it("flags more results when Google returns a next page token", async () => {
+    const { run } = setup(accounts, undefined, (response, method) =>
+      method === "GET" && Array.isArray((response.data as { items?: unknown }).items)
+        ? { ...response, data: { ...(response.data as object), nextPageToken: "t" } }
+        : response,
+    );
+    expect(await run("calendar_list_events")).toEqual({ events: [], more: true });
+  });
+
+  it("marks the self attendee", async () => {
+    const { calendar, run } = setup();
+    calendar.seed("a", {
+      id: "e1",
+      summary: "Sync",
+      start: timed("2026-10-02T09:00:00Z"),
+      end: timed("2026-10-02T09:15:00Z"),
+      attendees: [
+        { email: "alice@example.test", self: true },
+        { email: "bob@example.test", self: false },
+      ],
+    });
+    const got = (await run("calendar_get_event", { eventId: "e1" })) as {
+      event: { attendees: Array<Record<string, unknown>> };
+    };
+    expect(got.event.attendees[0]).toHaveProperty("self", true);
+    expect(got.event.attendees[1]).not.toHaveProperty("self");
   });
 
   it("does not duplicate a replayed create", async () => {

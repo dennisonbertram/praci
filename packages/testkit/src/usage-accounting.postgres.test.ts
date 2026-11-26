@@ -10,6 +10,7 @@ import { compactHistory } from "../../adapters/src/history-compaction.js";
 import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import { startModelEmulator } from "./model-emulator.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 const enabled = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 const origin = "http://127.0.0.1:5173";
@@ -146,6 +147,11 @@ describe.skipIf(!enabled)("persisted Pi usage accounting", () => {
       });
       const connectedThread = await handles.prisma.thread.findFirstOrThrow({
         where: { botId: bot.id },
+      });
+      await grantTestModelConsent(handles.prisma, connectedThread, {
+        provider: model.model.provider,
+        modelId: model.model.id,
+        baseUrl: model.baseUrl,
       });
       expect(
         await handles.executor.resolveModel({

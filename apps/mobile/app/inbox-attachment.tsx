@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { NativeActionButton } from "../components/native-action-button";
 import { PdfPreview } from "../components/pdf-preview";
 import { SheetArtifactPreview } from "../components/sheet-artifact-preview";
 import { shareLocalFile } from "../lib/artifact-open";
@@ -37,10 +39,24 @@ export default function InboxAttachmentScreen() {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const navigation = useNavigation();
-  const [file, setFile] = useState<{ uri: string } | null>(null);
-  const [error, setError] = useState("");
+  const [file, setFile] = useState<{ uri: string; key: string } | null>(null);
+  const [error, setError] = useState<{ key: string; message: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [imageError, setImageError] = useState(false);
+  const requestGeneration = useRef(0);
+  const shareBusy = useRef(false);
+  const key = `${params.messageId}:${params.attachmentId}`;
   // Sheets are read by the server; everything else needs the bytes on the device.
   const needsFile = kind !== "sheet";
+  const share = (uri: string) => {
+    if (shareBusy.current) return;
+    shareBusy.current = true;
+    void shareLocalFile(uri, attachment.mimeType, attachment.filename)
+      .catch((cause) => Alert.alert(t("Could not share this file"), errorText(cause)))
+      .finally(() => {
+        shareBusy.current = false;
+      });
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: attachment.filename });
@@ -48,20 +64,27 @@ export default function InboxAttachmentScreen() {
 
   useEffect(() => {
     if (!needsFile) return;
-    let current = true;
-    downloadMailAttachment(params.messageId, attachment)
+    const generation = ++requestGeneration.current;
+    const controller = new AbortController();
+    setFile(null);
+    setError(null);
+    setImageError(false);
+    downloadMailAttachment(params.messageId, attachment, controller.signal)
       .then((next) => {
-        if (!current) return;
-        setFile(next);
+        if (generation !== requestGeneration.current) return;
+        setFile({ uri: next.uri, key });
         // Types without an in-app preview open the system share sheet right away.
-        if (kind === "other")
-          void shareLocalFile(next.uri, attachment.mimeType, attachment.filename);
+        if (kind === "other") share(next.uri);
       })
-      .catch((cause: unknown) => current && setError(errorText(cause)));
+      .catch(
+        (cause: unknown) =>
+          generation === requestGeneration.current && setError({ key, message: errorText(cause) }),
+      );
     return () => {
-      current = false;
+      requestGeneration.current++;
+      controller.abort();
     };
-  }, [params.messageId, params.attachmentId]);
+  }, [params.messageId, params.attachmentId, attempt]);
 
   if (kind === "sheet") {
     return (
@@ -72,21 +95,32 @@ export default function InboxAttachmentScreen() {
       </View>
     );
   }
-  if (error) {
+  if (error?.key === key) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.message}>{error}</Text>
+        <Text style={styles.message}>{error.message}</Text>
+        {imageError && file?.key === key ? (
+          <NativeActionButton
+            label={t("Share")}
+            prominence="secondary"
+            onPress={() => share(file.uri)}
+          />
+        ) : null}
+        <NativeActionButton
+          label={t("Try again")}
+          prominence="secondary"
+          onPress={() => setAttempt((value) => value + 1)}
+        />
       </View>
     );
   }
-  if (!file) {
+  if (!file || file.key !== key) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
       </View>
     );
   }
-  const share = () => void shareLocalFile(file.uri, attachment.mimeType, attachment.filename);
   if (kind === "image") {
     return (
       <Image
@@ -94,6 +128,10 @@ export default function InboxAttachmentScreen() {
         style={styles.screen}
         resizeMode="contain"
         accessibilityLabel={attachment.filename}
+        onError={() => {
+          setImageError(true);
+          setError({ key, message: t("Could not load image") });
+        }}
       />
     );
   }
@@ -110,7 +148,7 @@ export default function InboxAttachmentScreen() {
       {kind === "other" ? (
         <Text style={styles.message}>{t("No preview for this file type.")}</Text>
       ) : null}
-      <Pressable accessibilityRole="button" onPress={share} style={styles.button}>
+      <Pressable accessibilityRole="button" onPress={() => share(file.uri)} style={styles.button}>
         <Text style={styles.buttonText}>{t("Share")}</Text>
       </Pressable>
     </View>

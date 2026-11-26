@@ -34,6 +34,8 @@ it("keeps a Sending notice, without Undo, from the end of the undo window until 
   );
   expect(document.body.textContent).toContain("Sending…");
   expect(document.body.textContent).toContain("Undo");
+  // The toaster lifts a pending approval above this notice, so Undo stays tappable.
+  expect(document.querySelector("[role=status] [data-toast-avoid]")).not.toBeNull();
   await act(async () => void (await vi.advanceTimersByTimeAsync(UNDO_SEND_MS)));
   expect(document.body.textContent).toContain("Sending…");
   expect(document.body.textContent).not.toContain("Undo");

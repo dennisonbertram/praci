@@ -29,6 +29,7 @@ export interface DevinDeps {
 
 /** A page read older than this runs the refresh operation itself. */
 const CACHE_TTL_MS = 60_000;
+const STALE_AFTER_MS = 5 * 60_000;
 const CONFLICT_MESSAGE = "Devin is already connected in this space";
 const REFUSED_MESSAGE = "The key was refused.";
 
@@ -168,7 +169,6 @@ const refreshJob = (serverId: string) =>
  * The state row decides a race: the loser's server and agent are removed.
  */
 export async function devinConnect(deps: DevinDeps, actor: Actor, secret: string): Promise<void> {
-  await requireSpaceOwner(deps.prisma, actor);
   if (await activeState(deps, actor.spaceId)) {
     throw new ORPCError("CONFLICT", { message: CONFLICT_MESSAGE });
   }
@@ -199,7 +199,6 @@ export async function devinReplaceKey(
   actor: Actor,
   secret: string,
 ): Promise<void> {
-  await requireSpaceOwner(deps.prisma, actor);
   if (!(await activeState(deps, actor.spaceId))) {
     throw new ORPCError("NOT_FOUND", { message: "Devin is not connected in this space" });
   }
@@ -250,7 +249,6 @@ export async function devinDisconnect(
   actor: Actor,
   serverId?: string,
 ): Promise<void> {
-  await requireSpaceOwner(deps.prisma, actor);
   const removed = await deps.prisma.$transaction(async (tx) => {
     await lockConnection(tx, actor.spaceId);
     const state = await tx.devinConnectionState.findUnique({ where: { spaceId: actor.spaceId } });
@@ -351,8 +349,10 @@ export async function devinSessions(deps: DevinDeps, actor: Actor): Promise<Devi
       agentBotId: state.server.agentBotId,
     },
     fetchedAt: state.lastSucceededAt?.toISOString() ?? null,
-    stale: status !== "ok",
-    partial: state.lastSucceededAt !== null && (!state.complete || state.skipped > 0),
+    stale:
+      status !== "ok" ||
+      (state.lastSucceededAt !== null && now - state.lastSucceededAt.getTime() > STALE_AFTER_MS),
+    partial: state.lastSucceededAt !== null && state.skipped > 0,
     sessions,
   };
 }

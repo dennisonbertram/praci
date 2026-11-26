@@ -1,5 +1,6 @@
-import type { CashPoint } from "@rakazo/contracts";
+import type { CashPoint, FinanceChartNote } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { BurnLines, Chart, LineChart, MonthBars } from "./charts";
 
 const meta = {
@@ -89,6 +90,29 @@ export const LineEmpty: Story = {
 export const Burn: Story = {
   render: () => <BurnLines series={burn} label="Cash out by month" onOpen={() => undefined} />,
 };
+
+function NotedBurn() {
+  const [notes, setNotes] = useState<FinanceChartNote[]>([
+    { id: "n1", day: "2026-03-01", text: "Closed the seed round", mine: true },
+    { id: "n2", day: "2026-05-01", text: "Moved to a bigger office", mine: false },
+  ]);
+  return (
+    <BurnLines
+      series={burn}
+      label="Cash out by month"
+      onOpen={() => undefined}
+      notes={{
+        notes,
+        onAdd: async (day, text) =>
+          setNotes((all) => [...all, { id: `n${all.length + 1}`, day, text, mine: true }]),
+        onDelete: async (id) => setNotes((all) => all.filter((n) => n.id !== id)),
+      }}
+    />
+  );
+}
+
+/** March and May carry notes (hover the dot or the period). Right-click a period, or focus it and press Shift+F10, to add one; your own notes can be deleted from the same menu. */
+export const BurnWithNotes: Story = { render: () => <NotedBurn /> };
 
 export const BurnEmpty: Story = {
   render: () => <BurnLines series={[]} label="Cash out by month" onOpen={() => undefined} />,

@@ -37,3 +37,16 @@ export function todayIso(now = new Date()): string {
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
+
+/** The sidebar Legal badge counts open deadlines that are overdue or due within this many days. */
+export const DUE_SOON_DAYS = 7;
+
+/** Today's date in UTC: the server's date for the badge count, so the page's "due soon" matches it. */
+export const utcTodayIso = (now = new Date()) => now.toISOString().slice(0, 10);
+
+/** The badge rule: overdue, or due within DUE_SOON_DAYS days. */
+export const isDueSoon = (dueDate: string, today = utcTodayIso()) =>
+  daysBetween(today, dueDate) <= DUE_SOON_DAYS;
+
+/** Where the sidebar badge and the page's chip lead. */
+export const LEGAL_DUE_SOON_PATH = "/app/legal?view=deadlines&due=soon";

@@ -7,6 +7,7 @@ import {
   isInboxAgentSpawnKey,
   isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isScannerAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { NotificationEvents, PrismaClient } from "@rakazo/db";
 import { createNotification, NotificationValidationError } from "@rakazo/db";
@@ -18,6 +19,7 @@ export function defaultNotificationSurface(spawnKey: string | null | undefined):
   if (isLegalAgentSpawnKey(spawnKey)) return "legal";
   if (isCartaAgentSpawnKey(spawnKey) || isInvestorsAgentSpawnKey(spawnKey)) return "investors";
   if (isDataRoomAgentSpawnKey(spawnKey)) return "data-room";
+  if (isScannerAgentSpawnKey(spawnKey)) return "scanner";
   if (isCompanyAgentSpawnKey(spawnKey) || isCompanyImporterSpawnKey(spawnKey)) return "company";
   return "thread";
 }

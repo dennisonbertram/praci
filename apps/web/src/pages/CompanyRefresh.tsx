@@ -1,10 +1,13 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Button, Skeleton } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ErrorNotice } from "../components/ErrorNotice";
 import { useFinanceQuery } from "../components/finance/ui";
+import { usePollWhile } from "../lib/page-data";
 import { rpc } from "../lib/rpc";
+import { useOnReturn } from "../lib/use-refetch-while-open";
 import { errorText } from "../lib/user-error";
 
 type Source = Awaited<ReturnType<typeof rpc.companyImport.refreshStatus>>[number];
@@ -40,7 +43,7 @@ function sourceReason(source: Source) {
     return t`This reader has no verified incremental change feed.`;
   }
   if (source.status === "awaiting_consent") return t`Model consent needed`;
-  if (source.status === "budget_reached") return t`Token budget reached`;
+  if (source.status === "budget_reached") return t`Token cap reached`;
   if (source.status === "recovery_required" || source.status === "needs_baseline")
     return t`Re-import to establish a checkpoint.`;
   if (source.reason) return t`Refresh needs attention`;
@@ -52,14 +55,8 @@ export function CompanyRefresh({ onChanged }: { onChanged: () => void }) {
   const [error, setError] = useState("");
   const reload = query.reload;
   const active = query.data?.some((source) => !!source.runId);
-  useEffect(() => {
-    window.addEventListener("focus", reload);
-    const timer = active ? setInterval(reload, 4000) : undefined;
-    return () => {
-      window.removeEventListener("focus", reload);
-      if (timer) clearInterval(timer);
-    };
-  }, [active, reload]);
+  useOnReturn(true, reload);
+  usePollWhile(!!active, 4000, reload);
   async function refresh(source: Source) {
     setBusy(source.id);
     setError("");
@@ -76,18 +73,14 @@ export function CompanyRefresh({ onChanged }: { onChanged: () => void }) {
   return (
     <section aria-label={t`Refresh sources`} className="space-y-3">
       {(error || query.error) && (
-        <p role="alert" className="text-sm text-destructive">
-          {error || query.error}{" "}
-          <Button
-            variant="link"
-            onClick={() => {
-              setError("");
-              reload();
-            }}
-          >
-            <Trans>Retry</Trans>
-          </Button>
-        </p>
+        <ErrorNotice
+          message={error || query.error}
+          onRetry={() => {
+            setError("");
+            reload();
+          }}
+          className=""
+        />
       )}
       {!query.data && !query.error && <Skeleton className="h-24 w-full" />}
       {query.data?.length === 0 && (

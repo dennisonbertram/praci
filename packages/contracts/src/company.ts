@@ -60,6 +60,7 @@ export const CompanyRelationSchema = z.enum([
   "works_on",
   "part_of",
 ]);
+export type CompanyRelation = z.infer<typeof CompanyRelationSchema>;
 export const CompanyEventKindSchema = z.enum([
   "founded",
   "hire",

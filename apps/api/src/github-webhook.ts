@@ -196,6 +196,10 @@ export function mountGithubWebhookRoute(
       return unauthorized();
     }
 
+    if (c.req.header("x-github-event")?.trim() === "ping") {
+      return c.json({ ok: true, ignored: true });
+    }
+
     const githubRoutines = await deps.prisma.routine.findMany({
       where: {
         botId: target.bot.id,
@@ -209,7 +213,9 @@ export function mountGithubWebhookRoute(
         prompt: true,
         modelProvider: true,
         modelId: true,
+        modelCredentialId: true,
         thinkingLevel: true,
+        taughtSkillId: true,
       },
       orderBy: { updatedAt: "desc" },
       take: 5,
@@ -222,7 +228,11 @@ export function mountGithubWebhookRoute(
     const deliveryId = c.req.header("x-github-delivery")?.trim();
     if (!deliveryId) return unauthorized();
 
-    const payload = parseWebhookPayload(raw, c.req.header("content-type"));
+    // GitHub's default content type wraps the JSON in a `payload` form field.
+    const contentType = c.req.header("content-type");
+    const payload = contentType?.includes("application/x-www-form-urlencoded")
+      ? parseWebhookPayload(new URLSearchParams(raw).get("payload") ?? "", contentType)
+      : parseWebhookPayload(raw, contentType);
     const githubEvent = githubEventName(c.req.header("x-github-event"));
     const eventPrompt = formatGithubEventPrompt(githubEvent, payload);
 

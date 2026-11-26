@@ -1,7 +1,15 @@
 import type { MessageBlock } from "@rakazo/contracts";
-import { blocksToAgentHistoryText, isConversationalRun, messagingChannelId } from "@rakazo/core";
+import {
+  blocksToAgentHistoryText,
+  isConversationalRun,
+  messagingChannelId,
+  newRunExternalTaint,
+  newRunUnattended,
+} from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
 import type { ClaimedSteeringMessage, ClaimSteeringInput } from "./events.js";
+import { appendEventInTransaction } from "./events.js";
+import { THREAD_LOCK_TRANSACTION_OPTIONS } from "./thread-lock.js";
 
 export async function claimSteering(
   prisma: PrismaClient,
@@ -18,7 +26,12 @@ export async function claimSteering(
         leaseOwner: input.leaseOwner,
         leaseFence: input.leaseFence,
       },
-      select: { id: true, trigger: true, sourceMessage: { select: { blocks: true } } },
+      select: {
+        id: true,
+        spaceId: true,
+        trigger: true,
+        sourceMessage: { select: { blocks: true } },
+      },
     });
     if (!run || run.trigger === "created") return [];
     const channelId =
@@ -68,17 +81,77 @@ export async function claimSteering(
       include: { message: { select: { blocks: true, seq: true } } },
       orderBy: [{ message: { seq: "asc" } }, { id: "asc" }],
     });
-    if (steering.length === 0) return [];
+    // A held delivery is never read by a running run: it waits for its own continuation, which
+    // carries the right taint, unattended flag and connection. Ordinary steering still applies.
+    const claimable = steering.filter(
+      (item) => item.runId != null || !rowHoldsOutsideDelivery(item),
+    );
+    if (claimable.length === 0) return [];
     await tx.steeringMessage.updateMany({
-      where: { id: { in: steering.map((item) => item.id) }, claimedAt: null },
+      where: { id: { in: claimable.map((item) => item.id) }, claimedAt: null },
       data: { runId: input.runId, claimedAt: new Date() },
     });
-    return steering.map((item) => ({
+    // The thread lock serializes this watermark with message writes. Unlike claim
+    // timestamps, it cannot drift from the database clock or tie with a reply.
+    const { nextMessageSeq } = await tx.thread.findUniqueOrThrow({
+      where: { id: input.threadId },
+      select: { nextMessageSeq: true },
+    });
+    await appendEventInTransaction(tx, {
+      threadId: input.threadId,
+      spaceId: run.spaceId,
+      botId: input.botId,
+      runId: input.runId,
+      type: "run.steering.claimed",
+      payload: { steeringIds: claimable.map((item) => item.id), nextMessageSeq },
+    });
+    return claimable.map((item) => ({
       id: item.id,
       messageId: item.messageId,
-      text: blocksToAgentHistoryText(item.message.blocks as MessageBlock[]),
+      // A delivery bubble is only a label; the model's full fenced text rides on the row.
+      text: item.prompt ?? blocksToAgentHistoryText(item.message.blocks as MessageBlock[]),
       blocks: item.message.blocks as MessageBlock[],
     }));
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
+}
+
+export async function discardAnsweredSteering(
+  tx: Prisma.TransactionClient,
+  input: { threadId: string; runId: string },
+) {
+  const lastReply = await tx.message.findFirst({
+    where: {
+      threadId: input.threadId,
+      runId: input.runId,
+      role: "bot",
+      blocks: { array_contains: [{ kind: "text" }] },
+      NOT: ["ask", "computer", "steps", "subagent"].map((kind) => ({
+        blocks: { array_contains: [{ kind }] },
+      })),
+    },
+    orderBy: { seq: "desc" },
+    select: { seq: true },
+  });
+  if (!lastReply) return;
+  const claims = await tx.event.findMany({
+    where: { threadId: input.threadId, runId: input.runId, type: "run.steering.claimed" },
+    select: { payload: true },
+  });
+  const answeredIds = new Set<string>();
+  for (const claim of claims) {
+    const payload = claim.payload as { steeringIds?: unknown; nextMessageSeq?: unknown } | null;
+    if (!payload || !Array.isArray(payload.steeringIds)) continue;
+    for (const id of payload.steeringIds) {
+      if (typeof id !== "string") continue;
+      if (typeof payload.nextMessageSeq === "number" && payload.nextMessageSeq <= lastReply.seq) {
+        answeredIds.add(id);
+      }
+    }
+  }
+  // Old runs without a durable claim watermark are deliberately replayed.
+  if (answeredIds.size === 0) return;
+  await tx.steeringMessage.deleteMany({
+    where: { runId: input.runId, claimedAt: { not: null }, id: { in: [...answeredIds] } },
   });
 }
 
@@ -108,9 +181,29 @@ export async function createPendingSteeringRun(
   if (pending.length === 0) return null;
   // One origin per continuation so a group channel and a direct chat are not answered together.
   const origin = steeringOrigin(pending[0]!);
-  const batch = pending.filter((item) => steeringOrigin(item) === origin);
+  // Rows pinned to different connections never share a run; the rest wait for the next one.
+  const pinKey = (item: (typeof pending)[number]) =>
+    [item.modelProvider, item.modelId, item.modelCredentialId, item.thinkingLevel].join("|");
+  const first = pending[0]!;
+  const batch = pending.filter(
+    (item) =>
+      steeringOrigin(item) === origin &&
+      (!pending.some((row) => row.modelCredentialId) || pinKey(item) === pinKey(first)),
+  );
   const source = batch.at(-1)!;
   const modelPin = continuationModelPin(batch);
+  // Queued deliveries that all name one routine hand it to their continuation; a batch with
+  // several routines, or a user message beside one, has no single owner.
+  const routineIds = new Set(batch.map((item) => item.routineId));
+  const sharedRoutineId = routineIds.size === 1 ? batch[0]!.routineId : null;
+  const routineId = sharedRoutineId
+    ? (
+        await tx.routine.findFirst({
+          where: { id: sharedRoutineId, botId: input.botId, spaceId: input.spaceId },
+          select: { id: true },
+        })
+      )?.id
+    : undefined;
   const task = await tx.task.create({
     data: {
       spaceId: input.spaceId,
@@ -121,6 +214,20 @@ export async function createPendingSteeringRun(
       status: "queued",
     },
   });
+  const trigger = origin === "app" ? "follow_up" : "messaging";
+  // The continuation answers what waited, so it keeps their mode: any outside content taints it,
+  // and it is unattended only when nobody in the batch has someone present.
+  const unattended = newRunUnattended({ trigger }) || batch.every(rowUnattended);
+  const externalTaint = newRunExternalTaint({ trigger }) || batch.some(rowExternalTaint);
+  const goal = await tx.threadGoal.findFirst({
+    where: {
+      spaceId: input.spaceId,
+      userId: batch[0]!.userId,
+      threadId: input.threadId,
+      status: "active",
+    },
+    select: { id: true },
+  });
   const run = await tx.run.create({
     data: {
       spaceId: input.spaceId,
@@ -129,8 +236,13 @@ export async function createPendingSteeringRun(
       taskId: task.id,
       userId: batch[0]!.userId,
       status: "queued",
-      trigger: origin === "app" ? "follow_up" : "messaging",
+      trigger,
+      // The owner typing in the app is attended; a queued inbound keeps the mode it was held with.
+      unattended,
+      externalTaint,
       sourceMessageId: source.message.id,
+      goalId: goal?.id,
+      ...(routineId ? { routineId } : {}),
       ...(modelPin ?? {}),
     },
   });
@@ -141,10 +253,46 @@ export async function createPendingSteeringRun(
   return run.id;
 }
 
+const INBOUND_PAYLOAD_FENCE = "<untrusted_delivery_payload";
+
+type SteeringRow = {
+  prompt?: string | null;
+  unattended?: boolean | null;
+  externalTaint?: boolean | null;
+  message: { blocks: unknown };
+};
+
+/** Rows queued before the mode was stored still carry an inbound payload in their text. */
+function rowCarriesInboundPayload(item: SteeringRow): boolean {
+  const text = item.prompt ?? JSON.stringify(item.message.blocks);
+  return text.includes(INBOUND_PAYLOAD_FENCE);
+}
+
+/**
+ * A row that holds a delivery for the model. It keeps its own continuation rather than joining a
+ * running run, so no active run can read outside content without the delivery's mode.
+ */
+function rowHoldsOutsideDelivery(item: SteeringRow): boolean {
+  return item.prompt != null || rowExternalTaint(item);
+}
+
+/** Outside content taints the run that reads it; an unmarked legacy row is judged by its text. */
+function rowExternalTaint(item: SteeringRow): boolean {
+  return (
+    item.externalTaint === true || (item.externalTaint == null && rowCarriesInboundPayload(item))
+  );
+}
+
+/** Nobody is present for outside content; a legacy row with the fence counts the same way. */
+function rowUnattended(item: SteeringRow): boolean {
+  return item.unattended === true || (item.unattended == null && rowCarriesInboundPayload(item));
+}
+
 function continuationModelPin(
   batch: ReadonlyArray<{
     modelProvider?: string | null;
     modelId?: string | null;
+    modelCredentialId?: string | null;
     thinkingLevel?: string | null;
   }>,
 ) {
@@ -154,12 +302,14 @@ function continuationModelPin(
     (item) =>
       item.modelProvider === first.modelProvider &&
       item.modelId === first.modelId &&
+      (item.modelCredentialId ?? null) === (first.modelCredentialId ?? null) &&
       (item.thinkingLevel ?? null) === (first.thinkingLevel ?? null),
   );
   if (!agreed) return null;
   return {
     modelProvider: first.modelProvider,
     modelId: first.modelId,
+    modelCredentialId: first.modelCredentialId ?? null,
     thinkingLevel: first.thinkingLevel ?? null,
     modelPinned: true,
   };

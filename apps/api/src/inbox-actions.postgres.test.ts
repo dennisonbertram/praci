@@ -1,4 +1,5 @@
 import { applySkipInbox } from "@rakazo/adapters";
+import { lastToolUndo, recordApprovalDecision } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { inboxCleanupArchive } from "./inbox-cleanup.js";
@@ -87,6 +88,40 @@ describePostgres("action log and undo (PostgreSQL + Gmail emulator)", () => {
       code: "NOT_FOUND",
     });
     expect((await inboxActionsList(f.deps, f.a)).actions[0]?.undone).toBe(true);
+  });
+
+  it("an Undo of an agent's archive is recorded against its approval decision", async () => {
+    await setup();
+    const out = await archive();
+    const scope = { spaceId: f.a.spaceId, userId: f.a.userId };
+    await f.prisma.mailActionLog.updateMany({
+      where: { batchId: out.batchId },
+      data: { effectId: "eff-archive-1" },
+    });
+    await recordApprovalDecision(f.prisma, {
+      ...scope,
+      botId: "bot-1",
+      tool: "mail_modify",
+      targetKey: "mail_modify:t1",
+      effectId: "eff-archive-1",
+      decision: "auto_approved",
+      basis: "precedent",
+      decidedByUserId: null,
+      cleanRun: true,
+      tier: "reversible",
+      argsShape: { keys: ["id", "removeLabels"], size: 40 },
+      version: 1,
+    });
+    await inboxActionsUndo(f.deps, f.a, { batchId: out.batchId });
+    expect(
+      await f.prisma.approvalDecision.findMany({
+        where: { ...scope, effectId: "eff-archive-1", decision: "undone" },
+      }),
+    ).toMatchObject([{ botId: "bot-1", targetKey: "mail_modify:t1", decidedByUserId: f.a.userId }]);
+    expect(
+      await lastToolUndo(f.prisma, { ...scope, botId: "bot-1", tool: "mail_modify" }),
+    ).not.toBeNull();
+    await f.prisma.approvalDecision.deleteMany({ where: scope });
   });
 
   it("undoes a user's skip inbox by forgetting the decision", async () => {

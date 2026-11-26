@@ -4,7 +4,7 @@ import { useI18n } from "../lib/i18n";
 import { useResolvedAppearance } from "../lib/native";
 
 /**
- * Long press on a mail row opens the system menu: Archive, then Spam and Trash when the list can
+ * Long press on a mail row opens the system menu: Archive, No reply needed for a row waiting on a reply, then Spam and Trash when the list can
  * report them. A row in the Spam pile offers Not spam in place of Spam.
  */
 export function MailRowMenu({
@@ -12,6 +12,7 @@ export function MailRowMenu({
   onSpam,
   onNotSpam,
   onTrash,
+  onNoReply,
   children,
 }: {
   onArchive: () => void;
@@ -19,11 +20,23 @@ export function MailRowMenu({
   /** Present for a row in the Spam pile. */
   onNotSpam?: () => void;
   onTrash?: () => void;
+  /** Present for a row waiting on a reply. */
+  onNoReply?: () => void;
   children: ReactNode;
 }) {
   const { t } = useI18n();
   const choices = [
     { id: "archive", title: t("Archive"), image: "archivebox" as const, run: onArchive },
+    ...(onNoReply
+      ? [
+          {
+            id: "noReply",
+            title: t("No reply needed"),
+            image: "arrowshape.turn.up.left" as const,
+            run: onNoReply,
+          },
+        ]
+      : []),
     ...(onNotSpam
       ? [
           {

@@ -22,7 +22,7 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { MailApprovalCard } from "../MailApprovalCard";
 
-const fieldsFor = (item: ScratchpadItem): Required<Omit<MailEdits, "account">> => ({
+const fieldsFor = (item: ScratchpadItem): Required<Omit<MailEdits, "account" | "send">> => ({
   to: item.target ?? "",
   cc: "",
   bcc: "",
@@ -109,7 +109,7 @@ export function EmailItemCard({
     }
   }
 
-  async function save(values: Required<Omit<MailEdits, "account">>) {
+  async function save(values: Required<Omit<MailEdits, "account" | "send">>) {
     await rpc.scratchpad.update({
       itemId: item.id,
       title: values.subject,
@@ -188,7 +188,7 @@ export function EmailItemCard({
           canAnswer
           initialEditing
           toOnly
-          allowLabel={dirty ? t`Save` : item.status === "open" ? t`Review again` : t`Approve`}
+          allowLabel={dirty ? t`Save` : item.status === "open" ? t`Review again` : t`Send`}
           allowDisabled={
             busy ||
             !validSize ||

@@ -15,7 +15,13 @@ done
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$repo_root/apps/ios"
 xcodegen generate --spec project.yml
+# IOS_TEST_DESTINATION wins, then SIM_UDID, then the default simulator name.
+destination="${IOS_TEST_DESTINATION:-${SIM_UDID:+platform=iOS Simulator,id=$SIM_UDID}}"
+destination="${destination:-platform=iOS Simulator,name=iPhone 17}"
 xcodebuild test \
   -project Praci.xcodeproj \
   -scheme Praci \
-  -destination "${IOS_TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 17}"
+  -destination "$destination" \
+  -derivedDataPath DerivedData \
+  -clonedSourcePackagesDirPath ~/Library/Caches/praci-spm \
+  -skipPackagePluginValidation -skipMacroValidation

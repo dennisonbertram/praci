@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DNS_PREFETCH_OFF_META,
   SANDBOXED_ARTIFACT_CSP,
   SANDBOXED_EMAIL_CSP,
   withSandboxedArtifactCsp,
@@ -10,15 +11,17 @@ describe("withSandboxedArtifactCsp", () => {
     const html = "<!doctype html><html><head></head><body>hi</body></html>";
     const wrapped = withSandboxedArtifactCsp(html);
     expect(wrapped.toLowerCase().startsWith("<!doctype html>")).toBe(true);
+    // DNS prefetch is switched off before anything of the page's own, right after the doctype.
+    expect(wrapped.startsWith(`<!doctype html>${DNS_PREFETCH_OFF_META}`)).toBe(true);
     const metaAt = wrapped.indexOf('<meta http-equiv="Content-Security-Policy"');
-    expect(metaAt).toBe("<!doctype html>".length);
+    expect(metaAt).toBe("<!doctype html>".length + DNS_PREFETCH_OFF_META.length);
     expect(wrapped.indexOf("<html>")).toBeGreaterThan(metaAt);
     expect(wrapped).toContain(SANDBOXED_ARTIFACT_CSP);
   });
 
   it("adds a standards-mode doctype when the fragment has none", () => {
     const wrapped = withSandboxedArtifactCsp("<p>content</p>");
-    expect(wrapped.startsWith("<!DOCTYPE html>")).toBe(true);
+    expect(wrapped.startsWith(`<!DOCTYPE html>${DNS_PREFETCH_OFF_META}`)).toBe(true);
     expect(wrapped).toContain(SANDBOXED_ARTIFACT_CSP);
     expect(wrapped).toContain("default-src 'none'");
     expect(wrapped.endsWith("<p>content</p>")).toBe(true);

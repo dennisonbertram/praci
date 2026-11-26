@@ -1,3 +1,5 @@
+// The auth client keeps every endpoint call in this one file.
+// swiftlint:disable file_length
 import Foundation
 import CoreFoundation
 
@@ -147,6 +149,47 @@ public enum AuthClientError: LocalizedError, Sendable, Equatable {
   }
 }
 
+/// `GET /api/auth/account-security`: which ways this account can prove itself.
+public struct AccountSecurity: Sendable, Equatable {
+  public let hasPassword: Bool
+  public let passwordChangeEnabled: Bool
+  /// The server can email a deletion code.
+  public let emailDeletion: Bool
+
+  public init(hasPassword: Bool, passwordChangeEnabled: Bool, emailDeletion: Bool) {
+    self.hasPassword = hasPassword
+    self.passwordChangeEnabled = passwordChangeEnabled
+    self.emailDeletion = emailDeletion
+  }
+}
+
+/// What the person typed to confirm deleting the account.
+public enum AccountDeletionProof: Sendable, Equatable {
+  case password(String)
+  case emailedCode(String)
+}
+
+/// Deleting an account succeeds on the server first; clearing this device can still fail.
+public enum AccountDeletionOutcome: Sendable, Equatable {
+  case deleted
+  case deletedLocalCleanupFailed
+}
+
+/// A refusal from the account endpoints, with the server's own message when it gave one.
+public struct AccountRequestError: Error, Sendable, Equatable, LocalizedError {
+  public let status: Int
+  public let message: String?
+  public var errorDescription: String? { message }
+}
+
+public struct AuthorizedRequest: Sendable {
+  public let request: HTTPRequest
+  public let generation: UInt64
+  public let hadSpace: Bool
+}
+
+// The client keeps every auth call behind one actor so the session state stays serialized.
+// swiftlint:disable:next type_body_length
 public actor AuthClient {
   private static let authResponseLimit = 64 * 1024
   private static let originHeader = "rakazo://"
@@ -159,6 +202,10 @@ public actor AuthClient {
   private var sessionEnded = false
   private var cachedCapabilities: AuthCapabilities?
   private var activeSSOAttempt: UUID?
+  /// True while a change-password request is in flight. The server revokes the old session
+  /// before it answers, so a 401 for the old token in that window is expected and must not
+  /// end the session the reply is about to replace.
+  private var passwordChangeInFlight = false
 
   public init(
     endpoint: URL,
@@ -179,6 +226,42 @@ public actor AuthClient {
     )
   }
 
+  /// Builds a request for the signed-in session. Pass `generation` and `hadSpace` back to
+  /// `handleUnauthorized` if the server answers 401.
+  public func authorized(
+    path: String,
+    method: String,
+    body: Data?,
+    contentType: String?,
+    spaceID: String?,
+    timeout: TimeInterval = 8
+  ) throws -> AuthorizedRequest {
+    guard let token else { throw AuthClientError.unauthorized }
+    var headers = ["authorization": "Bearer \(token)", "origin": Self.originHeader]
+    if let contentType { headers["content-type"] = contentType }
+    if let spaceID, !spaceID.isEmpty { headers["x-rakazo-space-id"] = spaceID }
+    let url = try makeURL(endpoint: validatedEndpoint(), path: path)
+    return AuthorizedRequest(
+      request: HTTPRequest(
+        url: url, method: method, headers: headers, body: body, timeout: timeout),
+      generation: generation,
+      hadSpace: headers["x-rakazo-space-id"] != nil
+    )
+  }
+
+  /// Decides what a 401 means. Without a space header the session itself was rejected, so it
+  /// is invalidated, but only if no newer session replaced the one that sent the request.
+  public func handleUnauthorized(generation requestGeneration: UInt64, hadSpace: Bool) -> RPCError
+  {
+    guard requestGeneration == generation else { return .stale }
+    if hadSpace { return .spaceRejected }
+    if passwordChangeInFlight { return .stale }
+    // Storage failures here still end the in-memory session; the next restore re-checks it.
+    try? invalidateSession(endpoint)
+    return .unauthorized
+  }
+
+  // swiftlint:disable:next function_body_length
   public func restore() async throws {
     let currentEndpoint = try validatedEndpoint()
     let operationGeneration = generation
@@ -274,6 +357,7 @@ public actor AuthClient {
     return capabilities
   }
 
+  // swiftlint:disable:next cyclomatic_complexity
   public func authenticate(
     _ action: EmailAuthAction,
     email: String,
@@ -431,6 +515,119 @@ public actor AuthClient {
     }
   }
 
+  public func accountSecurity() async throws -> AccountSecurity {
+    let response = try await sendSigned(path: "/api/auth/account-security", method: "GET")
+    guard (200..<300).contains(response.statusCode) else { throw accountError(response) }
+    guard let object = jsonObject(response.body),
+      let hasPassword = strictJSONBoolean(object["hasPassword"])
+    else { throw AuthClientError.invalidResponse }
+    return AccountSecurity(
+      hasPassword: hasPassword,
+      passwordChangeEnabled: strictJSONBoolean(object["passwordChangeEnabled"]) ?? true,
+      emailDeletion: strictJSONBoolean(object["emailDeletion"]) ?? false
+    )
+  }
+
+  /// Changes the password and revokes every other session. The server also replaces this
+  /// device's session, so the new token is adopted here and the person stays signed in.
+  public func changePassword(current: String, new: String) async throws {
+    guard !current.isEmpty else { throw AuthClientError.invalidPassword }
+    guard new.utf16.count >= 8 else { throw AuthClientError.invalidPassword }
+    guard !passwordChangeInFlight else { throw AuthClientError.staleRequest }
+    let operationGeneration = generation
+    let currentEndpoint = try validatedEndpoint()
+    let response = try await sendSigned(
+      path: "/api/auth/change-password",
+      method: "POST",
+      payload: ["currentPassword": current, "newPassword": new, "revokeOtherSessions": true],
+      replacingSession: true
+    )
+    guard (200..<300).contains(response.statusCode) else { throw accountError(response) }
+    guard let token = tokenFromAuthResponse(response: response, body: jsonObject(response.body)),
+      !token.isEmpty
+    else {
+      // The server revoked this session and gave no replacement.
+      try invalidateSession(currentEndpoint)
+      throw AuthClientError.missingSession
+    }
+    try adopt(token: token, endpoint: currentEndpoint, operationGeneration: operationGeneration)
+  }
+
+  /// Emails a deletion code to accounts without a password.
+  public func requestAccountDeletionCode() async throws {
+    let response = try await sendSigned(
+      path: "/api/auth/request-account-deletion", method: "POST", payload: [:])
+    guard (200..<300).contains(response.statusCode) else { throw accountError(response) }
+  }
+
+  /// Deletes the account on the server, then forgets the session on this device. A failure to
+  /// clear this device after the server succeeded is reported as an outcome, not thrown.
+  @discardableResult
+  public func deleteAccount(_ proof: AccountDeletionProof) async throws -> AccountDeletionOutcome {
+    let currentEndpoint = try validatedEndpoint()
+    let payload: [String: Any]
+    switch proof {
+    case .password(let password):
+      guard !password.isEmpty else { throw AuthClientError.invalidPassword }
+      payload = ["password": password]
+    case .emailedCode(let code):
+      let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !trimmed.isEmpty else { throw AuthClientError.invalidPassword }
+      payload = ["token": trimmed]
+    }
+    let response = try await sendSigned(
+      path: "/api/auth/delete-user", method: "POST", payload: payload)
+    guard (200..<300).contains(response.statusCode) else { throw accountError(response) }
+    token = nil
+    activeSSOAttempt = nil
+    generation &+= 1
+    sessionEnded = false
+    return wipeStoredSession(endpoint: currentEndpoint) ? .deleted : .deletedLocalCleanupFailed
+  }
+
+  /// Sends a signed account request. The session changing while it was out is a stale request,
+  /// and a 401 means the server rejected this session, which ends it.
+  private func sendSigned(
+    path: String, method: String, payload: [String: Any]? = nil, replacingSession: Bool = false
+  ) async throws -> HTTPResponse {
+    guard let token else { throw AuthClientError.unauthorized }
+    let currentEndpoint = try validatedEndpoint()
+    let requestGeneration = generation
+    if replacingSession { passwordChangeInFlight = true }
+    let response: HTTPResponse
+    do {
+      response = try await send(
+        path: path,
+        endpoint: currentEndpoint,
+        method: method,
+        bearer: token,
+        body: payload.map {
+          try? JSONSerialization.data(withJSONObject: $0, options: [.sortedKeys])
+        } ?? nil,
+        headers: payload == nil ? [:] : ["content-type": "application/json"],
+        maximumResponseBytes: Self.authResponseLimit
+      )
+    } catch {
+      if replacingSession { passwordChangeInFlight = false }
+      throw error
+    }
+    if replacingSession { passwordChangeInFlight = false }
+    guard endpoint == currentEndpoint, generation == requestGeneration else {
+      throw AuthClientError.staleRequest
+    }
+    if response.statusCode == 401 {
+      try? invalidateSession(currentEndpoint)
+      throw AuthClientError.unauthorized
+    }
+    return response
+  }
+
+  private func accountError(_ response: HTTPResponse) -> AccountRequestError {
+    let message = jsonObject(response.body)?["message"] as? String
+    return AccountRequestError(status: response.statusCode, message: message)
+  }
+
+  // swiftlint:disable:next function_body_length
   public func beginSSO() async throws -> SSOChallenge {
     let currentEndpoint = try validatedEndpoint()
     let operationGeneration = generation
@@ -568,6 +765,7 @@ public actor AuthClient {
       throw AuthClientError.staleRequest
     }
     if response.statusCode == 401 {
+      if passwordChangeInFlight { throw AuthClientError.staleRequest }
       try invalidateSession(currentEndpoint)
       throw AuthClientError.unauthorized
     }

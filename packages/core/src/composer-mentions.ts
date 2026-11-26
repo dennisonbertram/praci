@@ -1,5 +1,5 @@
 import { formatCron } from "./cron.js";
-import { hasMentionToken } from "./group-mentions.js";
+import { hasMentionToken, mentionTokenPattern } from "./group-mentions.js";
 
 /** Identity colour for bots the roster does not know and for the everyone mention. */
 export const DEFAULT_BOT_COLOR = "#85858A";
@@ -38,10 +38,6 @@ export type MentionPickerConnector = {
   connectionId?: string;
 };
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function mentionChipKey(mention: Pick<ComposerMention, "kind" | "id">): string {
   return `${mention.kind}:${mention.id}`;
 }
@@ -49,10 +45,7 @@ export function mentionChipKey(mention: Pick<ComposerMention, "kind" | "id">): s
 export function stripMentionToken(text: string, mentionName: string): string {
   const normalized = mentionName.trim();
   if (!normalized) return text.trim();
-  const pattern = new RegExp(
-    `(^|[^\\p{L}\\p{N}_-])@${escapeRegExp(normalized)}(?![\\p{L}\\p{N}_-])`,
-    "giu",
-  );
+  const pattern = mentionTokenPattern(normalized, "gi");
   return text
     .replace(pattern, (_match, prefix: string) => prefix ?? "")
     .replace(/[^\S\n]+/g, " ")
@@ -169,6 +162,47 @@ export function rankMentionOptions<T extends { name: string }>(
     })
     .sort((a, b) => a.rank - b.rank)
     .map(({ option }) => option);
+}
+
+/** The order kinds are listed in when the query is empty. */
+const MENTION_KIND_ORDER: readonly string[] = ["everyone", "bot", "group", "routine", "connector"];
+
+/**
+ * The options the picker shows. A typed query just ranks and slices. A bare `@` gives every kind
+ * that has options one slot first, so routines and connectors stay reachable behind a long bot
+ * list, then fills what is left in kind order and keeps the list grouped.
+ */
+export function pickMentionOptions<T extends { kind: string; name: string }>(
+  options: readonly T[],
+  query: string,
+  limit = 10,
+): T[] {
+  if (query.trim()) return rankMentionOptions(options, query).slice(0, limit);
+  const byKind = new Map<string, T[]>();
+  for (const option of options) {
+    const list = byKind.get(option.kind);
+    if (list) list.push(option);
+    else byKind.set(option.kind, [option]);
+  }
+  const kinds = [...byKind.keys()].sort(
+    (a, b) =>
+      (MENTION_KIND_ORDER.indexOf(a) + 1 || MENTION_KIND_ORDER.length + 1) -
+      (MENTION_KIND_ORDER.indexOf(b) + 1 || MENTION_KIND_ORDER.length + 1),
+  );
+  const counts = new Map<string, number>();
+  let used = 0;
+  for (const kind of kinds) {
+    if (used >= limit) break;
+    counts.set(kind, 1);
+    used++;
+  }
+  for (const kind of kinds) {
+    if (used >= limit) break;
+    const extra = Math.min((byKind.get(kind)?.length ?? 0) - (counts.get(kind) ?? 0), limit - used);
+    counts.set(kind, (counts.get(kind) ?? 0) + extra);
+    used += extra;
+  }
+  return kinds.flatMap((kind) => (byKind.get(kind) ?? []).slice(0, counts.get(kind) ?? 0));
 }
 
 export function buildComposerMentionOptions(input: {

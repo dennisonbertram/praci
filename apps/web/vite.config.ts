@@ -7,6 +7,7 @@ import path from "node:path";
 import tls from "node:tls";
 import { lingui } from "@lingui/vite-plugin";
 import type { DesktopStackProbeResponse } from "@rakazo/contracts";
+import { contentSecurityPolicyFor } from "@rakazo/contracts/content-security-policy";
 import {
   safeScreenProxyResponseHeaders,
   stripSensitiveHandshakeHeaders,
@@ -69,6 +70,21 @@ function attachDesktopStackProbe(
     res.setHeader("cache-control", "no-store");
     res.setHeader("content-type", "application/json; charset=utf-8");
     res.end(JSON.stringify(body));
+  });
+}
+
+/**
+ * The public share page keeps its link token in the URL fragment. These headers stop the page
+ * leaking it through a referrer and stop another site framing it. Production adds the same two in
+ * infra/compose/Caddyfile.prod; this covers `vite dev` and `vite preview`, which serve the app there.
+ */
+function attachSharePageHeaders(server: ViteDevServer | PreviewServer) {
+  server.middlewares.use((req, res, next) => {
+    if (req.url?.split(/[?#]/, 1)[0] === "/s") {
+      res.setHeader("referrer-policy", "no-referrer");
+      res.setHeader("x-frame-options", "DENY");
+    }
+    next();
   });
 }
 
@@ -427,10 +443,26 @@ export default defineConfig(({ mode }) => {
       lingui(),
       tailwindcss(),
       {
+        // Production only: the dev server injects inline scripts for React Refresh.
+        name: "rakazo-content-security-policy",
+        configurePreviewServer(server) {
+          server.middlewares.use((req, res, next) => {
+            const policy = contentSecurityPolicyFor(req.url?.split("?", 1)[0] ?? "/");
+            if (policy) res.setHeader("content-security-policy", policy);
+            next();
+          });
+        },
+      },
+      {
         name: "rakazo-desktop-stack-probe",
         configureServer: (server) => attachDesktopStackProbe(server, desktopStackToken, imageTag),
         configurePreviewServer: (server) =>
           attachDesktopStackProbe(server, desktopStackToken, imageTag),
+      },
+      {
+        name: "rakazo-share-page-headers",
+        configureServer: attachSharePageHeaders,
+        configurePreviewServer: attachSharePageHeaders,
       },
       {
         name: "rakazo-performance-asset-delay",
@@ -458,17 +490,20 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       allowedHosts,
       proxy: {
-        "/api": { target: api, changeOrigin: true },
-        "/rpc": { target: api, changeOrigin: true },
+        "/api": { target: api, changeOrigin: true, xfwd: true },
+        "/rpc": { target: api, changeOrigin: true, xfwd: true },
       },
     },
+    // xfwd appends the address this server saw to X-Forwarded-For, so the API (which trusts the
+    // last entry from private peers) never takes a forwarded address written by the caller, e.g. a
+    // bot computer that can reach this container.
     preview: {
       host: "0.0.0.0",
       port: Number(process.env.WEB_PORT ?? 5173),
       allowedHosts,
       proxy: {
-        "/api": { target: api, changeOrigin: true },
-        "/rpc": { target: api, changeOrigin: true },
+        "/api": { target: api, changeOrigin: true, xfwd: true },
+        "/rpc": { target: api, changeOrigin: true, xfwd: true },
       },
     },
   };

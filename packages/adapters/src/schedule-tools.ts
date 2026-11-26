@@ -1,5 +1,12 @@
-import type { JobPublisher } from "@rakazo/adapter-kit";
+import type { ConnectorProvider, JobPublisher } from "@rakazo/adapter-kit";
 import { routineJobKey, routineWakeupJob } from "@rakazo/adapter-kit";
+import type { ConnectorWatchSpec, PageWatchSpec, WatchSpec } from "@rakazo/contracts";
+import {
+  ConnectorWatchSpecSchema,
+  connectorToolLabel,
+  PageWatchSpecSchema,
+  WatchSpecSchema,
+} from "@rakazo/contracts";
 import {
   cronFromPreset,
   extractForcedSkillName,
@@ -10,14 +17,21 @@ import {
   nextCronDate,
   nextCronDateAcross,
   ONCE_ROUTINE_CRON,
+  unevenInterval,
+  wallClock,
+  zonedDateTime,
 } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { cancelQueuedRoutineRuns, resumeWatch, syncWatchState, watchLimitError } from "@rakazo/db";
+import { localDateTime } from "./current-time.js";
 import { OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
+import { connectorAppLabel, resolveWatchTool } from "./watch-connector.js";
 
 export { isOneShotRoutineCron, ONCE_ROUTINE_CRON };
 
 export const SCHEDULE_TOOL_NAMES = new Set([
   "schedule_create",
+  "watch_create",
   "schedule_list",
   "schedule_cancel",
   "schedule_update",
@@ -28,11 +42,17 @@ export function filterBuiltinToolsForRun<T extends { name: string }>(
   tools: T[],
   runTrigger: string,
 ): T[] {
+  // A watch is a saved prompt too, so it follows the same rule.
   // A saved prompt later fires as an owner routine run with the owner's mail, calendar and Drive,
   // so only a run the owner started may create one (routine runs never chain a new schedule).
   return OWNER_INITIATED_TRIGGERS.has(runTrigger) && runTrigger !== "routine"
     ? tools
-    : tools.filter((tool) => tool.name !== "schedule_create" && tool.name !== "schedule_update");
+    : tools.filter(
+        (tool) =>
+          tool.name !== "schedule_create" &&
+          tool.name !== "watch_create" &&
+          tool.name !== "schedule_update",
+      );
 }
 
 /** Keep cross-bot messaging thread-specific while exposing schedules in DMs and groups. */
@@ -80,6 +100,7 @@ export function resolveScheduleTiming(
     runAt?: unknown;
     delayMinutes?: unknown;
     delaySeconds?: unknown;
+    startAt?: unknown;
   },
   timezone = "UTC",
 ): ResolvedSchedule {
@@ -113,6 +134,10 @@ export function resolveScheduleTiming(
     };
   }
 
+  if (hasOneShot && isScheduleValueProvided(input.startAt)) {
+    return { ok: false, error: "startAt is only for repeating schedules." };
+  }
+
   if (hasOneShot) {
     const oneShotFields = [input.runAt, input.delayMinutes, input.delaySeconds].filter(
       isScheduleValueProvided,
@@ -138,16 +163,29 @@ export function resolveScheduleTiming(
       }
       nextRunAt = new Date(Date.now() + delayMinutes * 60_000);
     } else {
-      const parsed = new Date(String(input.runAt ?? ""));
-      if (!Number.isFinite(parsed.getTime())) {
-        return { ok: false, error: "runAt must be a valid ISO datetime." };
-      }
+      // Without an offset, runAt is the routine's local time.
+      const parsed = zonedDateTime(String(input.runAt ?? ""), timezone);
+      if (!parsed) return { ok: false, error: "runAt must be a valid ISO datetime." };
       nextRunAt = parsed;
     }
     if (nextRunAt.getTime() <= Date.now()) {
-      return { ok: false, error: "One-shot schedules must run in the future." };
+      return { ok: false, error: `One-shot schedules must run in the future. ${nowIn(timezone)}` };
     }
     return { ok: true, cron: ONCE_ROUTINE_CRON, nextRunAt, oneShot: true };
+  }
+
+  // The first run is the first occurrence at or after startAt.
+  let from = new Date();
+  if (isScheduleValueProvided(input.startAt)) {
+    const startAt = zonedDateTime(String(input.startAt), timezone);
+    if (!startAt) return { ok: false, error: "startAt must be an ISO date or datetime." };
+    if (startAt.getTime() < Date.now()) {
+      return {
+        ok: false,
+        error: `startAt is in the past; omit it to start now. ${nowIn(timezone)}`,
+      };
+    }
+    from = new Date(startAt.getTime() - 1);
   }
 
   if (hasCron) {
@@ -162,7 +200,7 @@ export function resolveScheduleTiming(
     const intervalError = validateRepeatingCron(cron);
     if (intervalError) return { ok: false, error: intervalError };
     try {
-      const nextRunAt = nextCronDate(cron, new Date(), timezone);
+      const nextRunAt = nextCronDate(cron, from, timezone);
       return { ok: true, cron, nextRunAt, oneShot: false };
     } catch {
       return { ok: false, error: "cron must be a valid 5-field cron expression." };
@@ -187,11 +225,21 @@ export function resolveScheduleTiming(
   const intervalError = validateRepeatingCron(cron);
   if (intervalError) return { ok: false, error: intervalError };
   try {
-    const nextRunAt = nextCronDate(cron, new Date(), timezone);
+    const nextRunAt = nextCronDate(cron, from, timezone);
     return { ok: true, cron, nextRunAt, oneShot: false };
   } catch {
     return { ok: false, error: "every/unit produced an invalid cron expression." };
   }
+}
+
+function nowIn(timezone: string): string {
+  const now = new Date();
+  return `It is now ${localDateTime(now, timezone) ?? now.toISOString()} in ${timezone}.`;
+}
+
+/** The next run as the owner reads it: in the routine's timezone. */
+function nextRunLocal(nextRunAt: Date | null, timezone: string) {
+  return nextRunAt ? (localDateTime(nextRunAt, timezone) ?? nextRunAt.toISOString()) : null;
 }
 
 function validateRepeatingCron(cron: string): string | null {
@@ -214,6 +262,9 @@ export interface ScheduleToolDeps {
   jobs: JobPublisher;
 }
 
+/** Each routine is an unattended model run, so a looping bot must not stack them. */
+export const MAX_ACTIVE_ROUTINES_PER_BOT = 50;
+
 /** Persist and enqueue a bot routine that wakes in the originating thread. */
 export async function createScheduleFromTool(
   deps: ScheduleToolDeps,
@@ -232,6 +283,26 @@ export async function createScheduleFromTool(
   const prompt = input.prompt.trim();
   if (!name) return { error: "name is required." };
   if (!prompt) return { error: "prompt is required." };
+
+  const active = await deps.prisma.routine.findMany({
+    where: { spaceId: input.spaceId, botId: input.botId, active: true },
+    select: { id: true, name: true, threadId: true },
+  });
+  // Match per thread: schedule_update in a group only reaches this thread's routines.
+  const sameName = active.find(
+    (row) =>
+      row.threadId === input.threadId && row.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+  if (sameName) {
+    return {
+      error: `An active routine named "${sameName.name}" already exists (${sameName.id}). Update or cancel it instead.`,
+    };
+  }
+  if (active.length >= MAX_ACTIVE_ROUTINES_PER_BOT) {
+    return {
+      error: `This bot already has ${MAX_ACTIVE_ROUTINES_PER_BOT} active routines. Cancel one before adding another.`,
+    };
+  }
 
   // Without an explicit zone, times are the owner's local time.
   const timezone =
@@ -291,7 +362,220 @@ export async function createScheduleFromTool(
     timezone: row.timezone,
     schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
     nextRunAt: row.nextRunAt?.toISOString() ?? null,
+    nextRun: nextRunLocal(row.nextRunAt, row.timezone),
     oneShot: resolved.oneShot,
+  };
+}
+
+const WATCH_EVERY: Record<number, string> = {
+  15: "every 15 minutes",
+  60: "every hour",
+  1440: "every day",
+};
+
+/** "example.com/pricing": the address without scheme, query or a bare "/". */
+function watchTarget(url: string): string {
+  const { host, pathname } = new URL(url);
+  return `${host}${pathname === "/" ? "" : pathname}`;
+}
+
+/** What a watch does in plain words, e.g. "Checks example.com/pricing every hour and tells you only when it changes". */
+export function describeWatch(watch: WatchSpec): string {
+  const target =
+    watch.kind === "connector"
+      ? `${watch.appName} ${connectorToolLabel(watch.toolName)}`
+      : watchTarget(watch.url);
+  return `Checks ${target} ${WATCH_EVERY[watch.intervalMinutes]} and tells you only when it changes`;
+}
+
+function describeRoutine(row: {
+  watch: unknown;
+  crons: string[];
+  timezone: string;
+  nextRunAt: Date | null;
+}) {
+  const watch = WatchSpecSchema.safeParse(row.watch);
+  return watch.success
+    ? describeWatch(watch.data)
+    : describeSchedule(row.crons, row.timezone, row.nextRunAt);
+}
+
+/** The watch spec and its state for the tool output; empty for a routine that is not a watch. */
+function watchFields(row: {
+  watch: unknown;
+  watchState?: {
+    lastCheckedAt: Date | null;
+    lastChangedAt: Date | null;
+    pausedReason: string | null;
+  } | null;
+}) {
+  const watch = WatchSpecSchema.safeParse(row.watch);
+  if (!watch.success) return {};
+  return {
+    watch: watch.data,
+    lastCheckedAt: row.watchState?.lastCheckedAt?.toISOString() ?? null,
+    lastChangedAt: row.watchState?.lastChangedAt?.toISOString() ?? null,
+    pausedReason: row.watchState?.pausedReason ?? null,
+  };
+}
+
+const WATCH_ARGS_ERROR =
+  "url must be an http or https address and intervalMinutes one of 15, 60 or 1440.";
+
+function watchInterval(value: unknown) {
+  return isScheduleValueProvided(value) ? Number(value) : 60;
+}
+
+function parseWatchArgs(input: { url?: unknown; intervalMinutes?: unknown }) {
+  const parsed = PageWatchSpecSchema.safeParse({
+    kind: "page",
+    url: String(input.url ?? "").trim(),
+    intervalMinutes: watchInterval(input.intervalMinutes),
+  });
+  return parsed.success
+    ? { ok: true as const, watch: parsed.data }
+    : { ok: false as const, error: WATCH_ARGS_ERROR };
+}
+
+/** The watch_create input for a connected app: a tool name and its fixed arguments, no url. */
+function connectorArgs(input: { tool?: unknown; arguments?: unknown }) {
+  const toolName = typeof input.tool === "string" ? input.tool.trim() : "";
+  if (!toolName) return undefined;
+  const args = input.arguments ?? {};
+  return typeof args === "object" && args !== null && !Array.isArray(args)
+    ? { toolName, arguments: args as Record<string, unknown> }
+    : { toolName, arguments: null };
+}
+
+/** The spec a connected-app watch_create describes, before the tool is looked up. */
+function parseConnectorWatchArgs(
+  input: {
+    tool?: unknown;
+    arguments?: unknown;
+    intervalMinutes?: unknown;
+  },
+  appName?: string,
+) {
+  const named = connectorArgs(input);
+  const parsed = ConnectorWatchSpecSchema.safeParse({
+    kind: "connector",
+    connectorId: "pending",
+    toolName: named?.toolName,
+    arguments: named?.arguments,
+    appName: connectorAppLabel(named?.toolName ?? "", appName),
+    intervalMinutes: watchInterval(input.intervalMinutes),
+  });
+  return parsed.success
+    ? { ok: true as const, watch: parsed.data }
+    : {
+        ok: false as const,
+        error:
+          "tool must be one tool name you were offered, arguments an object of at most 4 KB, and intervalMinutes one of 15, 60 or 1440.",
+      };
+}
+
+/** Persist a quiet routine that checks a page and wakes the bot only when it changes. */
+export async function createWatchFromTool(
+  deps: ScheduleToolDeps & { connector?: ConnectorProvider },
+  input: {
+    spaceId: string;
+    botId: string;
+    userId: string;
+    threadId: string;
+    name: string;
+    instruction: string;
+    url?: unknown;
+    /** A connected app's read-only tool to watch instead of a page, with its fixed arguments. */
+    tool?: unknown;
+    arguments?: unknown;
+    intervalMinutes?: unknown;
+  },
+) {
+  const name = input.name.trim();
+  const prompt = input.instruction.trim();
+  if (!name) return { error: "name is required." };
+  if (!prompt) return { error: "instruction is required." };
+  const wanted = input.tool === undefined ? undefined : parseConnectorWatchArgs(input);
+  if (wanted && !wanted.ok) return { error: wanted.error };
+  const page = wanted ? undefined : parseWatchArgs(input);
+  if (page && !page.ok) return { error: page.error };
+  let watch: WatchSpec = wanted?.ok ? wanted.watch : (page as { watch: PageWatchSpec }).watch;
+  if (wanted?.ok) {
+    // The same lookup and authorization every later check makes: a tool this bot may use now,
+    // on a connection it may use, that is a plain read. The spec is built from what it finds.
+    if (!deps.connector) return { error: "Connected apps are not available here." };
+    const found = await resolveWatchTool(
+      deps.prisma,
+      deps.connector,
+      { spaceId: input.spaceId, userId: input.userId, botId: input.botId },
+      { toolName: wanted.watch.toolName, arguments: wanted.watch.arguments },
+      AbortSignal.timeout(15_000),
+      `watch-create:${input.botId}`,
+    );
+    if (!found.ok) return { error: found.message };
+    watch = {
+      ...wanted.watch,
+      toolName: found.tool.name,
+      connectorId: found.route.connectorId,
+      ...(found.route.connectionId ? { connectionId: found.route.connectionId } : {}),
+      ...(found.route.resourceId ? { resourceId: found.route.resourceId } : {}),
+      appName: connectorAppLabel(found.tool.name, found.route.serverName ?? found.appDisplayName),
+    } satisfies ConnectorWatchSpec;
+    // Look it up again by the stored identity, so a tool that cannot be found that way never becomes a watch.
+    const again = await resolveWatchTool(
+      deps.prisma,
+      deps.connector,
+      { spaceId: input.spaceId, userId: input.userId, botId: input.botId },
+      watch,
+      AbortSignal.timeout(15_000),
+      `watch-create:${input.botId}`,
+    );
+    if (!again.ok) return { error: again.message };
+  }
+  const limit = await watchLimitError(deps.prisma, input);
+  if (limit) return { error: limit };
+
+  const timezone = (await loadUserTimezone(deps.prisma, input.userId)) || "UTC";
+  const row = await deps.prisma.routine.create({
+    data: {
+      spaceId: input.spaceId,
+      botId: input.botId,
+      userId: input.userId,
+      threadId: input.threadId,
+      name,
+      prompt,
+      crons: [],
+      timezone,
+      notify: true,
+      active: true,
+      quiet: true,
+      watch,
+    },
+  });
+  await syncWatchState(deps.prisma, {
+    routineId: row.id,
+    spaceId: row.spaceId,
+    watch,
+    watchChanged: true,
+    now: new Date(),
+  });
+  try {
+    await deps.events.append({
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      type: "routine.created",
+      payload: { name: row.name },
+    });
+  } catch {
+    // The watch is live even if the thread signal fails.
+  }
+  return {
+    ok: true as const,
+    routineId: row.id,
+    name: row.name,
+    watch,
+    schedule: describeWatch(watch),
   };
 }
 
@@ -308,17 +592,22 @@ export async function listSchedulesFromTool(
       ...(input.threadId ? { threadId: input.threadId } : {}),
     },
     orderBy: { createdAt: "desc" },
+    include: {
+      watchState: { select: { lastCheckedAt: true, lastChangedAt: true, pausedReason: true } },
+    },
   });
   return {
     routines: rows.map((row) => ({
+      ...watchFields(row),
       routineId: row.id,
       name: row.name,
       prompt: row.prompt,
       crons: row.crons,
       active: row.active,
       timezone: row.timezone,
-      schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
+      schedule: describeRoutine(row),
       nextRunAt: row.nextRunAt?.toISOString() ?? null,
+      nextRun: nextRunLocal(row.nextRunAt, row.timezone),
       oneShot: isOneShotRoutineCrons(row.crons),
     })),
   };
@@ -342,18 +631,35 @@ export async function cancelScheduleFromTool(
     return { error: "Provide routineId or the exact schedule name to cancel." };
   }
 
+  const scope = {
+    spaceId: input.spaceId,
+    botId: input.botId,
+    userId: input.userId,
+    ...(input.threadId ? { threadId: input.threadId } : {}),
+  };
   const existing = await deps.prisma.routine.findFirst({
-    where: {
-      spaceId: input.spaceId,
-      botId: input.botId,
-      userId: input.userId,
-      ...(input.threadId ? { threadId: input.threadId } : {}),
-      ...(routineId ? { id: routineId } : { name: name! }),
-    },
+    where: { ...scope, ...(routineId ? { id: routineId } : { name: name! }) },
   });
   if (!existing) return { error: "Schedule not found." };
+  if (existing.managedKind) return { error: MANAGED_CHECK_IN_ERROR };
 
-  await deps.prisma.routine.delete({ where: { id: existing.id } });
+  // The scope is part of the delete, so the routine cannot change hands between the read and it.
+  // Queued runs are cancelled first: deleting the routine would null their routine link.
+  const moved = new Error("Schedule not found.");
+  try {
+    await deps.prisma.$transaction(async (tx) => {
+      await cancelQueuedRoutineRuns(
+        tx,
+        { routineId: existing.id, spaceId: input.spaceId, userId: input.userId },
+        new Date(),
+      );
+      const { count } = await tx.routine.deleteMany({ where: { ...scope, id: existing.id } });
+      if (count === 0) throw moved;
+    });
+  } catch (error) {
+    if (error === moved) return { error: "Schedule not found." };
+    throw error;
+  }
   await deps.jobs.cancel(routineJobKey(existing.id));
   return { ok: true as const, routineId: existing.id, name: existing.name };
 }
@@ -416,7 +722,32 @@ function ownedRoutine(scope: ScheduleScope, id: string) {
   };
 }
 
-const TIMING_FIELDS = ["cron", "every", "unit", "runAt", "delayMinutes", "delaySeconds"] as const;
+const MANAGED_CHECK_IN_ERROR = "This check-in is managed in the bot's settings.";
+
+/** A routine keeps firing on its own: a watch, any non-one-shot schedule, or a webhook, GitHub or message trigger. */
+function routineRepeats(routine: {
+  crons: string[];
+  watch?: unknown;
+  webhookEnabled?: boolean;
+  githubEnabled?: boolean;
+  messageProvider?: string | null;
+}) {
+  return (
+    Boolean(routine.watch) ||
+    !isOneShotRoutineCrons(routine.crons) ||
+    Boolean(routine.webhookEnabled || routine.githubEnabled || routine.messageProvider)
+  );
+}
+
+const TIMING_FIELDS = [
+  "cron",
+  "every",
+  "unit",
+  "runAt",
+  "delayMinutes",
+  "delaySeconds",
+  "startAt",
+] as const;
 
 function timingOf(input: unknown): Record<string, unknown> {
   const source = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
@@ -435,12 +766,31 @@ export async function updateScheduleFromTool(
     schedule?: unknown;
     timezone?: unknown;
     enabled?: unknown;
+    /** For a watch: the new url and/or intervalMinutes. */
+    watch?: unknown;
   },
 ) {
   const id = input.id.trim();
   if (!id) return { error: "id is required." };
   const existing = await deps.prisma.routine.findFirst({ where: ownedRoutine(input, id) });
   if (!existing) return { error: "Schedule not found." };
+  if (existing.managedKind) return { error: MANAGED_CHECK_IN_ERROR };
+
+  let watch: WatchSpec | undefined;
+  if (input.watch && typeof input.watch === "object") {
+    const current = WatchSpecSchema.safeParse(existing.watch);
+    if (!current.success) return { error: "This schedule does not watch a page." };
+    if (current.data.kind !== "page") {
+      return { error: "A connected-app watch cannot be edited. Cancel it and create a new one." };
+    }
+    const patch = compactScheduleInput(input.watch as Record<string, unknown>);
+    const spec = parseWatchArgs({
+      url: patch.url ?? current.data.url,
+      intervalMinutes: patch.intervalMinutes ?? current.data.intervalMinutes,
+    });
+    if (!spec.ok) return { error: spec.error };
+    watch = spec.watch;
+  }
 
   const hasPrompt = isScheduleValueProvided(input.prompt);
   const prompt = hasPrompt ? String(input.prompt).trim() : existing.prompt;
@@ -449,21 +799,42 @@ export async function updateScheduleFromTool(
     : existing.timezone;
   if (!isValidTimezone(timezone)) return { error: `Unknown time zone: ${timezone}.` };
   const timing = timingOf(input.schedule);
-  const hasTiming = Object.keys(timing).length > 0;
+  const { startAt, ...method } = timing;
+  const hasTiming = Object.keys(method).length > 0;
   const enabled = typeof input.enabled === "boolean" ? input.enabled : existing.active;
 
   let crons = existing.crons;
   let nextRunAt = existing.nextRunAt;
+  const repeats = !isOneShotRoutineCrons(crons);
   if (hasTiming) {
     const resolved = resolveScheduleTiming(timing, timezone);
     if (!resolved.ok) return { error: resolved.error };
     crons = [resolved.cron];
     nextRunAt = resolved.nextRunAt;
-  } else if (
-    !isOneShotRoutineCrons(crons) &&
-    (timezone !== existing.timezone || (enabled && !nextRunAt))
-  ) {
-    nextRunAt = nextCronDateAcross(crons, new Date(), timezone);
+  } else if (startAt !== undefined) {
+    // startAt alone moves the next run of the current repeat.
+    if (existing.watch) return { error: "A watch checks on its own interval." };
+    if (!repeats || crons.length !== 1) {
+      return { error: "Give cron or every/unit along with startAt." };
+    }
+    const resolved = resolveScheduleTiming({ cron: crons[0], startAt }, timezone);
+    if (!resolved.ok) return { error: resolved.error };
+    nextRunAt = resolved.nextRunAt;
+  } else if (repeats && (timezone !== existing.timezone || (enabled && !nextRunAt))) {
+    const due = existing.nextRunAt;
+    if (timezone !== existing.timezone && enabled && due && due.getTime() > Date.now()) {
+      // A new timezone alone keeps the next run's local time, so a start set for later holds.
+      // In a timezone behind, the first run is the first one from when it was due, so none is
+      // skipped. An uneven step (every 7 hours) recurs by a fixed gap that no timezone moves,
+      // so it keeps its moment.
+      const step = crons.length === 1 ? unevenInterval(crons[0] ?? "") : undefined;
+      const local = zonedDateTime(wallClock(due, existing.timezone), timezone);
+      if (step && step.unit !== "days") nextRunAt = due;
+      else if (local && (step || local <= due) && local.getTime() > Date.now()) nextRunAt = local;
+      else if (local && !step && local > due) {
+        nextRunAt = nextCronDateAcross(crons, new Date(due.getTime() - 1), timezone);
+      } else nextRunAt = nextCronDateAcross(crons, new Date(), timezone);
+    } else nextRunAt = nextCronDateAcross(crons, new Date(), timezone);
   }
   if (
     enabled &&
@@ -474,10 +845,47 @@ export async function updateScheduleFromTool(
   }
   if (enabled && crons.length > 0 && !nextRunAt) return { error: "That schedule has no next run." };
 
+  const timingChanged =
+    timezone !== existing.timezone ||
+    enabled !== existing.active ||
+    nextRunAt?.getTime() !== existing.nextRunAt?.getTime() ||
+    crons.join("|") !== existing.crons.join("|");
   const row = await deps.prisma.routine.update({
     where: { id: existing.id },
-    data: { prompt, timezone, crons, active: enabled, nextRunAt: enabled ? nextRunAt : null },
+    data: {
+      prompt,
+      promptUpdatedAt: new Date(),
+      // A prompt-only edit leaves the timing alone, so a run that advanced the routine meanwhile
+      // keeps its advance.
+      ...(timingChanged
+        ? { timezone, crons, active: enabled, nextRunAt: enabled ? nextRunAt : null }
+        : {}),
+      ...(watch ? { watch } : {}),
+    },
+    include: { watchState: true },
   });
+  if (existing.active && !row.active) {
+    await deps.prisma.$transaction((tx) =>
+      cancelQueuedRoutineRuns(
+        tx,
+        { routineId: row.id, spaceId: row.spaceId, userId: row.userId },
+        new Date(),
+      ),
+    );
+  }
+  if (watch) {
+    await syncWatchState(deps.prisma, {
+      routineId: row.id,
+      spaceId: row.spaceId,
+      watch,
+      watchChanged: JSON.stringify(watch) !== JSON.stringify(existing.watch),
+      now: new Date(),
+    });
+  }
+  // Turning a paused watch back on checks the page again now.
+  if (row.watch && row.active && !existing.active) {
+    await resumeWatch(deps.prisma, { routineId: row.id, spaceId: row.spaceId, now: new Date() });
+  }
   if (row.active && row.nextRunAt) {
     await deps.jobs.enqueue(routineWakeupJob(row.id, row.nextRunAt));
   } else {
@@ -497,15 +905,17 @@ export async function updateScheduleFromTool(
     }
   }
   return {
+    ...watchFields(row),
     ok: true as const,
     routineId: row.id,
     name: row.name,
     prompt: row.prompt,
-    schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
+    schedule: describeRoutine(row),
     crons: row.crons,
     timezone: row.timezone,
     enabled: row.active,
     nextRunAt: row.nextRunAt?.toISOString() ?? null,
+    nextRun: nextRunLocal(row.nextRunAt, row.timezone),
     oneShot: isOneShotRoutineCrons(row.crons),
   };
 }
@@ -574,7 +984,12 @@ export async function scheduleRunsFromTool(
   };
 }
 
-export type ScheduleApproval = { summary: string; detail: string };
+export type ScheduleApproval = {
+  summary: string;
+  detail: string;
+  /** A one-time schedule: the card shows it when something else asks, but it does not make the call ask. */
+  oneShot?: true;
+};
 
 /**
  * What the owner must approve for a schedule tool call, or undefined when it needs no approval.
@@ -588,7 +1003,26 @@ export async function scheduleApproval(
   toolName: string,
   args: Record<string, unknown>,
   userTimezone: string | null,
+  /** The name of the connected app that offers args.tool, for a connected-app watch_create. */
+  watchedAppName?: string,
 ): Promise<ScheduleApproval | undefined> {
+  if (toolName === "watch_create") {
+    const connector =
+      args.tool === undefined ? undefined : parseConnectorWatchArgs(args, watchedAppName);
+    const spec = connector ?? parseWatchArgs(args);
+    if (!spec.ok || !String(args.name ?? "").trim() || !String(args.instruction ?? "").trim()) {
+      return undefined;
+    }
+    return {
+      summary: describeWatch(spec.watch),
+      detail: [
+        `instruction: ${String(args.instruction).trim()}`,
+        ...(spec.watch.kind === "connector"
+          ? [`tool: ${spec.watch.toolName}`, `arguments: ${JSON.stringify(spec.watch.arguments)}`]
+          : []),
+      ].join("\n"),
+    };
+  }
   if (toolName !== "schedule_create" && toolName !== "schedule_update") return undefined;
   const create = toolName === "schedule_create";
   const existing = create
@@ -596,6 +1030,8 @@ export async function scheduleApproval(
     : await deps.prisma.routine.findFirst({ where: ownedRoutine(scope, String(args.id ?? "")) });
   // The tool reports "not found" without any effect.
   if (!create && !existing) return undefined;
+  // The tool refuses the managed check-in without any effect.
+  if (existing?.managedKind) return undefined;
 
   const timing = create ? timingOf(args) : timingOf(args.schedule);
   const timezone =
@@ -607,13 +1043,38 @@ export async function scheduleApproval(
   const resolved = Object.keys(timing).length > 0 ? resolveScheduleTiming(timing, timezone) : null;
   if (resolved && !resolved.ok) return undefined;
   const newlyRepeats = resolved?.ok === true && !resolved.oneShot;
-  const promptChanges = !create && isScheduleValueProvided(args.prompt);
-  const existingRepeats = Boolean(existing) && !isOneShotRoutineCrons(existing?.crons ?? []);
-  if (!newlyRepeats && !(promptChanges && existingRepeats)) return undefined;
+  // Pointing a watch at another page changes what the saved prompt reads on every check.
+  const promptChanges =
+    !create &&
+    (isScheduleValueProvided(args.prompt) || (Boolean(args.watch) && Boolean(existing?.watch)));
+  // Judged on the routine as it is now; the edit's own timing is covered by newlyRepeats.
+  const existingRepeats = Boolean(existing) && routineRepeats(existing!);
+  const oneShotCreate = create && resolved?.ok === true && resolved.oneShot;
+  if (!newlyRepeats && !oneShotCreate && !(promptChanges && existingRepeats)) return undefined;
 
   const name = create ? String(args.name ?? "").trim() : (existing?.name ?? "");
   const crons = resolved?.ok ? [resolved.cron] : (existing?.crons ?? []);
-  const when = crons.map(formatCron).join("; ");
+  const currentWatch = WatchSpecSchema.safeParse(existing?.watch);
+  // The tool refuses to edit a connected-app watch, without any effect.
+  if (currentWatch.success && currentWatch.data.kind !== "page" && args.watch) return undefined;
+  const nextWatch =
+    currentWatch.success &&
+    currentWatch.data.kind === "page" &&
+    args.watch &&
+    typeof args.watch === "object"
+      ? parseWatchArgs({
+          url: (args.watch as Record<string, unknown>).url ?? currentWatch.data.url,
+          intervalMinutes:
+            (args.watch as Record<string, unknown>).intervalMinutes ??
+            currentWatch.data.intervalMinutes,
+        })
+      : null;
+  if (nextWatch && !nextWatch.ok) return undefined;
+  const when = nextWatch?.ok
+    ? describeWatch(nextWatch.watch)
+    : oneShotCreate && resolved?.ok
+      ? `Once, ${formatLocal(resolved.nextRunAt, timezone)}`
+      : crons.map(formatCron).join("; ");
   const lines: string[] = [`time zone: ${timezone}`];
   if (resolved?.ok) lines.push(`next run: ${formatLocal(resolved.nextRunAt, timezone)}`);
   if (isScheduleValueProvided(args.prompt)) lines.push(`prompt: ${String(args.prompt).trim()}`);
@@ -631,6 +1092,7 @@ export async function scheduleApproval(
   return {
     summary: create ? `${when}, ${where}` : `Changing “${name}”: ${when}, ${where}`,
     detail: lines.join("\n"),
+    ...(oneShotCreate ? { oneShot: true as const } : {}),
   };
 }
 

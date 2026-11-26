@@ -59,3 +59,17 @@ export const WithDisabledTab: Story = {
     </Tabs>
   ),
 };
+
+export const ManyTabsOnPhone: Story = {
+  render: () => (
+    <Tabs defaultValue="review" className="w-[370px]">
+      <TabsList>
+        {["Overview", "People", "Organisations", "History", "Calendar", "Review"].map((name) => (
+          <TabsTrigger key={name} value={name.toLowerCase()}>
+            {name}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  ),
+};

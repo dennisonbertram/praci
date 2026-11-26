@@ -31,7 +31,7 @@ export function CallCard({ onSettings }: { onSettings: () => void }) {
   return (
     <div
       data-testid="call-view"
-      className="fixed end-4 top-4 z-50 w-[360px] rounded-2xl border border-border bg-card p-3 shadow-lg"
+      className="fixed end-4 top-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-3 shadow-lg"
     >
       <div className="flex items-center gap-2.5">
         <BotAvatar color={call.botColor} identity={call.botId} size={28} />
@@ -111,6 +111,11 @@ export function CallCard({ onSettings }: { onSettings: () => void }) {
           <PhoneOff />
         </Button>
       </div>
+      {!call.transcriptOpen && call.captionIsError && call.caption ? (
+        <p role="alert" className="mt-2 text-[12px] break-words text-destructive" dir="auto">
+          {call.caption}
+        </p>
+      ) : null}
       {call.transcriptOpen ? (
         <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-2.5 text-[13px] leading-[1.45]">
           {call.exchanges.slice(-TRANSCRIPT_LINES).map((exchange, index) => (
@@ -126,7 +131,15 @@ export function CallCard({ onSettings }: { onSettings: () => void }) {
             </p>
           ))}
           {call.caption || call.heard ? (
-            <p className="truncate text-muted-foreground/70" dir="auto">
+            <p
+              role={call.captionIsError && call.caption ? "alert" : undefined}
+              className={
+                call.captionIsError && call.caption
+                  ? "break-words text-destructive"
+                  : "truncate text-muted-foreground/70"
+              }
+              dir="auto"
+            >
               {call.caption || call.heard}
             </p>
           ) : null}

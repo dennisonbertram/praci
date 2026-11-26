@@ -6,6 +6,7 @@ import { getSpreadsheetPreview } from "../lib/artifacts";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
 import { errorText } from "../lib/user-error";
+import { NativeActionButton } from "./native-action-button";
 import { NativeSegmentedControl } from "./native-segmented-control";
 
 type Cell = string | number | boolean | null;
@@ -31,6 +32,7 @@ export function SheetArtifactPreview({ source }: { source: SheetSource }) {
   const [sheet, setSheet] = useState<string | undefined>(undefined);
   const [state, setState] = useState<State>({ status: "loading" });
   const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
+  const [reload, setReload] = useState(0);
   // Bumped whenever the artifact or sheet changes, so a late "Load more" page is dropped.
   const generation = useRef(0);
   const sourceKey = JSON.stringify(source);
@@ -68,7 +70,7 @@ export function SheetArtifactPreview({ source }: { source: SheetSource }) {
       cancelled = true;
       generation.current += 1;
     };
-  }, [sourceKey, sheet, t]);
+  }, [sourceKey, sheet, reload, t]);
 
   const loadMore = () => {
     if (state.status !== "ready") return;
@@ -102,9 +104,18 @@ export function SheetArtifactPreview({ source }: { source: SheetSource }) {
   if (state.status !== "ready") {
     return (
       <View style={styles.centered}>
-        <Text style={styles.message}>
-          {state.status === "error" ? state.message : t("No preview for this file type.")}
-        </Text>
+        {state.status === "error" ? (
+          <>
+            <Text style={styles.message}>{state.message}</Text>
+            <NativeActionButton
+              label={t("Retry")}
+              prominence="quiet"
+              onPress={() => setReload((value) => value + 1)}
+            />
+          </>
+        ) : (
+          <Text style={styles.message}>{t("No preview for this file type.")}</Text>
+        )}
       </View>
     );
   }

@@ -1,4 +1,5 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
+import { APPROVED_ACTION_NOT_RUN_ERROR } from "@rakazo/contracts";
 import { closeApprovalAsks, latestAnswerableAskMessageId, threadRunError } from "@rakazo/core";
 import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { describe, expect, it } from "vitest";
@@ -64,7 +65,7 @@ describe("executor approval replay", () => {
 
     const queue = createApprovedEffectReplayQueue(effects);
     expect(queue.take("destination.write")).toEqual({ sequence: 1 });
-    expect(queue.assertDrained).toThrow("Approved tool requests were not fully replayed");
+    expect(queue.assertDrained).toThrow(APPROVED_ACTION_NOT_RUN_ERROR);
     expect(queue.take("destination.write")).toEqual({ sequence: 2 });
     expect(queue.take("destination.write")).toBeUndefined();
     expect(queue.assertDrained).not.toThrow();
@@ -454,7 +455,7 @@ describe("denied effect result", () => {
     expect(plain).toMatchObject({
       action: "return",
       result: {
-        error: expect.stringContaining("The person you are talking to denied this action"),
+        error: expect.stringContaining("The user declined this action on its card"),
       },
     });
   });

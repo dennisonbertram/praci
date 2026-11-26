@@ -21,7 +21,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Off: Story = { args: { sandboxProvider: "none", onOpenComputerSettings: () => {} } };
+export const Off: Story = {
+  args: { sandboxProvider: "none", deploymentOwner: true, onOpenComputerSettings: () => {} },
+};
+
+export const OffForMember: Story = { args: { sandboxProvider: "none" } };
 
 export const DockerNotResponding: Story = { args: { sandboxProvider: "docker" } };
 

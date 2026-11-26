@@ -2,19 +2,30 @@ import type { RealtimeFanout } from "@rakazo/adapter-kit";
 import {
   AI_CONSENT_EFFECT_KIND,
   AI_DISCLOSURE_VERSION,
+  BOT_SECRET_VALUE_MAX_LENGTH,
+  DESKTOP_APP_USE_EFFECT_KIND,
   encodeLoginSecret,
   LoginSecretValue,
   MessageBlock as MessageBlockSchema,
 } from "@rakazo/contracts";
 import type { ClosedApprovalAnswer } from "@rakazo/core";
 import {
+  ALL_SITES_ACTION_ID,
+  accessCapability,
   callIdFromClientNonce,
   closeApprovalAsks,
   isApprovalAskBlock,
   isConversationalRun,
   isSecretAskBlock,
+  REQUEST_ACCESS_TOOL,
   resolveAskChoice,
+  routineAlwaysAllowable,
+  SKIPPED_APPROVAL_ANSWER,
+  SKIPPED_APPROVAL_NOTE,
 } from "@rakazo/core";
+import { SITE_GATED_TOOLS, urlSite } from "@rakazo/core/egress";
+import { recordAnsweredApproval } from "./approval-decisions.js";
+import { setApprovalRule } from "./approval-rules.js";
 import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
 import type {
@@ -30,6 +41,8 @@ import {
   notifyRealtime,
 } from "./events.js";
 import { createThreadMessageInTransaction } from "./messages.js";
+import { AnswerTooLongError } from "./run-secrets.js";
+import { THREAD_LOCK_TRANSACTION_OPTIONS } from "./thread-lock.js";
 
 const CHOICE_ASK_CHECKPOINT_KIND = "choice_ask_v1";
 
@@ -119,6 +132,31 @@ export async function closeApprovalCardsInTransaction(
       payload: { messageId: message.id, role: "bot", blocks },
     });
     closed += effectIds.length;
+  }
+  return closed;
+}
+
+/**
+ * Runs that ended without an answer (expired, or stopped by the user) leave no approval open: the
+ * unanswered cards close with `answer`, and when there was one, every effect still pending for
+ * those runs takes the same status, so nothing behind a card can run later.
+ */
+export async function settleApprovalsOfEndedRuns(
+  tx: Prisma.TransactionClient,
+  input: {
+    spaceId: string;
+    threadId: string;
+    botId: string;
+    runIds: string[];
+    answer: ClosedApprovalAnswer;
+  },
+): Promise<number> {
+  const closed = await closeApprovalCardsInTransaction(tx, input);
+  if (closed > 0) {
+    await tx.externalEffect.updateMany({
+      where: { runId: { in: input.runIds }, spaceId: input.spaceId, status: "intended" },
+      data: { status: input.answer },
+    });
   }
   return closed;
 }
@@ -307,7 +345,7 @@ export async function expireDelegatedApprovalsInTransaction(
 }
 
 /** Tells the thread that sent work to a delegate which of its requests wait for approval. */
-async function announceDelegatePending(
+export async function announceDelegatePending(
   prisma: PrismaClient,
   realtime: RealtimeFanout | undefined,
   delegateRunId: string,
@@ -353,7 +391,7 @@ async function announceDelegatePending(
       payload: { pending, agents },
     });
     return event.seq;
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   await notifyRealtime(realtime, sent.threadId, seq);
 }
 
@@ -408,6 +446,8 @@ async function commitAnswerRunInput(
     select: {
       botId: true,
       userId: true,
+      externalTaint: true,
+      routineId: true,
       checkpoint: true,
       trigger: true,
       task: { select: { prompt: true } },
@@ -441,6 +481,8 @@ async function commitAnswerRunInput(
     ? LoginSecretValue.safeParse({ username: input.username!.trim(), password: input.answer })
     : undefined;
   if (login && !login.success) return null;
+  if (secretAsk && input.answer.length > BOT_SECRET_VALUE_MAX_LENGTH)
+    throw new AnswerTooLongError();
   let approvalEffect: { id: string; kind: string; request?: unknown } | null = null;
   let approvalUserId: string | null = null;
   if (input.mailDenial && (!approvalAsk || input.answer !== "deny")) return null;
@@ -466,8 +508,63 @@ async function commitAnswerRunInput(
       if (run.userId !== input.answeredByUserId) return null;
       approvalUserId = input.answeredByUserId;
     }
+    // "Allow all sites" is the owner's choice for a plain agent's web_fetch: never from a webhook or
+    // tainted run, and never for a firewalled or external agent.
+    if (input.answer === ALL_SITES_ACTION_ID) {
+      const bot = await tx.bot.findFirst({
+        where: { id: run.botId, spaceId: input.spaceId },
+        select: { audience: true, firewall: true },
+      });
+      const thread = await tx.thread.findFirst({
+        where: { id: input.threadId },
+        select: { meetingTaintedAt: true },
+      });
+      if (
+        thread?.meetingTaintedAt ||
+        approvalEffect.kind !== "web_fetch" ||
+        run.userId !== input.answeredByUserId ||
+        run.trigger === "webhook" ||
+        run.externalTaint ||
+        !bot ||
+        bot.firewall ||
+        bot.audience === "external"
+      ) {
+        return null;
+      }
+      approvalUserId = input.answeredByUserId;
+    }
+    // "Always for this routine" needs a routine run, its owner, and a tool that may be allowed so.
+    if (input.answer === "always_routine") {
+      const bot = await tx.bot.findFirst({
+        where: { id: run.botId, spaceId: input.spaceId },
+        select: { audience: true, firewall: true },
+      });
+      const thread = await tx.thread.findFirst({
+        where: { id: input.threadId },
+        select: { meetingTaintedAt: true },
+      });
+      if (
+        !run.routineId ||
+        run.userId !== input.answeredByUserId ||
+        run.trigger === "webhook" ||
+        run.externalTaint ||
+        thread?.meetingTaintedAt ||
+        !bot ||
+        bot.firewall ||
+        bot.audience === "external" ||
+        !routineAlwaysAllowable({ toolName: approvalEffect.kind })
+      ) {
+        return null;
+      }
+      approvalUserId = input.answeredByUserId;
+    }
     // Only the run's owner can answer for their data.
-    if (approvalEffect.kind === AI_CONSENT_EFFECT_KIND && run.userId !== input.answeredByUserId) {
+    if (
+      (approvalEffect.kind === AI_CONSENT_EFFECT_KIND ||
+        approvalEffect.kind === DESKTOP_APP_USE_EFFECT_KIND ||
+        approvalEffect.kind === REQUEST_ACCESS_TOOL) &&
+      run.userId !== input.answeredByUserId
+    ) {
       return null;
     }
   }
@@ -497,7 +594,10 @@ async function commitAnswerRunInput(
     ? ""
     : staleConsent
       ? "deny"
-      : (selectedChoice?.id ?? input.answer);
+      : input.mailDenial
+        ? // The person pressed Send on the card: their answer was yes, never a denial.
+          "allow"
+        : (selectedChoice?.id ?? input.answer);
   const callId = callIdFromClientNonce(input.clientNonce);
   const recordsCallUtterance = Boolean(callId && !secretAsk);
 
@@ -524,8 +624,25 @@ async function commitAnswerRunInput(
   }
 
   if (approvalAsk) {
-    const allowed = (input.answer === "allow" || input.answer === "always") && !staleConsent;
+    const allowed =
+      (input.answer === "allow" ||
+        input.answer === "always" ||
+        input.answer === ALL_SITES_ACTION_ID ||
+        input.answer === "always_routine") &&
+      !staleConsent;
     const consent = approvalEffect!.kind === AI_CONSENT_EFFECT_KIND;
+    // The durable log of who answered, which precedent reads (approval_decisions).
+    await recordAnsweredApproval(tx, {
+      spaceId: input.spaceId,
+      userId: run.userId,
+      botId: run.botId,
+      effectId: approvalEffect!.id,
+      tool: approvalEffect!.kind,
+      decision: allowed ? "approved" : "denied",
+      decidedByUserId: input.answeredByUserId,
+      runId: input.runId,
+      routineId: run.routineId,
+    });
     if (consent && allowed) {
       const recipientKey = consentRequest(approvalEffect!.request)!.recipientKey;
       await tx.aiDataConsent.upsert({
@@ -567,25 +684,70 @@ async function commitAnswerRunInput(
         update: {},
       });
     }
-    if (input.answer === "always") {
-      await tx.actionApprovalRule.upsert({
-        where: {
-          spaceId_createdByUserId_effect_matchKind_matchValue: {
-            spaceId: input.spaceId,
-            createdByUserId: approvalUserId!,
-            effect: "always_allow",
-            matchKind: "tool",
-            matchValue: approvalEffect!.kind,
+    if (input.answer === ALL_SITES_ACTION_ID) {
+      await setApprovalRule(tx, {
+        spaceId: input.spaceId,
+        userId: approvalUserId!,
+        botId: run.botId,
+        matchKind: "tool",
+        matchValue: "web_fetch",
+        effect: "always_allow",
+      });
+    }
+    if (input.answer === "always_routine") {
+      await setApprovalRule(tx, {
+        spaceId: input.spaceId,
+        userId: approvalUserId!,
+        routineId: run.routineId,
+        matchKind: "tool",
+        matchValue: approvalEffect!.kind,
+        effect: "always_allow",
+      });
+    }
+    // "Always for this agent" on an access request changes the agent's own settings. It must never
+    // reach the generic rule below, which would auto-approve every later access request.
+    const accessRequest = approvalEffect!.kind === REQUEST_ACCESS_TOOL;
+    if (accessRequest && input.answer === "always") {
+      const capability = accessCapability(
+        (approvalEffect!.request as { capability?: unknown } | null)?.capability,
+      );
+      const bot = await tx.bot.findFirst({
+        where: { id: run.botId, spaceId: input.spaceId, userId: run.userId },
+        select: { disabledBuiltinTools: true, firewall: true, firewallAskCapabilities: true },
+      });
+      if (capability && bot) {
+        await tx.bot.update({
+          where: { id: run.botId },
+          data: {
+            disabledBuiltinTools: bot.disabledBuiltinTools.filter(
+              (tool) => !(capability.tools as readonly string[]).includes(tool),
+            ),
+            // A Firewall agent may now ask to use the tools; every use still asks.
+            ...(bot.firewall && capability.firewall
+              ? {
+                  firewallAskCapabilities: [
+                    ...new Set([...bot.firewallAskCapabilities, capability.id]),
+                  ],
+                }
+              : {}),
           },
-        },
-        create: {
-          spaceId: input.spaceId,
-          createdByUserId: approvalUserId!,
-          effect: "always_allow",
-          matchKind: "tool",
-          matchValue: approvalEffect!.kind,
-        },
-        update: {},
+        });
+      }
+    }
+    // "Always" on a fetch card allows that site, never every site the tool can reach.
+    const site = alwaysAllowedSite(approvalEffect!);
+    if (
+      !accessRequest &&
+      input.answer === "always" &&
+      (site || !SITE_GATED_TOOLS.has(approvalEffect!.kind))
+    ) {
+      // A card's "Always allow" is a space-wide rule; it replaces any rule for that target.
+      await setApprovalRule(tx, {
+        spaceId: input.spaceId,
+        userId: approvalUserId!,
+        matchKind: site ? "site" : "tool",
+        matchValue: site ?? approvalEffect!.kind,
+        effect: "always_allow",
       });
     }
   } else if (secretAsk) {
@@ -658,8 +820,9 @@ export async function answerRunInput(
   runSecretWriter?: RunSecretWriter,
 ): Promise<boolean> {
   const commit = (writer = runSecretWriter) =>
-    prisma.$transaction(async (tx: Prisma.TransactionClient) =>
-      commitAnswerRunInput(tx, input, writer),
+    prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => commitAnswerRunInput(tx, input, writer),
+      THREAD_LOCK_TRANSACTION_OPTIONS,
     );
   const committed = runSecretWriter?.withPrepared
     ? await runSecretWriter.withPrepared(prisma, input, commit)
@@ -689,6 +852,90 @@ export async function answerWaitingRunWithTextInTransaction(
   if (!found) return null;
   if (isApprovalAskBlock(found.pendingAsk) || isSecretAskBlock(found.pendingAsk)) return null;
   return commitAnswerRunInput(tx, { ...input, messageId: found.messageId, answer });
+}
+
+/**
+ * The owner sent a message instead of answering the approval cards a waiting run holds. Every open
+ * card of the run closes as skipped and its effect is denied, never approved, so nothing runs and no
+ * rule is saved; the run resumes and its tool results say the owner moved on. Secret requests,
+ * questions and cards answered elsewhere (a shared message, a page source) are not skippable: null
+ * leaves everything as it was. The thread lock and the run's status make a concurrent approval and
+ * this skip exclusive.
+ */
+export async function skipWaitingApprovalsInTransaction(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; threadId: string; runId: string },
+): Promise<{ threadId: string; seq: number } | null> {
+  await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+  const run = await tx.run.findFirst({
+    where: {
+      id: input.runId,
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      status: "waiting_input",
+    },
+    select: { botId: true },
+  });
+  if (!run) return null;
+  const messages = await tx.message.findMany({
+    where: { threadId: input.threadId, runId: input.runId, role: "bot" },
+    orderBy: { seq: "desc" },
+    take: 50,
+    select: { id: true, blocks: true },
+  });
+  const open: Array<{
+    id: string;
+    blocks: ReturnType<typeof closeApprovalAsks>;
+    effectIds: string[];
+  }> = [];
+  for (const message of messages) {
+    const parsed = MessageBlockSchema.array().safeParse(message.blocks);
+    if (!parsed.success) continue;
+    const asks = parsed.data.flatMap((block) =>
+      block.kind === "ask" && block.status !== "answered" ? [block] : [],
+    );
+    if (asks.length === 0) continue;
+    if (asks.some((ask) => !isApprovalAskBlock(ask) || ask.pageSource || ask.share)) return null;
+    open.push({
+      id: message.id,
+      blocks: closeApprovalAsks(parsed.data, SKIPPED_APPROVAL_ANSWER),
+      effectIds: asks.flatMap((ask) => (ask.approvalEffectId ? [ask.approvalEffectId] : [])),
+    });
+  }
+  if (open.length === 0) return null;
+  const queued = await tx.run.updateMany({
+    where: {
+      id: input.runId,
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      status: "waiting_input",
+    },
+    data: { status: "queued" },
+  });
+  if (queued.count !== 1) return null;
+  let seq = 0;
+  for (const card of open) {
+    await tx.externalEffect.updateMany({
+      where: {
+        id: { in: card.effectIds },
+        spaceId: input.spaceId,
+        runId: input.runId,
+        status: "intended",
+      },
+      data: { status: "denied", result: { note: SKIPPED_APPROVAL_NOTE } },
+    });
+    await tx.message.update({ where: { id: card.id }, data: { blocks: card.blocks } });
+    const updated = await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: run.botId,
+      type: "thread.message.updated",
+      runId: input.runId,
+      payload: { messageId: card.id, role: "bot", blocks: card.blocks },
+    });
+    seq = updated.seq;
+  }
+  return { threadId: input.threadId, seq };
 }
 
 export async function pauseRunForInput(
@@ -779,7 +1026,7 @@ export async function pauseRunForInput(
       seq: waitingEvent.seq,
       approval: approvalEffectIds.length > 0,
     };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
 
   if (!committed) return false;
   await notifyRealtime(realtime, committed.threadId, committed.seq);
@@ -885,9 +1132,15 @@ export async function pauseRunForTakeover(
     });
     await tx.event.deleteMany({ where: { runId: input.runId, type: "thread.progress" } });
     return { threadId: waitingEvent.threadId, seq: waitingEvent.seq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
 
   if (!committed) return false;
   await notifyRealtime(realtime, committed.threadId, committed.seq);
   return true;
+}
+
+function alwaysAllowedSite(effect: { kind: string; request?: unknown }): string | undefined {
+  if (!SITE_GATED_TOOLS.has(effect.kind)) return undefined;
+  const request = effect.request as { url?: unknown } | null;
+  return typeof request?.url === "string" ? urlSite(request.url) : undefined;
 }

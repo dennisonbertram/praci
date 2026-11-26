@@ -233,6 +233,86 @@ it("falls back for absent logos and empty names", async () => {
   expect(container.textContent).toBe("?");
 });
 
+it("shows a sources retry after a failed load and reloads sources only", async () => {
+  let sourceAttempts = 0;
+  const original = state.rpc.getMockImplementation()!;
+  state.rpc.mockImplementation((proc: string) => {
+    if (proc === "capabilities/list") {
+      sourceAttempts += 1;
+      return sourceAttempts === 1
+        ? Promise.reject(new Error("Unavailable"))
+        : Promise.resolve([
+            {
+              id: "source-a",
+              name: "Installed source",
+              kind: "mcp",
+              source: "endpoint",
+            },
+          ]);
+    }
+    return original(proc);
+  });
+  await render();
+  await act(async () => rejectCatalog(new Error("Unavailable")));
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Advanced")
+      ?.click(),
+  );
+  const retry = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Try again",
+  );
+  expect(retry).toBeTruthy();
+  expect(container.textContent).toContain("Could not load tools");
+  expect(container.textContent).not.toContain("No custom sources installed.");
+  const otherRequests = state.rpc.mock.calls.filter(
+    ([proc]) => proc !== "capabilities/list",
+  ).length;
+  await act(async () => retry?.click());
+  expect(state.rpc.mock.calls.filter(([proc]) => proc === "capabilities/list")).toHaveLength(2);
+  expect(state.rpc.mock.calls.filter(([proc]) => proc !== "capabilities/list")).toHaveLength(
+    otherRequests,
+  );
+  expect(container.textContent).toContain("Installed source");
+});
+
+it("shows a tools retry after failure and reloads tools successfully", async () => {
+  await render();
+  await act(async () => resolveCatalog([item]));
+  state.rpc.mockImplementation((proc: string) =>
+    proc === "connections/tools"
+      ? Promise.reject(new Error("Unavailable"))
+      : proc === "connections/catalog"
+        ? Promise.resolve([item])
+        : proc === "connections/list"
+          ? Promise.resolve([account])
+          : Promise.resolve([]),
+  );
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Example app"))
+      ?.click(),
+  );
+  expect(container.textContent).toContain("Try again");
+  expect(container.textContent).toContain("Could not load tools");
+  expect(container.textContent).not.toContain("No tools available.");
+  state.rpc.mockImplementation((proc: string) =>
+    proc === "connections/tools"
+      ? Promise.resolve([{ name: "search", description: "Search" }])
+      : proc === "connections/catalog"
+        ? Promise.resolve([item])
+        : proc === "connections/list"
+          ? Promise.resolve([account])
+          : Promise.resolve([]),
+  );
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Try again")
+      ?.click(),
+  );
+  expect(container.textContent).toContain("Search");
+});
+
 it("persists a rename before a pending stale refresh can overwrite it", async () => {
   state.read.mockReturnValue({ catalog: [item], connections: [account] });
   await render();

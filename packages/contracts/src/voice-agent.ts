@@ -1,4 +1,6 @@
-export const voiceAgentSpawnKey = (userId: string) => `voice-agent:${userId}`;
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
+
+export const voiceAgentSpawnKey = (userId: string) => pageAgentSpawnKey("voice", userId);
 
 /** Replaces the key of an archived Elio whose key a new Elio took, so it stays Elio-restricted. */
 export const retiredVoiceAgentSpawnKey = (botId: string) => `voice-agent-retired:${botId}`;
@@ -7,7 +9,7 @@ export const isRetiredVoiceAgentSpawnKey = (spawnKey: string | null | undefined)
   Boolean(spawnKey?.startsWith(retiredVoiceAgentSpawnKey("")));
 
 export const isVoiceAgentSpawnKey = (spawnKey: string | null | undefined): boolean =>
-  Boolean(spawnKey?.startsWith(voiceAgentSpawnKey(""))) || isRetiredVoiceAgentSpawnKey(spawnKey);
+  pageAgentKindOf(spawnKey) === "voice";
 
 export const VOICE_AGENT_BUILTIN_TOOLS = [
   "workspace_agents",

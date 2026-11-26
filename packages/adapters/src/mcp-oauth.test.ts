@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,8 +9,11 @@ import {
   McpReauthorizationRequiredError,
   StoredMcpOAuthProvider,
 } from "./mcp-oauth.js";
+import { MAX_AUTHORIZATION_URL_LENGTH, McpSession } from "./mcp-transport.js";
 
 afterEach(() => vi.unstubAllGlobals());
+
+const AUTH_ORIGIN = "https://auth.example.test";
 
 const TEST_NETWORK = {
   // Read the global per call so a fetch stubbed after construction still wins.
@@ -213,6 +218,25 @@ describe("MCP OAuth", () => {
     };
   }
 
+  it("renews a rejected token early, but not one this provider has already replaced", async () => {
+    const refresh = vi.fn(async () => ({
+      tokens: { access_token: "new-access", token_type: "Bearer", expires_in: 3600 },
+      obtainedAt: Date.now(),
+    }));
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      expiringMaterial(Date.now()),
+      async () => undefined,
+      { refresh },
+    );
+    await provider.renew("old-access");
+    await expect(provider.tokens()).resolves.toMatchObject({ access_token: "new-access" });
+    expect(refresh).toHaveBeenCalledOnce();
+
+    await provider.renew("old-access");
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
   it("hides the old token while re-authorizing and keeps it stored until a new one arrives", async () => {
     const persisted: OAuthMaterial[] = [];
     const material = expiringMaterial(Date.now());
@@ -236,165 +260,582 @@ describe("MCP OAuth", () => {
     expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("new-access");
   });
 
-  it("renews an expired token once before handing it out", async () => {
-    const persisted: { oauth?: { tokens?: { access_token?: string } } }[] = [];
-    const tokenRequests: URLSearchParams[] = [];
-    const close = vi.fn(async () => undefined);
-    const provider = new StoredMcpOAuthProvider(
-      "server-1",
-      expiringMaterial(Date.now() - 3 * 60 * 60 * 1000),
-      async (material) => {
-        persisted.push(structuredClone(material));
-      },
-      {
-        refreshNetwork: async () => ({
-          fetch: async (_input: string | URL | Request, init?: RequestInit) => {
-            tokenRequests.push(new URLSearchParams(String(init?.body)));
-            return new Response(
-              JSON.stringify({
-                access_token: "new-access",
-                refresh_token: "new-refresh",
-                token_type: "Bearer",
-                expires_in: 7200,
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-          close,
-        }),
-      },
-    );
-
-    const [first, second] = await Promise.all([provider.tokens(), provider.tokens()]);
-
-    expect(first).toMatchObject({ access_token: "new-access", refresh_token: "new-refresh" });
-    expect(second).toMatchObject({ access_token: "new-access" });
-    expect(tokenRequests).toHaveLength(1);
-    expect(tokenRequests[0]?.get("grant_type")).toBe("refresh_token");
-    expect(tokenRequests[0]?.get("refresh_token")).toBe("old-refresh");
-    expect(tokenRequests[0]?.get("client_id")).toBe("client-1");
-    expect(tokenRequests[0]?.get("resource")).toBe("https://mcp.example.test/");
-    expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("new-access");
-    expect(close).toHaveBeenCalledOnce();
-  });
-
-  it("renews a rejected token early, but adopts a token another process already stored", async () => {
-    const tokenRequests: URLSearchParams[] = [];
-    const network = {
-      refreshNetwork: async () => ({
-        fetch: async (_input: string | URL | Request, init?: RequestInit) => {
-          tokenRequests.push(new URLSearchParams(String(init?.body)));
-          return new Response(
-            JSON.stringify({ access_token: "new-access", token_type: "Bearer", expires_in: 3600 }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        },
-        close: async () => undefined,
+  /**
+   * One MCP server row and its secret records, shared by every broker the way the
+   * API and worker share a database. The credential advisory lock is a real mutex
+   * held until the transaction that took it ends.
+   */
+  function sharedCredentials(material: OAuthMaterial, endpoint = "https://mcp.example.test/mcp") {
+    const values = new Map<string, string>();
+    let nextRecord = 0;
+    const secrets = {
+      put: vi.fn(async (plaintext: string) => {
+        nextRecord += 1;
+        values.set(`cipher-${nextRecord}`, plaintext);
+        return { id: `secret-${nextRecord}`, ciphertext: `cipher-${nextRecord}` };
+      }),
+      load: vi.fn(async (ciphertext: string) => {
+        const value = values.get(ciphertext);
+        if (value === undefined) throw new Error("secret not found");
+        return value;
+      }),
+      delete: vi.fn(async (ciphertext: string) => {
+        values.delete(ciphertext);
       }),
     };
-    const fresh = () => expiringMaterial(Date.now());
-    const early = new StoredMcpOAuthProvider("server-1", fresh(), async () => undefined, network);
-    await early.renew("old-access");
-    await expect(early.tokens()).resolves.toMatchObject({ access_token: "new-access" });
-    expect(tokenRequests).toHaveLength(1);
-
-    const storedElsewhere = {
-      ...fresh().oauth,
-      tokens: { access_token: "other-access", token_type: "Bearer", expires_in: 3600 },
+    const rows: Array<{ id: string; ciphertext: string }> = [];
+    const server = {
+      id: "server-1",
+      endpoint,
+      secretId: null as string | null,
     };
-    const adopting = new StoredMcpOAuthProvider("server-1", fresh(), async () => undefined, {
-      ...network,
-      reloadOAuth: async () => storedElsewhere,
-    });
-    await adopting.renew("old-access");
-    await expect(adopting.tokens()).resolves.toMatchObject({ access_token: "other-access" });
-    expect(tokenRequests).toHaveLength(1);
-  });
-
-  it("does not renew a token that is still inside its lifetime", async () => {
-    const refreshNetwork = vi.fn(async () => ({
-      fetch: async () => new Response(),
-      close: async () => undefined,
-    }));
-    const provider = new StoredMcpOAuthProvider(
-      "server-1",
-      expiringMaterial(Date.now() - 10 * 60 * 1000),
-      async () => undefined,
-      { refreshNetwork },
-    );
-
-    expect(await provider.tokens()).toMatchObject({ access_token: "old-access" });
-    expect(refreshNetwork).not.toHaveBeenCalled();
-  });
-
-  it("keeps the current token when refresh-network setup fails", async () => {
-    const persist = vi.fn(async () => undefined);
-    const refreshNetwork = vi.fn(async () => {
-      throw new Error("permission lookup temporarily unavailable");
-    });
-    const provider = new StoredMcpOAuthProvider(
-      "server-1",
-      expiringMaterial(Date.now() - (7200 - 30) * 1000),
-      persist,
-      { refreshNetwork },
-    );
-
-    await expect(provider.tokens()).resolves.toMatchObject({ access_token: "old-access" });
-    expect(persist).not.toHaveBeenCalled();
-    expect(refreshNetwork).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the current token when renewal has a transient failure", async () => {
-    const persist = vi.fn(async () => undefined);
-    const close = vi.fn(async () => undefined);
-    const provider = new StoredMcpOAuthProvider(
-      "server-1",
-      expiringMaterial(Date.now() - 3 * 60 * 60 * 1000),
-      persist,
-      {
-        refreshNetwork: async () => ({
-          fetch: async () => {
-            throw new TypeError("network unavailable");
-          },
-          close,
-        }),
+    let lock = Promise.resolve();
+    const lockSettings: string[] = [];
+    const tables = {
+      mcpServer: {
+        findFirst: async () => ({ ...server }),
+        update: async ({ data }: { data: { secretId: string | null } }) => {
+          server.secretId = data.secretId;
+          return { ...server };
+        },
       },
-    );
+      secret: {
+        findFirst: async ({ where }: { where: { id: string } }) => {
+          const row = rows.find((candidate) => candidate.id === where.id);
+          return row ? { ...row } : null;
+        },
+        create: async ({ data }: { data: { id: string; ciphertext: string } }) => {
+          rows.push({ id: data.id, ciphertext: data.ciphertext });
+          return data;
+        },
+        deleteMany: async ({ where }: { where: { id: string } }) => {
+          const index = rows.findIndex((row) => row.id === where.id);
+          if (index >= 0) rows.splice(index, 1);
+          return { count: index >= 0 ? 1 : 0 };
+        },
+        count: async ({ where }: { where: { ciphertext: string } }) =>
+          rows.filter((row) => row.ciphertext === where.ciphertext).length,
+      },
+      botSecret: { count: async () => 0 },
+      integrationProviderConfig: { count: async () => 0 },
+    };
+    const prisma = {
+      ...tables,
+      $transaction: async <T>(callback: (tx: unknown) => Promise<T>) => {
+        let release: (() => void) | undefined;
+        const tx = {
+          ...tables,
+          $queryRaw: async () => [],
+          $executeRaw: async (sql: TemplateStringsArray) => {
+            lockSettings.push(sql.join("?"));
+            if (!sql.join("").includes("pg_advisory_xact_lock") || release) return 1;
+            const held = lock;
+            lock = new Promise<void>((resolve) => {
+              release = resolve;
+            });
+            await held;
+            return 1;
+          },
+        };
+        try {
+          return await callback(tx);
+        } finally {
+          release?.();
+        }
+      },
+    };
+    const ready = (async () => {
+      const record = await secrets.put(JSON.stringify(material));
+      rows.push(record);
+      server.secretId = record.id;
+    })();
+    const stored = async (): Promise<OAuthMaterial> => {
+      const row = rows.find((candidate) => candidate.id === server.secretId);
+      return row ? JSON.parse(await secrets.load(row.ciphertext)) : {};
+    };
+    const context = { spaceId: "workspace-1", userId: "user-1" };
+    /** A process of its own: a broker with nothing in memory but the database. */
+    const startProcess = async (network: typeof fetch, allowPrivateEndpoint = false) => {
+      await ready;
+      const broker = new McpOAuthBroker(
+        prisma as never,
+        secrets as never,
+        { fetch: network, resolveHostname: TEST_NETWORK.resolveHostname },
+        allowPrivateEndpoint,
+      );
+      const provider = await broker.providerFor(server, context);
+      if (!(provider instanceof StoredMcpOAuthProvider)) throw new Error("expected a provider");
+      return { broker, provider };
+    };
+    /** Another writer (the settings API) replacing the stored credential. */
+    const replaceStored = async (next: OAuthMaterial) => {
+      const record = await secrets.put(JSON.stringify(next));
+      rows.push(record);
+      server.secretId = record.id;
+    };
+    return { startProcess, stored, replaceStored, server, context, lockSettings, tables };
+  }
 
-    expect(await provider.tokens()).toMatchObject({ access_token: "old-access" });
-    expect(persist).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledOnce();
-  });
+  /** A public-client authorization server: each refresh token works once. */
+  function rotatingAuthServer(first = "old-refresh") {
+    let generation = 0;
+    let live: string | undefined = first;
+    const requests: URLSearchParams[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = logicalHref(input, init);
+      if (url !== "https://auth.example.test/token") throw new Error(`Unexpected ${url}`);
+      const body = new URLSearchParams(await new Request(input, init).text());
+      requests.push(body);
+      if (body.get("refresh_token") !== live) {
+        return Response.json({ error: "invalid_grant" }, { status: 400 });
+      }
+      generation += 1;
+      live = `refresh-${generation}`;
+      return Response.json({
+        access_token: `access-${generation}`,
+        refresh_token: live,
+        token_type: "Bearer",
+        expires_in: 7200,
+      });
+    });
+    return {
+      fetch,
+      requests,
+      revoke: () => {
+        live = undefined;
+      },
+    };
+  }
 
-  it("invalidates only tokens after invalid_grant and does not retry a revoked grant", async () => {
-    const persist = vi.fn(async (_material: OAuthMaterial) => undefined);
-    const close = vi.fn(async () => undefined);
-    const fetchToken = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ error: "invalid_grant" }), {
-          status: 400,
-          headers: { "content-type": "application/json" },
-        }),
-    );
-    const provider = new StoredMcpOAuthProvider(
-      "server-1",
-      expiringMaterial(Date.now() - 3 * 60 * 60 * 1000),
-      persist,
-      { refreshNetwork: async () => ({ fetch: fetchToken, close }) },
-    );
+  const EXPIRED = () => Date.now() - 3 * 60 * 60 * 1000;
+
+  it("renews an expired token once and stores the rotated grant", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider, broker } = await shared.startProcess(server.fetch);
 
     const [first, second] = await Promise.all([provider.tokens(), provider.tokens()]);
+
+    expect(first).toMatchObject({ access_token: "access-1", refresh_token: "refresh-1" });
+    expect(second).toMatchObject({ access_token: "access-1" });
+    expect(server.requests).toHaveLength(1);
+    expect(server.requests[0]?.get("grant_type")).toBe("refresh_token");
+    expect(server.requests[0]?.get("refresh_token")).toBe("old-refresh");
+    expect(server.requests[0]?.get("client_id")).toBe("client-1");
+    expect(server.requests[0]?.get("resource")).toBe("https://mcp.example.test/");
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+    expect(await broker.statusFor(shared.server, shared.context)).toBe("connected");
+    // Waiting for another process's refresh must not eat the budget for this one's write.
+    expect(shared.lockSettings[0]).toContain("lock_timeout");
+  });
+
+  it("keeps a private-network HTTP resource through the broker and refresh when the instance opts in", async () => {
+    const resource = "http://192.0.2.10:8123/mcp";
+    const material = expiringMaterial(EXPIRED());
+    material.oauth.discoveryState.resourceMetadata.resource = resource;
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(material, resource);
+    const { provider } = await shared.startProcess(server.fetch, true);
+
+    expect(await provider.validateResourceURL(resource, resource)).toEqual(new URL(resource));
+    await provider.tokens();
+    expect(server.requests[0]?.get("resource")).toBe(resource);
+  });
+
+  it.each([
+    ["one after the other", false],
+    ["at the same time", true],
+  ])(
+    "lets a second process adopt the rotated grant when both refresh %s",
+    async (_name, concurrent) => {
+      const server = rotatingAuthServer();
+      const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+      const api = await shared.startProcess(server.fetch);
+      const worker = await shared.startProcess(server.fetch);
+
+      const [fromApi, fromWorker] = concurrent
+        ? await Promise.all([api.provider.tokens(), worker.provider.tokens()])
+        : [await api.provider.tokens(), await worker.provider.tokens()];
+
+      expect(fromApi).toMatchObject({ access_token: "access-1", refresh_token: "refresh-1" });
+      expect(fromWorker).toEqual(fromApi);
+      expect(server.requests.map((request) => request.get("refresh_token"))).toEqual([
+        "old-refresh",
+      ]);
+      expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+      expect(await worker.broker.statusFor(shared.server, shared.context)).toBe("connected");
+    },
+  );
+
+  /**
+   * An MCP server that has already revoked `old-access` before its stored expiry.
+   * `onRejected` runs before each 401 so a test can line the rejections up.
+   */
+  function earlyRevokingMcpServer(
+    authFetch: typeof globalThis.fetch,
+    onRejected: () => Promise<void> = async () => undefined,
+  ) {
+    const bearers: string[] = [];
+    const network = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      if (logicalHref(input, init) !== "https://mcp.example.test/mcp")
+        return authFetch(input, init);
+      const request = new Request(input, init);
+      if (request.method !== "POST") return new Response(null, { status: 405 });
+      const bearer = request.headers.get("authorization") ?? "";
+      bearers.push(bearer);
+      if (bearer === "Bearer old-access") {
+        await onRejected();
+        return new Response(null, { status: 401 });
+      }
+      const body = (await request.json()) as { id?: number; method: string };
+      if (body.method !== "initialize") return new Response(null, { status: 202 });
+      return Response.json({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          serverInfo: { name: "fake", version: "1" },
+        },
+      });
+    });
+    const connect = (provider: StoredMcpOAuthProvider, session: McpSession) =>
+      session.connectRemote({
+        url: "https://mcp.example.test/mcp",
+        authProvider: provider,
+        network: { fetch: network, resolveHostname: TEST_NETWORK.resolveHostname },
+      });
+    return { network, bearers, connect };
+  }
+
+  const reauthorizableMaterial = () => ({
+    oauth: {
+      ...expiringMaterial(Date.now()).oauth,
+      redirectUri: "https://app.example.test/mcp/oauth/callback",
+    },
+  });
+
+  it("routes the SDK's refresh after a 401 before expiry through one locked refresh", async () => {
+    const auth = rotatingAuthServer();
+    const shared = sharedCredentials(reauthorizableMaterial());
+    // Hold both 401s until each process has one.
+    let rejected = 0;
+    let releaseRejections: () => void = () => undefined;
+    const bothRejected = new Promise<void>((resolve) => {
+      releaseRejections = resolve;
+    });
+    const mcp = earlyRevokingMcpServer(auth.fetch, async () => {
+      rejected += 1;
+      if (rejected === 2) releaseRejections();
+      await bothRejected;
+    });
+    const api = await shared.startProcess(mcp.network);
+    const worker = await shared.startProcess(mcp.network);
+    const sessions = [new McpSession(), new McpSession()];
+
+    try {
+      await Promise.all([
+        mcp.connect(api.provider, sessions[0] as McpSession),
+        mcp.connect(worker.provider, sessions[1] as McpSession),
+      ]);
+    } finally {
+      await Promise.all(sessions.map((session) => session.close()));
+    }
+
+    expect(auth.requests.map((request) => request.get("refresh_token"))).toEqual(["old-refresh"]);
+    expect(await api.provider.tokens()).toMatchObject({ access_token: "access-1" });
+    expect(await worker.provider.tokens()).toMatchObject({ access_token: "access-1" });
+    expect(mcp.bearers.filter((bearer) => bearer !== "Bearer old-access")).toEqual(
+      Array(mcp.bearers.length - 2).fill("Bearer access-1"),
+    );
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+  });
+
+  it("keeps the grant when the refresh after a 401 fails temporarily", async () => {
+    const shared = sharedCredentials(reauthorizableMaterial());
+    const mcp = earlyRevokingMcpServer(async () => {
+      throw new TypeError("network unavailable");
+    });
+    const { provider } = await shared.startProcess(mcp.network);
+    const before = await shared.stored();
+    const session = new McpSession();
+
+    try {
+      const error = await mcp.connect(provider, session).catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(McpReauthorizationRequiredError);
+    } finally {
+      await session.close();
+    }
+
+    expect(await provider.tokens()).toMatchObject({ access_token: "old-access" });
+    expect(await shared.stored()).toEqual(before);
+  });
+
+  it("refreshes with the stored token when the adopted grant has expired as well", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const api = await shared.startProcess(server.fetch);
+    const worker = await shared.startProcess(server.fetch);
+    await api.provider.tokens();
+    vi.useFakeTimers({ now: Date.now() + 3 * 60 * 60 * 1000, toFake: ["Date"] });
+    try {
+      expect(await worker.provider.tokens()).toMatchObject({ refresh_token: "refresh-2" });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(server.requests.map((request) => request.get("refresh_token"))).toEqual([
+      "old-refresh",
+      "refresh-1",
+    ]);
+  });
+
+  it("never overwrites a rotated grant with a stale process's clear or metadata write", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const api = await shared.startProcess(server.fetch);
+    const worker = await shared.startProcess(server.fetch);
+    await api.provider.tokens();
+
+    // The SDK clears tokens after a rejected refresh of the stale copy.
+    await worker.provider.invalidateCredentials("tokens");
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+    expect(await worker.provider.tokens()).toMatchObject({ refresh_token: "refresh-1" });
+
+    await worker.provider.saveDiscoveryState({
+      authorizationServerUrl: "https://auth.example.test",
+    });
+    expect((await shared.stored()).oauth).toMatchObject({
+      tokens: { refresh_token: "refresh-1" },
+      discoveryState: { authorizationServerUrl: "https://auth.example.test" },
+    });
+    expect(await worker.broker.statusFor(shared.server, shared.context)).toBe("connected");
+  });
+
+  it("lets newly issued tokens replace the stored grant", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const api = await shared.startProcess(server.fetch);
+    const worker = await shared.startProcess(server.fetch);
+    await api.provider.tokens();
+
+    await worker.provider.saveTokens({
+      access_token: "reauthorized",
+      refresh_token: "reauthorized-refresh",
+      token_type: "Bearer",
+    });
+
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({
+      refresh_token: "reauthorized-refresh",
+    });
+
+    // A reused access token still carries a newly issued refresh token.
+    await worker.provider.saveTokens({
+      access_token: "reauthorized",
+      refresh_token: "reissued-refresh",
+      token_type: "Bearer",
+    });
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({
+      refresh_token: "reissued-refresh",
+    });
+  });
+
+  it("clears only the tokens when the stored grant is revoked", async () => {
+    const server = rotatingAuthServer();
+    server.revoke();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider, broker } = await shared.startProcess(server.fetch);
+
+    const [first, second] = await Promise.all([provider.tokens(), provider.tokens()]);
+
     expect(first).toBeUndefined();
     expect(second).toBeUndefined();
     expect(await provider.tokens()).toBeUndefined();
-    expect(fetchToken).toHaveBeenCalledOnce();
-    expect(close).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledOnce();
-    const persisted = persist.mock.calls[0]?.[0] as OAuthMaterial | undefined;
-    expect(persisted?.oauth?.tokens).toBeUndefined();
-    expect(persisted?.oauth?.obtainedAt).toBeUndefined();
+    expect(server.requests).toHaveLength(1);
+    const stored = await shared.stored();
+    expect(stored.oauth?.tokens).toBeUndefined();
+    expect(stored.oauth?.obtainedAt).toBeUndefined();
+    expect(stored.oauth?.clientInformation).toEqual({ client_id: "client-1" });
     expect(provider.clientInformation()).toEqual({ client_id: "client-1" });
-    expect(provider.discoveryState()).toBeDefined();
+    expect(await broker.statusFor(shared.server, shared.context)).toBe("reconnect");
+  });
+
+  it.each([
+    [
+      "the network fails",
+      async () => {
+        throw new TypeError("network unavailable");
+      },
+    ],
+    ["the server errors", async () => Response.json({ error: "server_error" }, { status: 500 })],
+  ])("keeps the current token when %s", async (_name, fetch) => {
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider } = await shared.startProcess(vi.fn(fetch));
+    const before = await shared.stored();
+
+    expect(await provider.tokens()).toMatchObject({ access_token: "old-access" });
+    expect(await shared.stored()).toEqual(before);
+  });
+
+  it("stores a rotated grant when the first commit after the refresh fails", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider } = await shared.startProcess(server.fetch);
+    const update = shared.tables.mcpServer.update;
+    let failures = 1;
+    shared.tables.mcpServer.update = async (args) => {
+      if (failures-- > 0) throw new Error("connection terminated unexpectedly");
+      return update(args);
+    };
+
+    expect(await provider.tokens()).toMatchObject({ access_token: "access-1" });
+    expect(server.requests.map((request) => request.get("refresh_token"))).toEqual(["old-refresh"]);
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+  });
+
+  it("keeps a rotated grant for this run when every commit fails", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider } = await shared.startProcess(server.fetch);
+    shared.tables.mcpServer.update = async () => {
+      throw new Error("connection terminated unexpectedly");
+    };
+
+    expect(await provider.tokens()).toMatchObject({ access_token: "access-1" });
+    expect(server.requests.map((request) => request.get("refresh_token"))).toEqual(["old-refresh"]);
+  });
+
+  it("lets a disconnect that lands during a failed refresh commit win", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider, broker } = await shared.startProcess(server.fetch);
+    const update = shared.tables.mcpServer.update;
+    let failures = 1;
+    shared.tables.mcpServer.update = async (args) => {
+      if (failures-- > 0) {
+        await shared.replaceStored({ headers: { "X-Team": "blue" } });
+        throw new Error("connection terminated unexpectedly");
+      }
+      return update(args);
+    };
+
+    expect(await provider.tokens()).toBeUndefined();
+
+    expect(await shared.stored()).toEqual({ headers: { "X-Team": "blue" } });
+    expect(await broker.statusFor(shared.server, shared.context)).toBe("none");
+  });
+
+  it.each(["disconnect", "server gone", "endpoint changed"])(
+    "refuses a rotated grant after a failed commit when %s",
+    async (change) => {
+      const server = rotatingAuthServer();
+      const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+      const { provider } = await shared.startProcess(server.fetch);
+      const replacement: OAuthMaterial = { headers: { "X-Team": "blue" } };
+      shared.tables.mcpServer.update = async () => {
+        await shared.replaceStored(replacement);
+        if (change === "server gone") shared.tables.mcpServer.findFirst = async () => null as never;
+        if (change === "endpoint changed")
+          shared.server.endpoint = "https://other.example.test/mcp";
+        throw new Error("connection terminated unexpectedly");
+      };
+
+      expect(await provider.tokens()).toBeUndefined();
+      expect(server.requests.map((request) => request.get("refresh_token"))).toEqual([
+        "old-refresh",
+      ]);
+      expect(await shared.stored()).toEqual(replacement);
+    },
+  );
+
+  it("keeps an observed disconnect when the fallback commit also fails", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const { provider } = await shared.startProcess(server.fetch);
+    let first = true;
+    const replacement = { headers: { "X-Team": "blue" } };
+    shared.tables.mcpServer.update = async () => {
+      if (first) {
+        first = false;
+        await shared.replaceStored(replacement);
+      }
+      throw new Error("connection terminated unexpectedly");
+    };
+
+    expect(await provider.tokens()).toBeUndefined();
+    expect(server.requests.map((request) => request.get("refresh_token"))).toEqual(["old-refresh"]);
+    expect(await shared.stored()).toEqual(replacement);
+  });
+
+  it.each([false, true])(
+    "keeps the available grant when both commits fail transiently (newer stored grant: %s)",
+    async (newerStoredGrant) => {
+      const server = rotatingAuthServer();
+      const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+      const { provider } = await shared.startProcess(server.fetch);
+      const replacement = expiringMaterial(Date.now());
+      replacement.oauth.tokens.access_token = "newer-access";
+      replacement.oauth.tokens.refresh_token = "newer-refresh";
+      let commits = 0;
+      shared.tables.mcpServer.update = async () => {
+        if (commits++ === 0 && newerStoredGrant) await shared.replaceStored(replacement);
+        throw new Error("connection terminated unexpectedly");
+      };
+
+      expect(await provider.tokens()).toMatchObject({
+        access_token: newerStoredGrant ? "newer-access" : "access-1",
+      });
+      expect(commits).toBe(2);
+      expect(server.requests.map((request) => request.get("refresh_token"))).toEqual([
+        "old-refresh",
+      ]);
+      expect(await shared.stored()).toEqual(
+        newerStoredGrant
+          ? replacement
+          : expect.objectContaining({
+              oauth: expect.objectContaining({
+                tokens: expect.objectContaining({ refresh_token: "old-refresh" }),
+              }),
+            }),
+      );
+    },
+  );
+
+  it("keeps a rotated grant over the clear a queued process stores after a failed commit", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(EXPIRED()));
+    const api = await shared.startProcess(server.fetch);
+    const worker = await shared.startProcess(server.fetch);
+    const update = shared.tables.mcpServer.update;
+    let queued: Promise<unknown> | undefined;
+    shared.tables.mcpServer.update = async (args) => {
+      if (!queued) {
+        queued = worker.provider.tokens();
+        await vi.waitFor(() =>
+          expect(shared.lockSettings.filter((sql) => sql.includes("advisory"))).toHaveLength(2),
+        );
+        throw new Error("connection terminated unexpectedly");
+      }
+      return update(args);
+    };
+
+    expect(await api.provider.tokens()).toMatchObject({ access_token: "access-1" });
+    await queued;
+    expect(server.requests.map((request) => request.get("refresh_token"))).toEqual([
+      "old-refresh",
+      "old-refresh",
+    ]);
+    expect((await shared.stored()).oauth?.tokens).toMatchObject({ refresh_token: "refresh-1" });
+    expect(await api.broker.statusFor(shared.server, shared.context)).toBe("connected");
+  });
+
+  it("does not renew a token that is still inside its lifetime", async () => {
+    const server = rotatingAuthServer();
+    const shared = sharedCredentials(expiringMaterial(Date.now() - 10 * 60 * 1000));
+    const { provider } = await shared.startProcess(server.fetch);
+
+    expect(await provider.tokens()).toMatchObject({ access_token: "old-access" });
+    expect(server.fetch).not.toHaveBeenCalled();
   });
 
   it("rejects unsafe browser authorization URLs", async () => {
@@ -415,6 +856,77 @@ describe("MCP OAuth", () => {
     expect(await provider.tokens()).toMatchObject({ access_token: "working" });
   });
 
+  it("allows private-network HTTP authorization URLs only when the instance opts in", async () => {
+    const url = new URL("http://192.0.2.10:8123/auth/authorize");
+    const allowed = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
+      onAuthorization: vi.fn(),
+      allowPrivateEndpoint: true,
+    });
+    await allowed.redirectToAuthorization(url);
+    expect(allowed.authorizationUrl).toEqual(url);
+
+    const denied = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
+      onAuthorization: vi.fn(),
+    });
+    await expect(denied.redirectToAuthorization(url)).rejects.toThrow(/HTTPS/i);
+  });
+
+  it("binds a private-network HTTP resource only when the instance opts in", async () => {
+    const resource = "http://192.0.2.10:8123/mcp";
+    const allowed = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
+      allowPrivateEndpoint: true,
+    });
+    const denied = new StoredMcpOAuthProvider("server-1", {}, async () => undefined);
+
+    expect(await allowed.validateResourceURL("http://192.0.2.10:8123/mcp", resource)).toEqual(
+      new URL(resource),
+    );
+    expect(
+      await denied.validateResourceURL("http://192.0.2.10:8123/mcp", resource),
+    ).toBeUndefined();
+  });
+
+  it("allows a long authorization URL from a server that publishes many scopes", async () => {
+    // PostHog's MCP publishes 157 scopes; the SDK asks for all of them, so the authorization
+    // URL runs past the 2,048 characters an MCP endpoint may use.
+    const scope = Array.from({ length: 160 }, (_, index) => `resource_${index}:read`).join(" ");
+    const url = new URL("https://auth.example.test/authorize");
+    url.searchParams.set("client_id", "client");
+    url.searchParams.set("scope", scope);
+    expect(url.href.length).toBeGreaterThan(2_048);
+    const onAuthorization = vi.fn();
+    const provider = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
+      onAuthorization,
+    });
+
+    await provider.redirectToAuthorization(url);
+
+    expect(provider.authorizationUrl?.searchParams.get("scope")).toBe(scope);
+    expect(onAuthorization).toHaveBeenCalledOnce();
+  });
+
+  it("still refuses an authorization URL past its own limit, including a scope override", async () => {
+    const huge = new URL("https://auth.example.test/authorize");
+    huge.searchParams.set("scope", "x".repeat(MAX_AUTHORIZATION_URL_LENGTH));
+    const onAuthorization = vi.fn();
+    const provider = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
+      onAuthorization,
+    });
+    await expect(provider.redirectToAuthorization(huge)).rejects.toThrow(/exceeds/);
+
+    // A URL under the limit cannot be pushed past it by the configured scope override.
+    const near = new URL("https://auth.example.test/authorize");
+    near.searchParams.set("scope", "x");
+    const overridden = new StoredMcpOAuthProvider(
+      "server-1",
+      { oauth: { scopeOverride: "y".repeat(MAX_AUTHORIZATION_URL_LENGTH) } },
+      async () => undefined,
+      { onAuthorization },
+    );
+    await expect(overridden.redirectToAuthorization(near)).rejects.toThrow(/exceeds/);
+    expect(onAuthorization).not.toHaveBeenCalled();
+  });
+
   it("allows localhost HTTP browser authorization URLs", async () => {
     const onAuthorization = vi.fn();
     const provider = new StoredMcpOAuthProvider("server-1", {}, async () => undefined, {
@@ -426,6 +938,94 @@ describe("MCP OAuth", () => {
 
     expect(provider.authorizationUrl).toEqual(authorizationUrl);
     expect(onAuthorization).toHaveBeenCalledWith(authorizationUrl);
+  });
+
+  describe("offline_access", () => {
+    const authorize = async (
+      scope: string | undefined,
+      scopesSupported: string[] | undefined,
+      scopeOverride?: string,
+      resourceScopes?: string[],
+    ) => {
+      const provider = new StoredMcpOAuthProvider(
+        "server-1",
+        {
+          oauth: {
+            ...(scopeOverride ? { scopeOverride } : {}),
+            discoveryState: {
+              authorizationServerUrl: "https://auth.example.test",
+              ...(resourceScopes
+                ? {
+                    resourceMetadata: {
+                      resource: "https://mcp.example.test",
+                      scopes_supported: resourceScopes,
+                    },
+                  }
+                : {}),
+              authorizationServerMetadata: {
+                issuer: "https://auth.example.test",
+                authorization_endpoint: "https://auth.example.test/authorize",
+                token_endpoint: "https://auth.example.test/token",
+                response_types_supported: ["code"],
+                ...(scopesSupported ? { scopes_supported: scopesSupported } : {}),
+              },
+            },
+          },
+        },
+        async () => undefined,
+        { onAuthorization: () => undefined },
+      );
+      const url = new URL("https://auth.example.test/authorize");
+      if (scope) url.searchParams.set("scope", scope);
+      await provider.redirectToAuthorization(url);
+      return provider.authorizationUrl?.searchParams;
+    };
+
+    it("is requested with the published scopes when the authorization server offers it", async () => {
+      const params = await authorize("mail.read", ["mail.read", "offline_access"]);
+      expect(params?.get("scope")).toBe("mail.read offline_access");
+      expect(params?.has("prompt")).toBe(false);
+    });
+
+    it("is not repeated, and not added when the server does not offer it", async () => {
+      expect((await authorize("offline_access mail.read", ["offline_access"]))?.get("scope")).toBe(
+        "offline_access mail.read",
+      );
+      expect((await authorize("mail.read", ["mail.read"]))?.get("scope")).toBe("mail.read");
+    });
+
+    it("leaves a request with no scope alone", async () => {
+      expect((await authorize(undefined, ["offline_access"]))?.has("scope")).toBe(false);
+    });
+
+    it("leaves a scope the user typed in exactly as typed", async () => {
+      const params = await authorize("mail.read", ["mail.read", "offline_access"], "mail.send");
+      expect(params?.get("scope")).toBe("mail.send");
+    });
+
+    describe("when the resource publishes no scopes", () => {
+      it("requests the authorization server's scopes", async () => {
+        const params = await authorize(undefined, ["mcp:read", "mcp:write"]);
+        expect(params?.get("scope")).toBe("mcp:read mcp:write");
+      });
+
+      it("adds offline_access only when the authorization server lists it", async () => {
+        expect((await authorize(undefined, ["mcp:read", "offline_access"]))?.get("scope")).toBe(
+          "mcp:read offline_access",
+        );
+        expect((await authorize(undefined, ["mcp:read"]))?.get("scope")).toBe("mcp:read");
+      });
+
+      it("does not override a scope the SDK already chose, a typed scope, or published scopes", async () => {
+        expect((await authorize("mail.read", ["mcp:read"]))?.get("scope")).toBe("mail.read");
+        expect((await authorize(undefined, ["mcp:read"], "mail.send"))?.get("scope")).toBe(
+          "mail.send",
+        );
+        expect((await authorize(undefined, ["mcp:read"], undefined, ["read"]))?.has("scope")).toBe(
+          false,
+        );
+      });
+    });
   });
 
   it("clears stale tokens when runtime authorization URL validation fails", async () => {
@@ -505,7 +1105,7 @@ describe("MCP OAuth", () => {
     expect(persisted.at(-1)?.oauth?.tokens).toBeUndefined();
   });
 
-  it.each(["https://mcp.example.test", "http://127.0.0.1:8080"])(
+  it.each(["https://mcp.example.test"])(
     "drives discovery, registration, PKCE, redirect, and token exchange for %s",
     async (mcpOrigin) => {
       const requests: string[] = [];
@@ -649,7 +1249,7 @@ describe("MCP OAuth", () => {
       ).toBe(true);
       expect(prisma.mcpServer.update).toHaveBeenCalledWith({
         where: { id: "server-1" },
-        data: { revision: { increment: 1 } },
+        data: { revision: { increment: 1 }, oauthReauthAt: null },
       });
     },
   );
@@ -698,6 +1298,80 @@ describe("MCP OAuth", () => {
       }),
     ).rejects.toThrow(/HTTPS/i);
     expect(fetchCalls).toEqual([]);
+  });
+
+  it("refuses to start sign-in for an http loopback server, whose token is never sent", async () => {
+    const server = createServer((req, res) => {
+      const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      if (req.url === "/mcp") {
+        res.writeHead(401, {
+          "WWW-Authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"`,
+        });
+        res.end();
+      } else {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({ resource: `${origin}/mcp`, authorization_servers: [AUTH_ORIGIN] }),
+        );
+      }
+    });
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = logicalHref(input, init);
+        if (url.startsWith("http://127.0.0.1")) return realFetch(input, init);
+        if (url.endsWith("/.well-known/oauth-authorization-server"))
+          return Response.json({
+            issuer: AUTH_ORIGIN,
+            authorization_endpoint: `${AUTH_ORIGIN}/authorize`,
+            token_endpoint: `${AUTH_ORIGIN}/token`,
+            registration_endpoint: `${AUTH_ORIGIN}/register`,
+            response_types_supported: ["code"],
+            code_challenge_methods_supported: ["S256"],
+          });
+        if (url === `${AUTH_ORIGIN}/register`)
+          return Response.json(
+            { client_id: "c", redirect_uris: [], token_endpoint_auth_method: "none" },
+            { status: 201 },
+          );
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const endpoint = `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`;
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({ endpoint, secretId: null }),
+        update: vi.fn(),
+      },
+      secret: { findFirst: vi.fn(), create: vi.fn().mockResolvedValue({}), deleteMany: vi.fn() },
+    };
+    const prisma = {
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "server-1",
+          endpoint,
+          secretId: null,
+        }),
+      },
+      mcpOAuthSession: oauthSessionStore(),
+      deploymentSettings: deploymentOwner("user-1"),
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const broker = new McpOAuthBroker(prisma as never, { put: vi.fn() } as never, TEST_NETWORK);
+    await expect(
+      broker.begin({
+        serverId: "server-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        redirectUri: "rakazo://mcp/oauth/callback",
+      }),
+    )
+      .rejects.toThrow(/not available/i)
+      .finally(() => server.close());
   });
 
   it.each([
@@ -1083,7 +1757,7 @@ describe("MCP OAuth", () => {
       id: sessionId,
       serverId: "server-1",
       endpoint: "https://mcp.example.test/mcp",
-      redirectUri: material.oauth.redirectUri,
+      redirectUri: "rakazo://mcp/oauth/callback",
       oauthCiphertext: "session-first",
       createdAt: new Date(),
     });
@@ -1128,9 +1802,13 @@ describe("MCP OAuth", () => {
       where: { id: sessionId, spaceId: "workspace-1", userId: "user-1" },
     });
     expect(new URLSearchParams(tokenRequestBody).get("code_verifier")).toBe("persisted-verifier");
+    // The exchange uses the redirect the session was stored with, which complete() cannot override.
+    expect(new URLSearchParams(tokenRequestBody).get("redirect_uri")).toBe(
+      "rakazo://mcp/oauth/callback",
+    );
     expect(prisma.mcpServer.update).toHaveBeenCalledWith({
       where: { id: "server-1" },
-      data: { revision: { increment: 1 } },
+      data: { revision: { increment: 1 }, oauthReauthAt: null },
     });
   });
 

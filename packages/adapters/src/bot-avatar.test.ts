@@ -38,6 +38,25 @@ describe("bot avatar encoding", () => {
     ).resolves.toEqual({ color: "#8B5CF6::shape_2" });
   });
 
+  it("keeps the current shape when only a plain hex color is written", async () => {
+    await expect(
+      resolveUpdateBotAvatar({
+        color: "#0EA5E9",
+        currentColor: "#10B981::shape_3",
+        sourceImageArtifactIds: [],
+        loadArtifact: async () => null,
+      }),
+    ).resolves.toEqual({ color: "#0EA5E9::shape_3" });
+    await expect(
+      resolveUpdateBotAvatar({
+        color: "#0EA5E9::shape_1",
+        currentColor: "#10B981::shape_3",
+        sourceImageArtifactIds: [],
+        loadArtifact: async () => null,
+      }),
+    ).resolves.toEqual({ color: "#0EA5E9::shape_1" });
+  });
+
   it("rejects remote URLs and missing attached images", async () => {
     await expect(
       resolveUpdateBotAvatar({
@@ -86,7 +105,7 @@ describe("bot avatar encoding", () => {
 });
 
 describe("update_bot tool schema", () => {
-  it("exposes avatar and notifyOnFinish fields the executor applies", () => {
+  it("exposes avatar, instructions and notifyOnFinish fields the executor applies", () => {
     const tool = builtinAgentTools.find((entry) => entry.name === "update_bot");
     if (!tool) throw new Error("missing update_bot");
     const properties =
@@ -95,10 +114,23 @@ describe("update_bot tool schema", () => {
       "artifact_id",
       "color",
       "description",
+      "instructions",
       "name",
       "notifyOnFinish",
       "title",
       "use_attached_image",
     ]);
+  });
+
+  it("update_bot notifyOnFinish description says it also covers approvals", () => {
+    const tool = builtinAgentTools.find((entry) => entry.name === "update_bot");
+    if (!tool) throw new Error("missing update_bot");
+    const properties =
+      (
+        tool.inputSchema as {
+          properties?: Record<string, { description?: string }>;
+        }
+      ).properties ?? {};
+    expect(properties.notifyOnFinish?.description).toContain("needs input");
   });
 });

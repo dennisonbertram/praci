@@ -24,7 +24,10 @@ describePostgres("sidebar folders over RPC (PostgreSQL)", () => {
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   const client = (actor: Actor) =>
-    createRouterClient(createRouter({ prisma } as unknown as RouterDeps), { context: { actor } });
+    createRouterClient(
+      createRouter({ prisma, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+      { context: { actor } },
+    );
   const bot = async (actor: Actor, name: string, spawnKey?: string) =>
     (
       await prisma.bot.create({

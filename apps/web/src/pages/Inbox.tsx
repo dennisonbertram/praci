@@ -6,6 +6,7 @@ import type {
   InboxMark,
   InboxPileCounts,
   InboxTodo,
+  InboxTodoDone,
   MailRow,
 } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
@@ -15,9 +16,7 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -29,11 +28,9 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
+  OPEN_DIALOG_SELECTOR,
   Skeleton,
   Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Toggle,
   Tooltip,
   TooltipContent,
@@ -44,6 +41,7 @@ import {
   BrushCleaning,
   ListFilter,
   Mail,
+  MailOpen,
   MailWarning,
   Newspaper,
   Search,
@@ -55,6 +53,8 @@ import {
 } from "lucide-react";
 import {
   Fragment,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -65,7 +65,9 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
-import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
+import { BotTodos } from "../components/BotTodos";
+import { NEW_MESSAGE } from "../components/compose-email-constants";
+import { InboxAccountTabs } from "../components/inbox/InboxAccountTabs";
 import { InboxCleanup } from "../components/inbox/InboxCleanup";
 import { InboxDigest } from "../components/inbox/InboxDigest";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
@@ -94,15 +96,21 @@ import {
   prefetchInboxMessage,
   ROW_MENU_EVENT,
 } from "../lib/inbox-message-cache";
-import { moveInChunks } from "../lib/inbox-move";
+import { availableMoves, moveInChunks } from "../lib/inbox-move";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
+import { usePollWhile } from "../lib/page-data";
 import { rpc } from "../lib/rpc";
+import { useOnReturn } from "../lib/use-refetch-while-open";
 import { errorText } from "../lib/user-error";
 
 type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 
 const ALL = "all";
+
+const ComposeEmail = lazy(() =>
+  import("../components/ComposeEmail").then((module) => ({ default: module.ComposeEmail })),
+);
 
 const PHONE_QUERY = "(max-width: 767px)";
 function subscribePhone(onChange: () => void) {
@@ -120,6 +128,9 @@ const SYNC_POLL_MS = 2_000;
 const SYNC_POLL_MAX_MS = 10_000;
 const SYNC_POLL_MAX = 60;
 const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
+const couldNotRestore = (count: number) => t`Couldn't restore ${count}`;
+/** The server flags mail whose own headers offer an unsubscribe target it accepts. */
+const unsubscribable = (row: MailRow) => row.canUnsubscribe === true;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const CONSENT_DISMISSED_KEY = "rakazo.inboxConsentDismissed";
 /** The dismissal belongs to one user in one space; without that scope it lasts only until the page closes. */
@@ -171,8 +182,9 @@ let rememberedTab: string | undefined;
 
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
-  | { kind: "archived"; messageId: string; subject: string }
-  | { kind: "archivedMany"; messageIds: string[] }
+  | { kind: "archived"; messageId: string; subject: string; row?: MailRow }
+  | { kind: "archivedMany"; messageIds: string[]; rows: MailRow[] }
+  | { kind: "tracked"; messageId: string; subject: string }
   | {
       kind: "junked";
       op: MailMoveOp;
@@ -181,7 +193,10 @@ type Status =
       batches: Promise<string[]>;
     }
   | { kind: "moved"; messageId: string; subject: string }
-  | { kind: "replied" };
+  | { kind: "replied" }
+  // `sender` is set when this dismissal stopped Needs reply for it; `todoId` when the dismissal
+  // came from finishing a reply to-do, so Undo restores the to-do too.
+  | { kind: "noReply"; messageId: string; sender?: string; todoId?: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -303,6 +318,7 @@ function InboxListPage({
     busy: false,
   });
   const [error, setError] = useState("");
+  const [listError, setListError] = useState("");
   // Shown briefly at the bottom; a mark stays undoable even after its row left the list.
   const [status, setStatus] = useState<Status | null>(null);
   // Spoken by screen readers only, for read changes; the Archived toast is already a status region.
@@ -338,6 +354,7 @@ function InboxListPage({
   const [retried, setRetried] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  const lastSyncStart = useRef(0);
   const polls = useRef(0);
   const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
@@ -345,7 +362,10 @@ function InboxListPage({
   // A sync has returned a last-sync time, so the loading line never says "First sync" on an old mailbox.
   const [everSynced, setEverSynced] = useState(false);
   const appliedKey = useRef<string | null>(null);
+  const removedFrom = useRef(new Map<string, Set<string>>());
   const archiving = useRef(new Map<string, Promise<boolean>>());
+  const dismissing = useRef(new Map<string, Promise<boolean>>());
+  const messageChanges = useRef(new Map<string, Promise<unknown>>());
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
   const [sorting, setSorting] = useState(false);
@@ -406,14 +426,12 @@ function InboxListPage({
   }, [onRefreshed]);
 
   // New mail shows up, and the sidebar count follows, while the page stays open.
-  useEffect(() => {
-    if (paused) return;
-    // The same sync as opening the page: it fetches new mail, then the list and the count reload.
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") setAttempt((n) => n + 1);
-    }, NEW_MAIL_POLL_MS);
-    return () => clearInterval(timer);
-  }, [paused]);
+  // The same sync as opening the page: it fetches new mail, then the list and the count reload.
+  usePollWhile(!paused, NEW_MAIL_POLL_MS, () => setAttempt((n) => n + 1));
+  // Coming back to the tab: sync now, unless one started inside the server's 60-second window.
+  useOnReturn(!paused, () => {
+    if (Date.now() - lastSyncStart.current >= NEW_MAIL_POLL_MS) setAttempt((n) => n + 1);
+  });
 
   useEffect(() => {
     if (!status) return;
@@ -440,6 +458,7 @@ function InboxListPage({
       .then((next) => {
         if (!live()) return;
         listApplied.current = request;
+        setListError("");
         cache.current.set(key, next);
         if (next.pileCounts) setPileCounts(next.pileCounts);
         setData(next);
@@ -460,7 +479,7 @@ function InboxListPage({
         if (!live()) return;
         // A removed account leaves its tab behind; fall back to All.
         if (tab) setTab(undefined);
-        else setError(errorText(cause));
+        else setListError(errorText(cause));
         endRetry();
       });
   }, [tab, filter, query, pile, category, reload, paused]);
@@ -513,8 +532,18 @@ function InboxListPage({
     rpc.inbox.todos
       .list(tab ? { connectionId: tab } : {})
       .then((next) => done(next.todos, next.meetings ?? null))
-      // The list reports its own failure; the card just stays hidden.
-      .catch(() => done([]));
+      // The list reports its own failure; cached to-dos stay visible when available.
+      .catch(() => {
+        if (!live) return;
+        if (todosNow.current[tabKey] !== undefined) {
+          if (sortEnding.current) {
+            sortEnding.current = false;
+            setSorting(false);
+          }
+          return;
+        }
+        done([]);
+      });
     return () => {
       live = false;
     };
@@ -583,6 +612,7 @@ function InboxListPage({
     let live = true;
     let wake: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    lastSyncStart.current = Date.now();
     // The server queues the sync and answers at once; ask again until it is done, then list.
     const sync = async () => {
       let result = await rpc.inbox.refresh({});
@@ -595,10 +625,11 @@ function InboxListPage({
         if (live) result = await rpc.inbox.refresh({});
         if (result?.syncedAt && live) setEverSynced(true);
       }
+      if (live) setListError("");
     };
     sync()
       .catch((cause) => {
-        if (live) setError(errorText(cause));
+        if (live) setListError(errorText(cause));
       })
       .then(() => {
         if (!live) return setRetrying(false);
@@ -770,20 +801,38 @@ function InboxListPage({
     };
   }, [paused]);
   const noAccounts = data ? accounts.length === 0 : noGmail;
-  // With two or more accounts the Filter menu picks one; the button then names it.
-  const tabLabel =
-    accounts.length > 1
-      ? accounts.find((account) => account.connectionId === tab)?.label
-      : undefined;
-  const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
+  const failed = error || listError || (shown ? syncErrorText(shown, retried && !retrying) : "");
   const limited =
-    !error && Boolean(shown?.rateLimitedAccounts?.length) && !shown?.reconnectAccounts.length;
+    !error &&
+    !listError &&
+    Boolean(shown?.rateLimitedAccounts?.length) &&
+    !shown?.reconnectAccounts.length;
   useEffect(() => {
     if (!failed) setRetried(false);
   }, [failed]);
   const todos = todosByTab[tabKey];
   // A lapsed sign-in is fixed by signing in again; trying again would fail the same way.
-  const reconnect = !error && Boolean(shown?.reconnectAccounts.length);
+  const reconnect = !error && !listError && Boolean(shown?.reconnectAccounts.length);
+  // Before insisting on a new sign-in, ask the server to test it once; a flag left over from an
+  // earlier failure clears and the list reloads without the notice.
+  const reconnectKey = reconnect ? (shown?.reconnectAccounts ?? []).join(",") : "";
+  useEffect(() => {
+    if (!reconnectKey) return;
+    let live = true;
+    void Promise.all(
+      reconnectKey.split(",").map((connectionId) =>
+        rpc.connections
+          .check({ connectionId })
+          .then((row) => !row.needsReconnect)
+          .catch(() => false),
+      ),
+    ).then((cleared) => {
+      if (live && cleared.some(Boolean)) setReload((n) => n + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, [reconnectKey]);
   // With nothing to show, the problem is the page, not a line above an empty list.
   const failedEmpty =
     Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
@@ -845,26 +894,57 @@ function InboxListPage({
     !category &&
     (pileCounts ? Object.values(pileCounts).every((n) => n === 0) : true);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
-  const patchRows = (change: (rows: MailRow[], searched: boolean) => MailRow[]) => {
+  // `first` is false for the pages loaded after the first one.
+  // With `keys`, only the lists under those keys change.
+  const patchRows = (
+    change: (rows: MailRow[], searched: boolean, first: boolean) => MailRow[],
+    keys?: Set<string>,
+  ) => {
     const patch = (list: InboxListOutput, searched: boolean) => ({
       ...list,
-      rows: change(list.rows, searched),
+      rows: change(list.rows, searched, true),
     });
-    setData((list) => list && patch(list, Boolean(query)));
-    setMore((m) => ({ ...m, rows: change(m.rows, Boolean(query)) }));
+    if (!keys || keys.has(dataKey)) {
+      setData((list) => list && patch(list, Boolean(query)));
+      setMore((m) => ({ ...m, rows: change(m.rows, Boolean(query), false) }));
+    }
     // The key is [tab, filter, query, pile, category].
     for (const [key, list] of cache.current)
-      cache.current.set(key, patch(list, Boolean(JSON.parse(key)[2])));
+      if (!keys || keys.has(key)) cache.current.set(key, patch(list, Boolean(JSON.parse(key)[2])));
   };
   const patchFeedback = (messageId: string, feedback: InboxMark | null) =>
     patchRows((list) => list.map((row) => (row.id === messageId ? { ...row, feedback } : row)));
-  // The row changes at once; a failed change shows the error and reloads the real list.
-  const change = (call: Promise<unknown>) => {
+  // Only the latest choice for one kind of action on a message handles its result.
+  const change = (
+    kind: "read" | "track" | "feedback" | "archive",
+    messageId: string,
+    start: () => Promise<unknown>,
+    onSuccess: () => void = onRefreshed,
+    onFailure?: () => void,
+    reloadOnFailure = true,
+  ): Promise<unknown> => {
     setError("");
-    call.then(onRefreshed).catch((cause) => {
-      setError(errorText(cause));
-      setReload((n) => n + 1);
-    });
+    const key = `${kind}:${messageId}`;
+    const previous = messageChanges.current.get(key);
+    const call = Promise.resolve(previous)
+      .catch(() => undefined)
+      .then(start);
+    messageChanges.current.set(key, call);
+    call.then(
+      () => {
+        if (messageChanges.current.get(key) !== call) return;
+        messageChanges.current.delete(key);
+        onSuccess();
+      },
+      (cause) => {
+        if (messageChanges.current.get(key) !== call) return;
+        messageChanges.current.delete(key);
+        onFailure?.();
+        setError(errorText(cause));
+        if (reloadOnFailure) setReload((n) => n + 1);
+      },
+    );
+    return call;
   };
   const setRead = (messageId: string, read: boolean) => {
     // Clear first so a repeat of the same message is announced again.
@@ -875,25 +955,101 @@ function InboxListPage({
     patchRows((list) =>
       list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
     );
-    change(rpc.inbox.markRead({ messageId, read }));
+    change("read", messageId, () => rpc.inbox.markRead({ messageId, read }));
   };
-  const archive = (messageId: string) => {
+  // One bulk call for the checked rows: any unread marks just those read, else every one unread.
+  const setReadMany = (targets: MailRow[]) => {
+    const unread = targets.filter((row) => row.unread);
+    const read = unread.length > 0;
+    const ids = (read ? unread : targets).map((row) => row.id);
+    if (ids.length === 0) return;
+    setAnnouncement("");
+    const text = read ? t`Marked read` : t`Marked unread`;
+    clearTimeout(announceTimer.current);
+    announceTimer.current = setTimeout(() => setAnnouncement(text), 50);
+    patchRows((list) =>
+      list.map((row) => (ids.includes(row.id) ? { ...row, unread: !read } : row)),
+    );
+    setError("");
+    bulkInChunks(ids, (slice) => rpc.inbox.markReadMany({ messageIds: slice, read }))
+      .then((result) => {
+        onRefreshed();
+        // A failed id comes back with the real list, so it shows its real state again.
+        if (result.failed.length) setReload((n) => n + 1);
+      })
+      .catch((cause) => {
+        setError(errorText(cause));
+        setReload((n) => n + 1);
+      });
+  };
+  const setTracked = (messageId: string, tracked: boolean) => {
+    const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
+    patchRows((list) =>
+      list.map((row) => (row.id === messageId ? { ...row, tracked: tracked || undefined } : row)),
+    );
+    setStatus(tracked ? { kind: "tracked", messageId, subject } : null);
+    change("track", messageId, () =>
+      tracked ? rpc.inbox.track({ messageId }) : rpc.inbox.untrack({ messageId }),
+    );
+  };
+  // A search also finds archived mail, so its row stays and says Archived.
+  const takeOut = (gone: Set<string>, remember = false) => {
+    if (remember) {
+      // Undo puts a row back only into the lists it left: another account's or pile's list never gets it.
+      const has = (list: MailRow[] | undefined) => list?.some((row) => gone.has(row.id));
+      const keys = new Set<string>();
+      for (const [key, list] of cache.current) if (has(list.rows)) keys.add(key);
+      if (has(data?.rows) || has(more.rows)) keys.add(dataKey);
+      for (const id of gone) removedFrom.current.set(id, keys);
+    }
+    patchRows((list, searched) =>
+      searched
+        ? list.map((row) => (gone.has(row.id) ? { ...row, inInbox: false } : row))
+        : list.filter((row) => !gone.has(row.id)),
+    );
+  };
+  // Undo shows the rows again before the server answers, in their place by date; a failed Undo takes them out again.
+  const putBack = (back: MailRow[]) => {
+    const keys = new Set<string>();
+    for (const row of back) for (const key of removedFrom.current.get(row.id) ?? []) keys.add(key);
+    patchRows((list, searched, first) => {
+      if (searched)
+        return list.map((row) =>
+          back.some((b) => b.id === row.id) ? { ...row, inInbox: true } : row,
+        );
+      // The pages after the first reload with the list; only the first list takes the rows.
+      if (!first) return list;
+      const next = [...list];
+      for (const row of back) {
+        if (next.some((r) => r.id === row.id)) continue;
+        const at = next.findIndex((r) => r.receivedAt < row.receivedAt);
+        next.splice(at < 0 ? next.length : at, 0, row);
+      }
+      return next;
+    }, keys);
+  };
+  // `quiet` is for Undo of a move to the Inbox, which must not offer an Undo of its own.
+  const archive = (messageId: string, quiet = false) => {
     // The selection and the open message move on to a neighbor before the row goes.
     const index = ids.indexOf(messageId);
     const neighbor = ids[index + 1] ?? ids[index - 1];
     // A touch screen has no keyboard cursor to carry over, so no row stays highlighted.
     if (selectedId === messageId) setSelectedId(coarsePointer() ? undefined : neighbor);
-    const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
-    // A search also finds archived mail, so its row stays and says Archived.
-    patchRows((list, searched) =>
-      searched
-        ? list.map((row) => (row.id === messageId ? { ...row, inInbox: false } : row))
-        : list.filter((row) => row.id !== messageId),
-    );
-    setStatus({ kind: "archived", messageId, subject });
+    const row = rows.find((r) => r.id === messageId);
+    takeOut(new Set([messageId]), true);
+    setStatus(quiet ? null : { kind: "archived", messageId, subject: row?.subject ?? "", row });
     // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
-    const call = (archiving.current.get(messageId) ?? Promise.resolve()).then(() =>
-      rpc.inbox.archive({ messageId }),
+    const previous = archiving.current.get(messageId) ?? Promise.resolve();
+    const call = change(
+      "archive",
+      messageId,
+      () => previous.then(() => rpc.inbox.archive({ messageId })),
+      onRefreshed,
+      // A failed archive claims nothing, so its success toast goes with the error line.
+      () =>
+        setStatus((current) =>
+          current?.kind === "archived" && current.messageId === messageId ? null : current,
+        ),
     );
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(
@@ -903,11 +1059,11 @@ function InboxListPage({
         () => false,
       ),
     );
-    change(call);
     return neighbor;
   };
-  const unarchive = async (messageId: string) => {
+  const unarchive = async (messageId: string, row?: MailRow) => {
     setStatus(null);
+    if (row) putBack([row]);
     const saved = await archiving.current.get(messageId);
     archiving.current.delete(messageId);
     // A failed archive already showed its error and reloaded the list.
@@ -916,6 +1072,66 @@ function InboxListPage({
     rpc.inbox
       .unarchive({ messageId })
       .then(onRefreshed)
+      .catch((cause) => {
+        takeOut(new Set([messageId]));
+        setError(errorText(cause));
+      })
+      .then(() => setReload((n) => n + 1));
+  };
+  // The row leaves Needs reply at once; the server counts it and says when this was the third.
+  // Its toast offers Undo right away, like the archived ones.
+  const noReply = (messageId: string) => {
+    setError("");
+    patchRows((list) =>
+      list.map((row) => (row.id === messageId ? { ...row, needsReply: false } : row)),
+    );
+    setStatus({ kind: "noReply", messageId });
+    const call = rpc.inbox.noReply({ messageId }).then(({ stopped }) => {
+      // The third correction for one sender changes what triage does next, so it says so.
+      if (stopped)
+        setStatus((current) =>
+          current?.kind === "noReply" && current.messageId === messageId
+            ? { ...current, sender: stopped }
+            : current,
+        );
+    });
+    // Resolves to whether the dismissal saved, so Undo never overtakes it.
+    dismissing.current.set(
+      messageId,
+      call.then(
+        () => true,
+        () => false,
+      ),
+    );
+    call
+      .catch((cause) => {
+        // A failed dismissal claims nothing, so its toast goes with the error line.
+        setStatus((current) =>
+          current?.kind === "noReply" && current.messageId === messageId ? null : current,
+        );
+        setError(errorText(cause));
+      })
+      .then(() => setReload((n) => n + 1));
+  };
+  const undoNoReply = async (messageId: string, todoId?: string) => {
+    setStatus(null);
+    patchRows((list) =>
+      list.map((row) => (row.id === messageId ? { ...row, needsReply: true } : row)),
+    );
+    // Undo waits for the dismissal it reverses; a failed one already reloaded the real state.
+    const saved = await dismissing.current.get(messageId);
+    dismissing.current.delete(messageId);
+    if (saved === false) return;
+    setError("");
+    // A dismissal from finishing a reply to-do also reopens the to-do.
+    if (todoId)
+      rpc.inbox.todos
+        .setDone({ id: todoId, done: false })
+        .then(changeTodo)
+        .catch((cause) => setError(errorText(cause)));
+    rpc.inbox
+      .noReply({ messageId, undo: true })
+      .then(onRefreshed)
       .catch((cause) => setError(errorText(cause)))
       .then(() => setReload((n) => n + 1));
   };
@@ -923,6 +1139,7 @@ function InboxListPage({
   // Checked rows that are still listed, so a reload never leaves a count for rows that are gone.
   const pickedRows = useMemo(() => rows.filter((row) => picked.has(row.id)), [rows, picked]);
   const pickedCount = pickedRows.length;
+  const pickedUnread = pickedRows.some((row) => row.unread);
   const pickedSet = useMemo(() => new Set(pickedRows.map((row) => row.id)), [pickedRows]);
   const groupRows = (id: string) =>
     senderGroups.find((group) => senderGroupId(group.key) === id)?.rows ?? [];
@@ -967,17 +1184,17 @@ function InboxListPage({
               ids.slice(0, Math.max(index, 0)).reverse().find(stays)),
       );
     }
-    patchRows((list, searched) =>
-      searched
-        ? list.map((row) => (gone.has(row.id) ? { ...row, inInbox: false } : row))
-        : list.filter((row) => !gone.has(row.id)),
-    );
+    takeOut(gone, true);
   };
   const archiveMany = (candidates: MailRow[]) => {
     const messageIds = archivableIds(candidates, spamView);
     if (messageIds.length === 0) return;
     dropFromView(new Set(messageIds));
-    setStatus({ kind: "archivedMany", messageIds });
+    setStatus({
+      kind: "archivedMany",
+      messageIds,
+      rows: candidates.filter((row) => messageIds.includes(row.id)),
+    });
     setError("");
     // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
     const call = Promise.all(messageIds.map((id) => archiving.current.get(id))).then(() =>
@@ -997,17 +1214,34 @@ function InboxListPage({
     call
       .then((result) => {
         onRefreshed();
-        if (result.failed.length) setError(couldNotArchive(result.failed.length));
+        if (result.failed.length) {
+          setError(couldNotArchive(result.failed.length));
+          setStatus((current) => {
+            if (current?.kind !== "archivedMany" || current.messageIds !== messageIds)
+              return current;
+            if (result.done.length === 0) return null;
+            const done = new Set(result.done);
+            return {
+              ...current,
+              messageIds: result.done,
+              rows: current.rows.filter((row) => done.has(row.id)),
+            };
+          });
+        }
         // A failed id comes back with the real list; the Spam count follows the archive.
         if (result.failed.length || spamView) setReload((n) => n + 1);
       })
       .catch((cause) => {
+        setStatus((current) =>
+          current?.kind === "archivedMany" && current.messageIds === messageIds ? null : current,
+        );
         setError(errorText(cause));
         setReload((n) => n + 1);
       });
   };
-  const unarchiveMany = async (messageIds: string[]) => {
+  const unarchiveMany = async (messageIds: string[], back: MailRow[]) => {
     setStatus(null);
+    putBack(back);
     const saved = await Promise.all(messageIds.map((id) => archiving.current.get(id)));
     for (const id of messageIds) archiving.current.delete(id);
     // An id whose archive failed is already back with the reloaded list.
@@ -1015,9 +1249,18 @@ function InboxListPage({
     if (restore.length === 0) return;
     setError("");
     bulkInChunks(restore, (slice) => rpc.inbox.unarchiveMany({ messageIds: slice }))
-      // A thread Gmail could not put back stays archived, and the reloaded list shows that.
-      .then(onRefreshed)
-      .catch((cause) => setError(errorText(cause)))
+      // A thread Gmail could not put back stays archived, so its row leaves again.
+      .then((result) => {
+        onRefreshed();
+        if (result.failed.length) {
+          takeOut(new Set(result.failed.map((f) => f.messageId)));
+          setError(couldNotRestore(result.failed.length));
+        }
+      })
+      .catch((cause) => {
+        takeOut(new Set(restore));
+        setError(errorText(cause));
+      })
       .then(() => setReload((n) => n + 1));
   };
   // Spam, not spam and trash work like a bulk archive: the rows leave at once and Undo reverses the logged batches.
@@ -1032,12 +1275,24 @@ function InboxListPage({
     const batches = moveInChunks(op, messageIds, (input) => rpc.inbox.moveMany(input), batchIds)
       .then((result) => {
         onRefreshed();
-        if (result.failed.length) setError(couldNotArchive(result.failed.length));
+        if (result.failed.length) {
+          setError(couldNotArchive(result.failed.length));
+          setStatus((current) => {
+            if (current?.kind !== "junked" || current.batches !== batches) return current;
+            return result.done.length === 0 ? null : { ...current, count: result.done.length };
+          });
+        }
         // Failed ids come back with the real list, and the pile counts follow.
         setReload((n) => n + 1);
         return batchIds;
       })
       .catch((cause) => {
+        // A call that never finished a slice claims nothing; finished batches keep their Undo.
+        setStatus((current) =>
+          current?.kind === "junked" && current.batches === batches && batchIds.length === 0
+            ? null
+            : current,
+        );
         setError(errorText(cause));
         setReload((n) => n + 1);
         return batchIds;
@@ -1074,14 +1329,17 @@ function InboxListPage({
     setError("");
     patchFeedback(messageId, value);
     setStatus(value ? { kind: "marked", messageId, mark: value, sender: row?.from ?? "" } : null);
-    rpc.inbox
-      .feedback({ messageId, mark: value })
-      .then(() => setReload((n) => n + 1))
-      .catch((cause) => {
+    change(
+      "feedback",
+      messageId,
+      () => rpc.inbox.feedback({ messageId, mark: value }),
+      () => setReload((n) => n + 1),
+      () => {
         patchFeedback(messageId, before);
         setStatus(null);
-        setError(errorText(cause));
-      });
+      },
+      false,
+    );
   };
   const loadMore = () => {
     const key = listKey;
@@ -1150,7 +1408,17 @@ function InboxListPage({
   const openReplyTodo = openId
     ? todos?.find((todo) => todo.messageId === openId && repeatsRow(todo))
     : undefined;
-  const changeTodo = (next: InboxTodo) => {
+  const changeTodo = ({ stoppedSender, dismissedReply, ...next }: InboxTodoDone) => {
+    // Finishing a to-do for mail that needed no reply can be the third such correction.
+    if (dismissedReply && next.messageId)
+      setStatus({
+        kind: "noReply",
+        messageId: next.messageId,
+        todoId: next.id,
+        sender: stoppedSender,
+      });
+    // Finishing the to-do also clears the mail from Needs reply on the server; list it again.
+    if (next.doneAt && next.messageId) setReload((n) => n + 1);
     const swap = (items: InboxTodo[]) => items.map((item) => (item.id === next.id ? next : item));
     // A held answer must not bring the old state back when it is applied.
     if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
@@ -1213,6 +1481,18 @@ function InboxListPage({
     setParams(next);
   };
 
+  // What the toast's Undo button does; the z key calls it too.
+  const undoStatus = () => {
+    if (!status || status.kind === "replied") return;
+    if (status.kind === "archivedMany") unarchiveMany(status.messageIds, status.rows);
+    else if (status.kind === "tracked") setTracked(status.messageId, false);
+    else if (status.kind === "junked") undoMove(status.batches);
+    else if (status.kind === "archived") unarchive(status.messageId, status.row);
+    else if (status.kind === "moved") archive(status.messageId, true);
+    else if (status.kind === "noReply") void undoNoReply(status.messageId, status.todoId);
+    else mark(status.messageId, null);
+  };
+
   useInboxKeyboard({
     ids,
     selectedId,
@@ -1225,6 +1505,18 @@ function InboxListPage({
     toggle: toggleId,
     hasPicked: pickedRows.length > 0,
     archive: archiveFocused,
+    read: (id) => {
+      // Checked rows win, as they do for e: u marks all of them in one call.
+      if (pickedRows.length > 0) return setReadMany(pickedRows);
+      const row = [...(shown?.rows ?? []), ...moreRows].find((r) => r.id === id);
+      if (id && row) setRead(id, !!row.unread);
+    },
+    // Only a focused Needs reply row answers; other rows and the picked set are a no-op.
+    noReply: (id) => {
+      const row = rows.find((r) => r.id === id);
+      if (id && row?.needsReply === true) noReply(id);
+    },
+    undo: status && status.kind !== "replied" ? undoStatus : undefined,
     help: () => setHelp(true),
   });
   // Escape unchecks the rows when no dialog or field is using the key.
@@ -1234,7 +1526,7 @@ function InboxListPage({
       if (event.key !== "Escape" || event.defaultPrevented) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest("input,textarea,select,[contenteditable]")) return;
-      if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
+      if (document.querySelector(OPEN_DIALOG_SELECTOR)) return;
       setPicked(new Set());
     };
     window.addEventListener("keydown", onKey);
@@ -1283,28 +1575,35 @@ function InboxListPage({
 
   // The main action of the empty page, as Connect mail is; a small one beside a line above rows.
   const fixVariant = failedEmpty ? "default" : "outline";
-  const fixButton = reconnect ? (
+  const reconnectButton = (
     <Button
-      variant={fixVariant}
-      size={failedEmpty ? "default" : "sm"}
+      variant={reconnect ? fixVariant : "outline"}
+      size={failedEmpty && reconnect ? "default" : "sm"}
       onClick={onReconnectMail ?? onConnectMail}
     >
       <Trans>Reconnect Gmail</Trans>
     </Button>
+  );
+  // Reconnect is always offered beside a failure, since Gmail may say connected while mail still fails.
+  const fixButton = reconnect ? (
+    reconnectButton
   ) : (
-    <Button
-      variant={fixVariant}
-      size={failedEmpty ? "default" : "sm"}
-      onClick={retry}
-      aria-disabled={retrying}
-      aria-busy={retrying}
-      className="relative"
-    >
-      <span className={retrying ? "opacity-0" : undefined}>
-        <Trans>Try again</Trans>
-      </span>
-      {retrying ? <Spinner className="absolute" aria-hidden="true" /> : null}
-    </Button>
+    <>
+      <Button
+        variant={fixVariant}
+        size={failedEmpty ? "default" : "sm"}
+        onClick={retry}
+        aria-disabled={retrying}
+        aria-busy={retrying}
+        className="relative"
+      >
+        <span className={retrying ? "opacity-0" : undefined}>
+          <Trans>Try again</Trans>
+        </span>
+        {retrying ? <Spinner className="absolute" aria-hidden="true" /> : null}
+      </Button>
+      {reconnectButton}
+    </>
   );
 
   const count = status?.kind === "archivedMany" ? status.messageIds.length : 0;
@@ -1318,6 +1617,10 @@ function InboxListPage({
     >
       {status.kind === "archivedMany" ? (
         <Trans>Archived {count}</Trans>
+      ) : status.kind === "tracked" ? (
+        <span className="min-w-0 truncate" dir="auto">
+          <Trans>Tracking "{maskCurrencyWhenHidden(status.subject)}"</Trans>
+        </span>
       ) : status.kind === "archived" ? (
         <span className="min-w-0 truncate" dir="auto">
           {status.subject ? (
@@ -1336,6 +1639,14 @@ function InboxListPage({
         )
       ) : status.kind === "replied" ? (
         <Trans>Sent. Moved out of Needs reply</Trans>
+      ) : status.kind === "noReply" ? (
+        status.sender ? (
+          <span className="min-w-0 truncate" dir="auto">
+            <Trans>Stopped Needs reply for {status.sender}</Trans>
+          </span>
+        ) : (
+          <Trans>No reply needed</Trans>
+        )
       ) : status.kind === "moved" ? (
         <span className="min-w-0 truncate" dir="auto">
           <Trans>Moved "{maskCurrencyWhenHidden(status.subject)}" to Inbox</Trans>
@@ -1346,21 +1657,7 @@ function InboxListPage({
         <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
       {status.kind === "replied" ? null : (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() =>
-            status.kind === "archivedMany"
-              ? unarchiveMany(status.messageIds)
-              : status.kind === "junked"
-                ? undoMove(status.batches)
-                : status.kind === "archived"
-                  ? unarchive(status.messageId)
-                  : status.kind === "moved"
-                    ? archive(status.messageId)
-                    : mark(status.messageId, null)
-          }
-        >
+        <Button variant="secondary" size="sm" onClick={undoStatus}>
           <Trans>Undo</Trans>
         </Button>
       )}
@@ -1423,6 +1720,19 @@ function InboxListPage({
     </>
   );
 
+  // Every row list passes the same handlers and selection; only the group framing differs.
+  const rowProps = {
+    onOpen: openMessage,
+    onMark: triage ? mark : undefined,
+    onArchive: archive,
+    onRead: setRead,
+    onTrack: setTracked,
+    selectedId,
+    pickedIds: pickedSet,
+    onPick: pick,
+    onMove: moveOne,
+    onNoReply: triage ? noReply : undefined,
+  };
   // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
@@ -1488,26 +1798,17 @@ function InboxListPage({
                             data-testid="inbox-filter"
                             render={
                               <Button
-                                variant={
-                                  filter || (triage && category) || tabLabel
-                                    ? "secondary"
-                                    : "outline"
-                                }
-                                size={tabLabel ? "default" : "icon"}
+                                variant={filter || (triage && category) ? "secondary" : "outline"}
+                                size="icon"
                                 className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                               />
                             }
                             // The button keeps one width: the filter's name is in the results bar.
                             aria-label={
-                              tabLabel
-                                ? undefined
-                                : activeFilterLabel
-                                  ? `${t`Filter`}: ${activeFilterLabel}`
-                                  : t`Filter`
+                              activeFilterLabel ? `${t`Filter`}: ${activeFilterLabel}` : t`Filter`
                             }
                           >
                             <ListFilter aria-hidden="true" />
-                            {tabLabel}
                           </DropdownMenuTrigger>
                         }
                       />
@@ -1561,35 +1862,6 @@ function InboxListPage({
                           </DropdownMenuSub>
                         ) : null}
                       </DropdownMenuRadioGroup>
-                      {accounts.length > 1 ? (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>
-                              <Trans>Account</Trans>
-                            </DropdownMenuLabel>
-                            <DropdownMenuRadioGroup
-                              value={tab ?? ALL}
-                              onValueChange={(value) =>
-                                setTab(value === ALL ? undefined : String(value))
-                              }
-                            >
-                              <DropdownMenuRadioItem value={ALL} closeOnClick>
-                                <Trans>All</Trans>
-                              </DropdownMenuRadioItem>
-                              {accounts.map((account) => (
-                                <DropdownMenuRadioItem
-                                  key={account.connectionId}
-                                  value={account.connectionId}
-                                  closeOnClick
-                                >
-                                  {account.label}
-                                </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuRadioGroup>
-                          </DropdownMenuGroup>
-                        </>
-                      ) : null}
                       {filter || (triage && category) ? (
                         <>
                           <DropdownMenuSeparator />
@@ -1625,13 +1897,16 @@ function InboxListPage({
               </>
             }
           />
-          {tools && !query ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <InboxPileTabs
-                value={pile}
-                counts={pileCounts}
-                onChange={(next) => setParam("pile", next === "important" ? "" : next)}
-              />
+          {tools && (!query || accounts.length > 1) ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0">
+              {query ? null : (
+                <InboxPileTabs
+                  value={pile}
+                  counts={pileCounts}
+                  onChange={(next) => setParam("pile", next === "important" ? "" : next)}
+                />
+              )}
+              <InboxAccountTabs accounts={accounts} value={tab} onChange={setTab} />
               {pile === "newsletters" ? (
                 <Toggle
                   size="sm"
@@ -1793,6 +2068,7 @@ function InboxListPage({
           </>
         ) : shown ? (
           <>
+            {pile === "important" ? <BotTodos /> : null}
             {consentPrompt ? (
               consentPrompt
             ) : consentDismissed ? (
@@ -1857,6 +2133,19 @@ function InboxListPage({
                 <Button
                   variant="ghost"
                   size="icon-sm"
+                  aria-label={pickedUnread ? t`Mark read` : t`Mark unread`}
+                  title={pickedUnread ? t`Mark read` : t`Mark unread`}
+                  onClick={() => setReadMany(pickedRows)}
+                >
+                  {pickedUnread ? (
+                    <MailOpen aria-hidden="true" />
+                  ) : (
+                    <Mail aria-hidden="true" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   aria-label={spamView ? t`Not spam` : t`Spam`}
                   title={spamView ? t`Not spam` : t`Spam`}
                   onClick={() => moveMany(spamView ? "notSpam" : "spam", pickedRows)}
@@ -1913,17 +2202,10 @@ function InboxListPage({
                             group={group}
                             expanded={expanded.has(group.key)}
                             onToggle={() => toggleGroup(senderGroupId(group.key))}
-                            onOpen={openMessage}
-                            onMark={triage ? mark : undefined}
-                            onArchive={archive}
-                            onRead={setRead}
                             onArchiveGroup={() => archiveMany(group.rows)}
                             onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
-                            selectedId={selectedId}
-                            pickedIds={pickedSet}
-                            onPick={pick}
-                            onMove={moveOne}
                             hideNewsletter={pile === "newsletters"}
+                            {...rowProps}
                           />
                         </Fragment>
                       );
@@ -1931,18 +2213,7 @@ function InboxListPage({
                   </div>
                 </section>
               ) : spamView ? (
-                <InboxGroup
-                  rows={rows}
-                  onOpen={openMessage}
-                  onMark={triage ? mark : undefined}
-                  onArchive={archive}
-                  onRead={setRead}
-                  selectedId={selectedId}
-                  pickedIds={pickedSet}
-                  onPick={pick}
-                  onMove={moveOne}
-                  showArchived={false}
-                />
+                <InboxGroup rows={rows} showArchived={false} {...rowProps} />
               ) : (
                 <>
                   <InboxGroup
@@ -1951,14 +2222,7 @@ function InboxListPage({
                     rows={replyRows}
                     todoDue={todoRowDue}
                     unreadTotal={groups.needsReply.filter((row) => row.unread).length}
-                    onOpen={openMessage}
-                    onMark={triage ? mark : undefined}
-                    onArchive={archive}
-                    onRead={setRead}
-                    selectedId={selectedId}
-                    pickedIds={pickedSet}
-                    onPick={pick}
-                    onMove={moveOne}
+                    {...rowProps}
                   />
                   {hiddenReplies > 0 ? (
                     <Button
@@ -1974,14 +2238,7 @@ function InboxListPage({
                     <InboxGroup
                       query={query}
                       rows={[...groups.today, ...groups.earlier]}
-                      onOpen={openMessage}
-                      onMark={triage ? mark : undefined}
-                      onArchive={archive}
-                      onRead={setRead}
-                      selectedId={selectedId}
-                      pickedIds={pickedSet}
-                      onPick={pick}
-                      onMove={moveOne}
+                      {...rowProps}
                     />
                   ) : (
                     <>
@@ -1995,26 +2252,12 @@ function InboxListPage({
                           )
                         }
                         rows={groups.today}
-                        onOpen={openMessage}
-                        onMark={triage ? mark : undefined}
-                        onArchive={archive}
-                        onRead={setRead}
-                        selectedId={selectedId}
-                        pickedIds={pickedSet}
-                        onPick={pick}
-                        onMove={moveOne}
+                        {...rowProps}
                       />
                       <InboxGroup
                         title={<Trans>Earlier</Trans>}
                         rows={groups.earlier}
-                        onOpen={openMessage}
-                        onMark={triage ? mark : undefined}
-                        onArchive={archive}
-                        onRead={setRead}
-                        selectedId={selectedId}
-                        pickedIds={pickedSet}
-                        onPick={pick}
-                        onMove={moveOne}
+                        {...rowProps}
                       />
                     </>
                   )}
@@ -2098,11 +2341,33 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          moves={openRow ? availableMoves(openRow) : undefined}
+          onMove={
+            openRow
+              ? (op) => {
+                  // Back to the list, as Archive from the dialog does; the toast there offers Undo.
+                  moveMany(op, [openRow]);
+                  closeMessage();
+                }
+              : undefined
+          }
+          onUnsubscribe={
+            openRow && !openRow.fromSelf && openRow.fromAddress && unsubscribable(openRow)
+              ? (confirmMailto) =>
+                  rpc.inbox.unsubscribe({
+                    connectionId: openRow.connectionId,
+                    address: openRow.fromAddress as string,
+                    ...(confirmMailto ? { confirmMailto } : {}),
+                  })
+              : undefined
+          }
           replyDoneText={
             openReplyTodo?.dueOn
               ? `${openReplyTodo.text} · ${dueLabel(openReplyTodo.dueOn, new Date())}`
               : openReplyTodo?.text
           }
+          tracked={openRow?.tracked === true}
+          onTrack={openRow ? (track) => setTracked(openRow.id, track) : undefined}
           onReplyDone={
             openReplyTodo
               ? () =>
@@ -2125,12 +2390,14 @@ function InboxListPage({
           {openId ? null : toast}
         </div>
         {composing ? (
-          <ComposeEmail
-            seed={NEW_MESSAGE}
-            accounts={accounts}
-            connectionId={tab}
-            onClose={() => setComposing(false)}
-          />
+          <Suspense fallback={null}>
+            <ComposeEmail
+              seed={NEW_MESSAGE}
+              accounts={accounts}
+              connectionId={tab}
+              onClose={() => setComposing(false)}
+            />
+          </Suspense>
         ) : null}
       </div>
     </div>

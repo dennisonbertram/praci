@@ -1,3 +1,5 @@
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, t } from "@lingui/core/macro";
 import type { SpaceMemoryConfig } from "@rakazo/contracts";
 import type { ComponentType } from "react";
 import { SerenitySettingsForm } from "./SerenitySettingsForm";
@@ -16,7 +18,7 @@ export interface MemoryProviderSettingsFormProps {
 export interface MemoryProviderSettingsRegistration {
   id: string;
   name: string;
-  description: string;
+  description: MessageDescriptor;
   SettingsForm: ComponentType<MemoryProviderSettingsFormProps>;
   connectedLabel: (config: SpaceMemoryConfig) => string;
 }
@@ -25,21 +27,23 @@ export const MEMORY_PROVIDER_SETTINGS: readonly MemoryProviderSettingsRegistrati
   {
     id: "supermemory",
     name: "Supermemory",
-    description: "Lets bots search everything they have learned, on top of built-in memory.",
+    description: msg`Lets bots search everything they have learned, on top of built-in memory.`,
     SettingsForm: SupermemorySettingsForm,
     connectedLabel: (config) =>
-      config.settings.mode === "cloud" ? "Supermemory Cloud" : `Local · ${config.settings.baseUrl}`,
+      config.settings.mode === "cloud"
+        ? "Supermemory Cloud"
+        : t`Local · ${config.settings.baseUrl ?? ""}`,
   },
   {
     id: "serenity",
     name: "Serenity",
-    description: "Keeps bot memory in Serenity, hosted for you or on your own server.",
+    description: msg`Keeps bot memory in Serenity, hosted for you or on your own server.`,
     SettingsForm: SerenitySettingsForm,
     connectedLabel: (config) => {
       const label = config.settings.brainLabel?.trim();
       const endpoint = config.settings.endpoint ?? "Serenity";
-      const mode = config.settings.allowWrites === "true" ? "read/write" : "recall only";
-      return label ? `Serenity · ${label} · ${mode}` : `Serenity · ${endpoint} · ${mode}`;
+      const mode = config.settings.allowWrites === "true" ? t`read/write` : t`recall only`;
+      return label ? t`Serenity · ${label} · ${mode}` : t`Serenity · ${endpoint} · ${mode}`;
     },
   },
 ];

@@ -85,8 +85,18 @@ export const mercuryTreasuryResponse = {
           month: "2026-09-01",
           netAmount: 90,
           dividends: [
-            { id: "d1", type: [], securityName: "Example Money Market Fund", amount: 100 },
-            { id: "d2", type: [], securityName: "Example Money Market Fund", amount: 10.5 },
+            {
+              id: "d1",
+              type: [],
+              securityName: "Example Money Market Fund",
+              amount: 100,
+            },
+            {
+              id: "d2",
+              type: [],
+              securityName: "Example Money Market Fund",
+              amount: 10.5,
+            },
           ],
           treasuryFee: -20.5,
           status: "charged",
@@ -98,7 +108,11 @@ export const mercuryTreasuryResponse = {
 };
 
 const DEFAULT_RECIPIENTS: Array<Record<string, unknown>> = [
-  { id: "recipient_mock_acme", name: "Acme Servo Supply (Mock)", status: "active" },
+  {
+    id: "recipient_mock_acme",
+    name: "Acme Servo Supply (Mock)",
+    status: "active",
+  },
 ];
 
 export interface MercuryOptions {
@@ -106,6 +120,8 @@ export interface MercuryOptions {
   txns: Record<string, MercuryRow[]>;
   accounts?: Record<string, unknown>;
   treasury?: Record<string, unknown>;
+  /** Rows per Treasury account id, newest first, for getTreasuryTransactions. */
+  treasuryTxns?: Record<string, Array<Record<string, unknown>>>;
   /** Answer pages larger than this as truncated. */
   truncateAbove?: number;
   /** Return the cursor like the vendor documents it; the live server leaves `page` out. */
@@ -120,16 +136,20 @@ export interface MercuryOptions {
  * it exists for offline write tests and the demo, and this file is imported by neither production code
  * nor the package index.
  */
-export function fakeMercury(
-  options: MercuryOptions,
-): { callTool: FinanceCallTool; sendMoneyRequests: Array<Record<string, unknown>> } & FakeCalls {
+export function fakeMercury(options: MercuryOptions): {
+  callTool: FinanceCallTool;
+  sendMoneyRequests: Array<Record<string, unknown>>;
+} & FakeCalls {
   const calls: FakeCalls["calls"] = [];
   const sendMoneyRequests: Array<Record<string, unknown>> = [];
   const callTool: FinanceCallTool = async (name, args) => {
     calls.push({ name, args });
     if (name === "requestSendMoney") {
       sendMoneyRequests.push(args);
-      return { requestId: `fake-request-${sendMoneyRequests.length}`, status: "pendingApproval" };
+      return {
+        requestId: `fake-request-${sendMoneyRequests.length}`,
+        status: "pendingApproval",
+      };
     }
     if (name === "getAccounts") return options.accounts ?? mercuryAccountsResponse();
     if (name === "getRecipients")
@@ -150,10 +170,28 @@ export function fakeMercury(
       return row;
     }
     if (name === "getTreasury") return options.treasury ?? mercuryTreasuryResponse;
+    if (name === "getTreasuryTransactions") {
+      const all = options.treasuryTxns?.[args.treasuryId as string] ?? [];
+      const from = Number(args.cursor ?? 0);
+      const page = all.slice(from, from + Number(args.limit));
+      // Like the vendor: a cursor for the next page, none after the last row.
+      return {
+        transactions: page,
+        ...(from + page.length < all.length ? { cursor: from + page.length } : {}),
+      };
+    }
     if (name === "getTransactionById")
-      return { transaction: { id: args.transactionId, attachments: options.attachments } };
+      return {
+        transaction: {
+          id: args.transactionId,
+          attachments: options.attachments,
+        },
+      };
     if (name === "getAttachment")
-      return { url: "https://files.example.test/receipt.pdf?sig=1", fileName: "receipt.pdf" };
+      return {
+        url: "https://files.example.test/receipt.pdf?sig=1",
+        fileName: "receipt.pdf",
+      };
     if (name !== "listTransactions") throw new Error(`unexpected tool ${name}`);
     const limit = Number(args.limit);
     if (options.truncateAbove && limit > options.truncateAbove)
@@ -186,7 +224,11 @@ export const brexAccountsResponse = {
       account_type: "LEGACY_CASH",
       status: "ACTIVE",
       balance_breakdown: {
-        available_balance: { value: "300.10", currency: "USD", display: "$300.10 USD" },
+        available_balance: {
+          value: "300.10",
+          currency: "USD",
+          display: "$300.10 USD",
+        },
       },
     },
     {
@@ -196,7 +238,11 @@ export const brexAccountsResponse = {
       account_type: "CARD",
       status: "ACTIVE",
       balance_breakdown: {
-        available_balance: { value: "50000.00", currency: "USD", display: "$50,000.00 USD" },
+        available_balance: {
+          value: "50000.00",
+          currency: "USD",
+          display: "$50,000.00 USD",
+        },
       },
     },
   ],
@@ -214,7 +260,12 @@ export const brexExpense = (id: string, over: Record<string, unknown> = {}): Bre
   status: "APPROVED",
   payment_status: "CLEARED",
   receipt_count: 0,
-  user: { id: "cuuser_1", first_name: "Ada", last_name: "Example", email: "ada@example.test" },
+  user: {
+    id: "cuuser_1",
+    first_name: "Ada",
+    last_name: "Example",
+    email: "ada@example.test",
+  },
   memo: "",
   receipts: [],
   purchased_at: "2026-09-10T12:00:00.000Z",
@@ -253,7 +304,10 @@ export function fakeBrex(options: BrexOptions): { callTool: FinanceCallTool } & 
     const limit = Math.min(Number(args.limit ?? 10), 100);
     const from = args.cursor ? Number(args.cursor) : 0;
     const items = source.slice(from, from + limit);
-    return { items, next_cursor: from + limit < source.length ? String(from + limit) : null };
+    return {
+      items,
+      next_cursor: from + limit < source.length ? String(from + limit) : null,
+    };
   };
   return { callTool, calls };
 }
@@ -288,7 +342,9 @@ export function fakeMercuryMcpFetch(mercury: Pick<ReturnType<typeof fakeMercury>
         message.params?.name ?? "",
         message.params?.arguments ?? {},
       );
-      return reply({ content: [{ type: "text", text: JSON.stringify(result) }] });
+      return reply({
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      });
     }
     return new Response(null, { status: 202 });
   };

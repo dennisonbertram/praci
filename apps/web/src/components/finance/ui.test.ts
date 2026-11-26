@@ -33,3 +33,39 @@ it("keeps the origin's own origin, so the trail is as deep as when opened direct
 it("does not repeat Finance when the origin is the dashboard itself", () => {
   expect(trailFor(charge, finance).map((c) => c.label)).toEqual(["Finance", "Oct 8"]);
 });
+
+it("shows the trail a vendor was opened from through a charge", () => {
+  const spend = { label: "Spend", to: "/app/finance?by=vendor#spend" };
+  const chargeFromSpend = {
+    label: "Globex charge",
+    to: "/app/finance/transaction/t1",
+    back: spend,
+  };
+  const vendor = [
+    finance,
+    { label: "Subscriptions", to: "/app/finance#subscriptions" },
+    { label: "Globex", to: "/app/finance/vendor/globex" },
+  ];
+  expect(trailFor(vendor, chargeFromSpend).map((c) => c.label)).toEqual([
+    "Finance",
+    "Spend",
+    "Globex charge",
+    "Globex",
+  ]);
+});
+
+it("drops a loop back to the page itself: vendor, charge, vendor", () => {
+  const subs = { label: "Subscriptions", to: "/app/finance#subscriptions" };
+  const vendorCrumb = { label: "Globex", to: "/app/finance/vendor/globex", back: subs };
+  const chargeCrumb = {
+    label: "Globex charge",
+    to: "/app/finance/transaction/t1",
+    back: vendorCrumb,
+  };
+  const vendor = [finance, subs, { label: "Globex", to: "/app/finance/vendor/globex" }];
+  expect(trailFor(vendor, chargeCrumb, "/app/finance/vendor/globex").map((c) => c.label)).toEqual([
+    "Finance",
+    "Subscriptions",
+    "Globex",
+  ]);
+});

@@ -1,0 +1,1 @@
+{"json":[{"connectorId":"composio","slug":"GMAIL","name":"Gmail","logo":null,"connected":true,"noAuth":false,"description":"Search, read, draft and send email","category":"email_calendar"},{"connectorId":"pipedream","slug":"linear","name":"Linear","logo":null,"connected":false,"noAuth":false,"description":null,"category":"developer"}]}

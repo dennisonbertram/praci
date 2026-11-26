@@ -102,18 +102,26 @@ describePostgres("schedule tools (PostgreSQL)", () => {
       prompt: "Summarize my mail",
       cron: "30 7 * * *",
     });
-    expect(repeating?.summary).toBe("creating the repeating schedule “Digest”");
-    expect(repeating?.detail).toContain("repeats: Every day at 7:30 AM (Asia/Tokyo)");
+    expect(repeating?.summary).toBe("Every day at 7:30 AM, posts here");
+    expect(repeating?.detail).toContain("time zone: Asia/Tokyo");
     expect(repeating?.detail).toContain("next run:");
     expect(repeating?.detail).toContain("prompt: Summarize my mail");
     expect(await ask({ name: "x", prompt: "p", every: 2, unit: "hours" })).toBeDefined();
-    // Blank leftovers from a model are not a repeat.
+    // A valid one-time schedule still asks for approval, even with blank repeating fields.
     expect(
       await ask({ name: "x", prompt: "p", delayMinutes: 10, cron: "", every: null, unit: "" }),
-    ).toBeUndefined();
-    expect(await ask({ name: "x", prompt: "p", delaySeconds: 30 })).toBeUndefined();
+    ).toMatchObject({ oneShot: true, summary: expect.stringContaining("Once,") });
+    // Blank repeating fields on their own are not a schedule.
+    expect(await ask({ name: "x", prompt: "p", cron: "", every: null, unit: "" })).toBeUndefined();
+    expect(await ask({ name: "x", prompt: "p", delaySeconds: 30 })).toMatchObject({
+      oneShot: true,
+      summary: expect.stringContaining("Once,"),
+    });
     expect(
       await ask({ name: "x", prompt: "p", runAt: new Date(Date.now() + 3_600_000).toISOString() }),
+    ).toMatchObject({ oneShot: true, summary: expect.stringContaining("Once,") });
+    expect(
+      await ask({ name: "x", prompt: "p", runAt: new Date(Date.now() - 3_600_000).toISOString() }),
     ).toBeUndefined();
     // An invalid call fails inside the tool; nothing is saved, so no card.
     expect(await ask({ name: "x", prompt: "p", cron: "nope" })).toBeUndefined();
@@ -130,8 +138,8 @@ describePostgres("schedule tools (PostgreSQL)", () => {
 
     // A new prompt for a repeating schedule asks; the card shows the whole prompt and its schedule.
     const promptChange = await ask({ id: repeating.routineId, prompt: "Full new prompt" });
-    expect(promptChange?.summary).toBe("changing the repeating schedule “Weekly”");
-    expect(promptChange?.detail).toContain("repeats: Every Monday at 9:00 AM (Asia/Tokyo)");
+    expect(promptChange?.summary).toBe("Changing “Weekly”: Every Monday at 9:00 AM, posts here");
+    expect(promptChange?.detail).toContain("time zone: Asia/Tokyo");
     expect(promptChange?.detail).toContain("prompt: Full new prompt");
     // Making a one-off repeat asks.
     expect(await ask({ id: oneOff.routineId, schedule: { cron: "0 9 * * *" } })).toBeDefined();

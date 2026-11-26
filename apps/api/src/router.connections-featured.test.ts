@@ -1,9 +1,15 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import type { ConnectorCatalogItem } from "@rakazo/adapter-kit";
 import type { Actor, ConnectionCatalogItem } from "@rakazo/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
+
+const loggerError = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/logging", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/logging")>()),
+  getLogger: () => ({ error: loggerError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
+}));
 
 const actor: Actor = {
   spaceId: "test-space",
@@ -29,7 +35,7 @@ const directory = [
   ...Array.from({ length: 1594 }, (_, i) => item(`other-${i}`)),
 ];
 
-function harness(accountDelayMs = 0) {
+function harness(accountDelayMs = 0, withFailingProvider = false) {
   const accountState = vi.fn(async () => {
     if (accountDelayMs) await new Promise((resolve) => setTimeout(resolve, accountDelayMs));
   });
@@ -43,7 +49,24 @@ function harness(accountDelayMs = 0) {
   const prisma = { connection: { findMany: vi.fn(async () => []) } };
   const deps = {
     prisma,
-    connectors: { managedProviders: () => [{ catalog, catalogDirectory }] },
+    connectors: {
+      managedProviders: () => [
+        ...(withFailingProvider
+          ? [
+              {
+                describe: () => ({ id: "broken" }),
+                catalog: async () => {
+                  throw new Error("boom");
+                },
+                catalogDirectory: async () => {
+                  throw new Error("boom");
+                },
+              },
+            ]
+          : []),
+        { describe: () => ({ id: "composio" }), catalog, catalogDirectory },
+      ],
+    },
     env: {
       defaultProvider: "fake",
       defaultModel: "fake-model",
@@ -71,6 +94,8 @@ function harness(accountDelayMs = 0) {
 }
 
 describe("connections.featured", () => {
+  beforeEach(() => loggerError.mockClear());
+
   it("returns only featured metadata without provider account state or connection queries", async () => {
     const h = harness();
     const result = await h.call("featured");
@@ -98,6 +123,17 @@ describe("connections.featured", () => {
     expect(h.catalog).toHaveBeenCalledOnce();
     expect(h.accountState).toHaveBeenCalledOnce();
   });
+
+  it.each(["catalog", "featured"])(
+    "logs a failing provider and keeps healthy provider items for %s",
+    async (method) => {
+      const h = harness(0, true);
+      const result = await h.call(method);
+      expect(result.status).toBe(200);
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(loggerError).toHaveBeenCalledWith("broken catalog failed", expect.any(Error));
+    },
+  );
 
   it("measures mock full versus featured RPC with 1600 apps and 250ms account delay", async () => {
     const h = harness(250);

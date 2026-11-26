@@ -223,7 +223,9 @@ export function computerTakeoverBlocked(
 export function computerPanelAutoBoot(
   state: ComputerStatus["state"] | undefined,
   screenUrl?: string | null,
+  unavailable = false,
 ): "boot" | "recover-screen" | "wait" {
+  if (unavailable) return "wait";
   if (state === "booting" || state === "suspended") return "wait";
   if (state === "running") return screenUrl ? "wait" : "recover-screen";
   return "boot";
@@ -239,8 +241,9 @@ export function computerPanelAutoUsesBoot(
 export function computerPanelNeedsMaintenance(
   state: ComputerStatus["state"] | undefined,
   booting: boolean,
+  unavailable = false,
 ): boolean {
-  return !booting && (state === "error" || state === "stopped");
+  return !unavailable && !booting && (state === "error" || state === "stopped");
 }
 
 export function reduceComputerStatus(

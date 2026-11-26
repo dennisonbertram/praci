@@ -32,11 +32,17 @@ export function selectSpace(id: string): boolean {
   }
 }
 
-export function clearSpaceSelection(): void {
+/** Returns whether the stored selection is really gone; storage can refuse the removal. */
+export function clearSpaceSelection(): boolean {
   try {
     window.localStorage.removeItem(SPACE_STORAGE_KEY);
   } catch {
     // Ignore storage failures on sign-out / reset paths.
+  }
+  try {
+    return window.localStorage.getItem(SPACE_STORAGE_KEY) === null;
+  } catch {
+    return false;
   }
 }
 
@@ -51,12 +57,50 @@ export function withSpaceHeaders(
   return headers;
 }
 
-const link = new RPCLink<RpcClientContext>({
-  url: () =>
-    typeof window === "undefined"
-      ? "http://127.0.0.1:5173/rpc"
-      : `${window.location.origin}${window.location.pathname === LOCAL_SETTINGS_PAGE ? LOCAL_SETTINGS_RPC : "/rpc"}`,
-  fetch: async (input, init, options) => {
+type RpcLinkOptions = { context: RpcClientContext };
+
+/** The one probe shared by every rejection that arrives while it runs. */
+let spaceProbeInFlight: Promise<boolean> | null = null;
+
+/**
+ * Asks a Space-free endpoint whether the session still works. A success means
+ * the stored Space, not the session, is what the server rejected.
+ */
+function probeSpaceListAccess(doFetch: typeof fetch): Promise<boolean> {
+  spaceProbeInFlight ??= doFetch(`${window.location.origin}/rpc/spaces/list`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ json: {} }),
+    credentials: "include",
+  })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      spaceProbeInFlight = null;
+    });
+  return spaceProbeInFlight;
+}
+
+/**
+ * A 401 for a call that sent a stored Space id can mean that Space is gone.
+ * Probe without the header: if the session is good and the selection has not
+ * changed meanwhile, drop it and reload so the app picks its default Space.
+ * A failed probe leaves the selection alone, because the session itself is bad.
+ */
+async function recoverFromStaleSpace(sentSpaceId: string, doFetch: typeof fetch): Promise<void> {
+  if (!(await probeSpaceListAccess(doFetch))) return;
+  if (selectedSpaceId() !== sentSpaceId) return;
+  // Reloading on a selection that is still stored would 401 again and loop.
+  if (!clearSpaceSelection()) return;
+  window.location.assign("/app");
+}
+
+export function createRpcFetch(doFetch: typeof fetch = fetch) {
+  return async (
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    options: RpcLinkOptions,
+  ) => {
     const request = new Request(input, init);
     if (typeof window !== "undefined" && window.location.pathname === LOCAL_SETTINGS_PAGE) {
       const bridge = desktopBridge()?.localSettings;
@@ -69,11 +113,23 @@ const link = new RPCLink<RpcClientContext>({
     }
     const spaceId =
       options.context.spaceId === undefined ? selectedSpaceId() : options.context.spaceId;
-    return fetch(request, {
+    const response = await doFetch(request, {
       headers: withSpaceHeaders(request.headers, spaceId),
       credentials: "include",
     });
-  },
+    if (response.status === 401 && options.context.spaceId === undefined && spaceId) {
+      await recoverFromStaleSpace(spaceId, doFetch);
+    }
+    return response;
+  };
+}
+
+const link = new RPCLink<RpcClientContext>({
+  url: () =>
+    typeof window === "undefined"
+      ? "http://127.0.0.1:5173/rpc"
+      : `${window.location.origin}${window.location.pathname === LOCAL_SETTINGS_PAGE ? LOCAL_SETTINGS_RPC : "/rpc"}`,
+  fetch: createRpcFetch(),
 });
 
 export const rpc: ContractRouterClient<AppContract, RpcClientContext> = createORPCClient(link);

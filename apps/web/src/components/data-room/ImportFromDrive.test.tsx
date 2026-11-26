@@ -145,6 +145,9 @@ it("sends a not connected Google Drive item to the Drive page", async () => {
   expect(document.querySelector('[data-testid="where"]')?.textContent).toBe(
     "/app/integrations/app/google/googledrive",
   );
+  expect(document.querySelector('[data-testid="search"]')?.textContent).toBe(
+    "?connect=1&next=%2Fapp%2Fdata-room",
+  );
 });
 
 it("opens a folder, imports its file into the open folder, and can go back", async () => {

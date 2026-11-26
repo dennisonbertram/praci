@@ -152,7 +152,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["computer/heartbeat", { botId: "missing-bot" }],
       ["memory/list", {}],
       ["memory/update", { documentId: "missing-memory", content: "Nope" }],
-      ["memory/exportMarkdown", {}],
+      ["memory/remove", { documentId: "missing-memory", revision: 1 }],
       ["routines/list", { botId: "missing-bot" }],
       ["routines/create", routineInput("missing-bot")],
       ["routines/update", { routineId: "missing-routine", name: "Nope" }],
@@ -203,7 +203,6 @@ describeWithDatabase("API authorization and resource isolation", () => {
         { effect: "require_approval", matchKind: "category", matchValue: "email" },
       ],
       ["approvalRules/remove", { id: "missing-rule" }],
-      ["artifacts/list", { botId: "missing-bot" }],
       ["usage/list"],
       ["usage/summary"],
       ["export/bot", { botId: "missing-bot" }],
@@ -374,7 +373,6 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["scratchpad/create", { botId: ownerBot.id, title: "Stolen item" }],
       ["skills/list", { botId: ownerBot.id }],
       ["skills/start", { botId: ownerBot.id, goal: "Intruder demo" }],
-      ["artifacts/list", { botId: ownerBot.id }],
       [
         "artifacts/create",
         {
@@ -455,9 +453,6 @@ describeWithDatabase("API authorization and resource isolation", () => {
     );
 
     expect(await rpc<unknown[]>(app, intruder, "memory/list", { botId: ownerBot.id })).toEqual([]);
-    expect(await rpc<string>(app, intruder, "memory/exportMarkdown", { botId: ownerBot.id })).toBe(
-      "",
-    );
     expect(await rpc<Array<{ id: string }>>(app, intruder, "capabilities/list")).not.toContainEqual(
       expect.objectContaining({ id: ownerCapability.id }),
     );
@@ -671,6 +666,68 @@ describeWithDatabase("API authorization and resource isolation", () => {
     expect(bad.status).toBe(400);
   });
 
+  it("accepts only signed bearer tokens, and every sign-in hands one out", async () => {
+    const email = `phone-signed-${stamp}@rakazo.test`;
+    const phone = await phoneSession(app, email);
+    const me = async (token: string) =>
+      (
+        await app.request("/rpc/me", {
+          method: "POST",
+          headers: {
+            origin: "rakazo://",
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ json: {} }),
+        })
+      ).status;
+    const authJson = async (path: string, token: string, body: unknown) => {
+      const response = await app.request(`/api/auth${path}`, {
+        method: "POST",
+        headers: {
+          origin: "rakazo://",
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      expect(response.status).toBe(200);
+      const json = (await response.json()) as { token: string };
+      expect(json.token).toBe(decodeURIComponent(response.headers.get("set-auth-token") ?? ""));
+      return json.token;
+    };
+
+    const stored = await handles.prisma.session.findFirstOrThrow({
+      where: { userId: phone.userId },
+      select: { token: true },
+    });
+    expect(phone.token.startsWith(`${stored.token}.`)).toBe(true);
+    expect(phone.token).toBe(decodeURIComponent(phone.setAuthToken));
+    expect(await me(phone.token)).toBe(200);
+    expect(await me(encodeURIComponent(phone.token))).toBe(200);
+
+    // A token copied out of the session table, or given a forged signature, is not a session.
+    expect(await me(stored.token)).toBe(401);
+    expect(await me(`${stored.token}.${"A".repeat(43)}=`)).toBe(401);
+    const rawSession = await app.request("/api/auth/get-session", {
+      headers: { origin: "rakazo://", authorization: `Bearer ${stored.token}` },
+    });
+    expect(await rawSession.json()).toBeNull();
+
+    const signedIn = await authJson("/sign-in/email", "", { email, password: "password12" });
+    expect(await me(signedIn)).toBe(200);
+
+    // Replacing the session on a password change hands the phone the signed replacement.
+    const replaced = await authJson("/change-password", signedIn, {
+      currentPassword: "password12",
+      newPassword: "password34",
+      revokeOtherSessions: true,
+    });
+    expect(replaced).not.toBe(signedIn);
+    expect(await me(replaced)).toBe(200);
+    expect(await me(signedIn)).toBe(401);
+  });
+
   it("drops a push token when the session that registered it is revoked", async () => {
     const email = `push-sessions-${stamp}@rakazo.test`;
     const phone = await signup(app, email, "Push Sessions");
@@ -764,6 +821,18 @@ describeWithDatabase("API authorization and resource isolation", () => {
         createdAt: new Date(),
       },
     });
+    const ownerDefaults = await rpc<Array<{ id: string; matchKind: string; matchValue: string }>>(
+      app,
+      owner,
+      "approvalRules/list",
+    );
+    expect(ownerDefaults).toHaveLength(2);
+    expect(ownerDefaults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ matchKind: "category", matchValue: "email" }),
+        expect.objectContaining({ matchKind: "category", matchValue: "purchase" }),
+      ]),
+    );
     const ownerRule = await rpc<{ id: string }>(app, owner, "approvalRules/set", {
       effect: "always_allow",
       matchKind: "tool",
@@ -776,9 +845,12 @@ describeWithDatabase("API authorization and resource isolation", () => {
       matchKind: "category",
       matchValue: "email",
     });
-    expect(await rpc<Array<{ id: string }>>(app, owner, "approvalRules/list")).toEqual([
-      expect.objectContaining({ id: ownerRule.id }),
-    ]);
+    const ownerRules = await rpc<Array<{ id: string }>>(app, owner, "approvalRules/list");
+    expect(ownerRules).toHaveLength(ownerDefaults.length + 1);
+    expect(new Set(ownerRules.map(({ id }) => id))).toEqual(
+      new Set([...ownerDefaults.map(({ id }) => id), ownerRule.id]),
+    );
+    expect(ownerRules.map(({ id }) => id)).not.toContain(memberRule.id);
     expect(await rpc<Array<{ id: string }>>(app, member, "approvalRules/list")).toEqual([
       expect.objectContaining({ id: memberRule.id }),
     ]);
@@ -978,7 +1050,46 @@ describeWithDatabase("API authorization and resource isolation", () => {
       apiKey: "fake-copy-voice-key",
     });
 
+    await handles.prisma.spaceModelPreference.update({
+      where: {
+        spaceId_userId_credentialId: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          credentialId: model.id,
+        },
+      },
+      data: { thinkingLevel: "high", embeddingModel: "copy/embed" },
+    });
+    await handles.prisma.spaceBackupModel.createMany({
+      data: [
+        {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          provider: "backup-b",
+          modelId: "b/two",
+          position: 0,
+        },
+        {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          provider: "backup-a",
+          modelId: "a/one",
+          position: 1,
+        },
+      ],
+    });
+
     const created = await rpc<Space>(app, cookie, "spaces/create", { name: "Copied defaults" });
+    await expect(
+      handles.prisma.spaceBackupModel.findMany({
+        where: { spaceId: created.id, userId: actor.userId },
+        orderBy: { position: "asc" },
+        select: { provider: true, modelId: true, position: true },
+      }),
+    ).resolves.toEqual([
+      { provider: "backup-b", modelId: "b/two", position: 0 },
+      { provider: "backup-a", modelId: "a/one", position: 1 },
+    ]);
     const [modelPreference, voicePreference] = await Promise.all([
       handles.prisma.spaceModelPreference.findUnique({
         where: {
@@ -1000,7 +1111,12 @@ describeWithDatabase("API authorization and resource isolation", () => {
       }),
     ]);
 
-    expect(modelPreference).toMatchObject({ modelId: "copy/model", isDefault: true });
+    expect(modelPreference).toMatchObject({
+      modelId: "copy/model",
+      thinkingLevel: "high",
+      embeddingModel: "copy/embed",
+      isDefault: true,
+    });
     expect(voicePreference).toMatchObject({ voiceId: voice.voiceId, isDefault: true });
     await rpc(
       app,
@@ -1113,8 +1229,8 @@ describeWithDatabase("API authorization and resource isolation", () => {
       label: "Provider B",
       modelId: "b/one",
     });
-    expect(connectedB.isDefault).toBe(true);
-    await expectSpaceModelDefault(actor.spaceId, "provider-b", "b/one");
+    expect(connectedB.isDefault).toBe(false);
+    await expectSpaceModelDefault(actor.spaceId, "provider-a", "a/rotated");
 
     await rpc(app, cookie, "models/setDefault", { provider: "provider-a", modelId: "a/two" });
     await expectSpaceModelDefault(actor.spaceId, "provider-a", "a/two");
@@ -1882,7 +1998,8 @@ async function phoneSession(app: App, email: string) {
         body: JSON.stringify({ json: {} }),
       })
     ).status;
-  return { headers, me, cookie, userId: user.id };
+  const setAuthToken = response.headers.get("set-auth-token") ?? "";
+  return { headers, me, cookie, userId: user.id, token, setAuthToken };
 }
 
 async function signin(app: App, email: string, password = "password12") {

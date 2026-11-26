@@ -47,6 +47,20 @@ describe("workingStatus", () => {
 });
 
 describe("runErrorText", () => {
+  it("names a spending limit, rate limiting and missing credits", () => {
+    expect(
+      runErrorText(
+        '403: {"message":"Key limit exceeded","code":403,"metadata":{"scope":"key_limit"}}',
+      ),
+    ).toMatch(/^The AI key hit its spending limit\. Raise the limit/);
+    expect(runErrorText('429: {"message":"Rate limit exceeded","code":429}')).toMatch(
+      /rate limiting/,
+    );
+    expect(runErrorText('402: {"message":"Insufficient credits","code":402}')).toMatch(
+      /out of credits/,
+    );
+  });
+
   it("turns a provider 401 into words", () => {
     expect(runErrorText('401: {"code":401}')).toMatch(/did not accept your API key/);
     expect(runErrorText("member exploded")).toBe("member exploded");

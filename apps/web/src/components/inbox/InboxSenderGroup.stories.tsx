@@ -96,6 +96,14 @@ export const LongSummary: Story = {
   },
 };
 
+/** Selected, not hovered: the subject stops before the always-visible Archive icon. */
+export const SelectedLongSubject: Story = {
+  args: {
+    ...LongSummary.args,
+    selectedId: senderGroupId("orders@store.example"),
+  },
+};
+
 /** A sender with one message shows as an ordinary row, with no header to open. */
 export const SingleMessage: Story = { args: { group: group([rows[0] as MailRow]) } };
 

@@ -5,7 +5,7 @@ import Security
 struct KeychainSessionStorage: SessionStorage {
   private let service: String
 
-  init(service: String = Bundle.main.bundleIdentifier ?? "com.rakazo.app.dev") {
+  init(service: String = Bundle.main.bundleIdentifier ?? "ai.praci.mobile.dev") {
     self.service = service
   }
 

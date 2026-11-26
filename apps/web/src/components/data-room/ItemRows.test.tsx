@@ -135,6 +135,21 @@ it("shows the row's menu on hover or focus, and always on touch", () => {
     expect(menu).toContain(c);
 });
 
+it("shows a tile's menu on hover, focus or open menu, and always on touch", () => {
+  act(() => root.render(<GridView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
+  const tile = container.querySelector("li[data-row]");
+  expect(tile?.className).toContain("group");
+  const menu = tile?.querySelector('button[aria-label^="More actions for"]')?.className ?? "";
+  for (const c of [
+    "opacity-0",
+    "group-hover:opacity-100",
+    "group-focus-within:opacity-100",
+    "group-has-[[aria-expanded=true]]:opacity-100",
+    "[@media(hover:none)]:opacity-100",
+  ])
+    expect(menu).toContain(c);
+});
+
 it("puts the status in its own column as a badge, and never in the Type cell", () => {
   const rows = [
     { ...item("junk", null), status: "failed" },

@@ -8,6 +8,7 @@ export function isCenteredAgentEvent(blocks: readonly MessageBlock[]): boolean {
   if (blocks.length > 0 && blocks.every((block) => block.kind === "meta")) return true;
   return blocks.some(
     (block) =>
+      block.kind === "goal" ||
       block.kind === "handoff" ||
       block.kind === "bot_message_sent" ||
       block.kind === "bot_message_received" ||

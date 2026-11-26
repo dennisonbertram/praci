@@ -2,8 +2,9 @@ import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { BillingStatus } from "@rakazo/contracts";
 import { Button, Skeleton } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
-import { formatBillingDate, formatBillingPrice } from "../lib/billing";
+import { billingTotal, formatBillingDate, formatBillingPrice } from "../lib/billing";
 import { rpc } from "../lib/rpc";
+import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
 
 export function BillingSettingsPanel() {
   const { t, i18n } = useLingui();
@@ -11,21 +12,54 @@ export function BillingSettingsPanel() {
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function loadStatus() {
+    setError(null);
+    setLoadFailed(false);
+    setStatus(null);
+    setLoading(true);
+    try {
+      setStatus(await rpc.billing.status());
+    } catch {
+      setError(t`Could not load billing`);
+      setLoadFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
     rpc.billing
       .status()
       .then((next) => {
-        if (active) setStatus(next);
+        if (active) {
+          setStatus(next);
+          setError(null);
+          setLoadFailed(false);
+          setLoading(false);
+        }
       })
       .catch(() => {
-        if (active) setError(t`Could not load billing`);
+        if (active) {
+          setError(t`Could not load billing`);
+          setLoadFailed(true);
+          setLoading(false);
+        }
       });
     return () => {
       active = false;
     };
   }, [t]);
+
+  useRefetchWhileOpen(status !== null, () => {
+    void rpc.billing
+      .status()
+      .then((next) => setStatus(next))
+      .catch(() => {});
+  });
 
   async function openPortal() {
     if (pending) return;
@@ -64,18 +98,25 @@ export function BillingSettingsPanel() {
         : t`Renews ${day}`
     : null;
 
-  const price = status?.price ? formatBillingPrice(status.price, locale) : null;
   const seats = status?.seats ?? 0;
+  const price = status?.price
+    ? formatBillingPrice(billingTotal(status.price, seats), locale)
+    : null;
+  const pastDue = status?.state === "past_due";
 
   return (
     <div data-testid="billing-settings" className="rounded-xl border border-border px-4 py-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           {status ? (
-            <h3 className="text-[15px] font-medium text-foreground">{stateLabel}</h3>
-          ) : error ? null : (
+            <h3
+              className={`text-[15px] font-medium ${pastDue ? "text-destructive" : "text-foreground"}`}
+            >
+              {stateLabel}
+            </h3>
+          ) : loading || !error ? (
             <Skeleton className="h-5 w-24" />
-          )}
+          ) : null}
           {price ? (
             <p className="mt-3 text-[14px] text-foreground/75">
               {price}
@@ -93,7 +134,7 @@ export function BillingSettingsPanel() {
         </div>
         {status?.canManage && status.hasCustomer ? (
           <Button
-            variant="secondary"
+            variant={pastDue ? "default" : "secondary"}
             size="sm"
             disabled={pending}
             onClick={() => void openPortal()}
@@ -103,9 +144,16 @@ export function BillingSettingsPanel() {
         ) : null}
       </div>
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
-          {error}
-        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+          {loadFailed ? (
+            <Button type="button" variant="link" size="sm" onClick={() => void loadStatus()}>
+              <Trans>Try again</Trans>
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

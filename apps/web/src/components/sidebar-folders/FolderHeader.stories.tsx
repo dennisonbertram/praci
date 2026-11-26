@@ -43,3 +43,25 @@ export const ReadOnly: Story = { args: { readOnly: true } };
 export const LongName: Story = {
   args: { name: "A folder with a very long name that has to be cut off in the row" },
 };
+
+/** An open folder with many rows, scrolled: the header stays pinned above the rows so it can be collapsed. */
+export const PinnedWhileScrolled: Story = {
+  args: { name: "Tool Agents", count: 20 },
+  decorators: [
+    (Story) => (
+      <div
+        ref={(el) => el?.scrollTo({ top: 200 })}
+        className="h-48 w-[316px] overflow-y-auto bg-sidebar px-2.5"
+      >
+        <div>
+          <Story />
+          {Array.from({ length: 20 }, (_, i) => (
+            <div key={i} className="ms-3 mb-1 rounded-xl px-2.5 py-1.5 text-[13px]">
+              {`Agent ${i + 1}`}
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  ],
+};

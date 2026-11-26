@@ -1,6 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { describe, expect, it } from "vitest";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { describe, expect, it, vi } from "vitest";
 import type { OAuthMaterial } from "./mcp-oauth.js";
 import { StoredMcpOAuthProvider } from "./mcp-oauth.js";
 import { ThirdPartyConnectorEmulator } from "./third-party-connector-emulator.js";
@@ -51,5 +53,22 @@ describe("ThirdPartyConnectorEmulator mock sign-in", () => {
     const result = await client.callTool({ name: "cap_table_chart", arguments: {} });
     expect(JSON.stringify(result.content)).toContain("ok");
     await client.close();
+  });
+});
+
+describe("ThirdPartyConnectorEmulator DEMO_REAL_MCP_HOSTS", () => {
+  it("sends only a listed host to a real fetch and still refuses other unknown hosts", async () => {
+    const server = createServer((_req, res) => res.end("real"));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
+    vi.stubEnv("DEMO_REAL_MCP_HOSTS", host);
+    try {
+      const emulator = new ThirdPartyConnectorEmulator();
+      expect(await (await emulator.fetch(`http://${host}/mcp`)).text()).toBe("real");
+      await expect(emulator.fetch("http://127.0.0.1:1/mcp")).rejects.toThrow("unexpected URL");
+    } finally {
+      vi.unstubAllEnvs();
+      server.close();
+    }
   });
 });

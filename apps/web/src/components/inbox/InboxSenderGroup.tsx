@@ -27,6 +27,7 @@ export function InboxSenderGroup({
   onMark,
   onArchive,
   onRead,
+  onTrack,
   onArchiveGroup,
   onPickGroup,
   selectedId,
@@ -40,6 +41,7 @@ export function InboxSenderGroup({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
+  onTrack?: (messageId: string, track: boolean) => void;
   /** Archives every message of the group. */
   onArchiveGroup?: () => void;
   /** Checks, or unchecks, every message of the group. */
@@ -56,6 +58,7 @@ export function InboxSenderGroup({
     onMark,
     onArchive,
     onRead,
+    onTrack,
     selected: row.id === selectedId,
     ...rowPicking(row.id, picking),
   });
@@ -103,7 +106,7 @@ export function InboxSenderGroup({
           </span>
           <span
             dir="auto"
-            className={`col-span-2 col-start-2 row-start-2 truncate text-sm text-foreground/70 @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${hasActions ? "@md:group-hover/row:pe-10 @md:group-focus-within/row:pe-10" : ""}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-sm text-foreground/70 @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${hasActions ? `@md:group-hover/row:pe-10 @md:group-focus-within/row:pe-10${selected ? " @md:pe-10" : ""}` : ""}`}
           >
             {maskCurrencyWhenHidden(newest.subject)}
             {summary ? (
@@ -112,7 +115,7 @@ export function InboxSenderGroup({
           </span>
           <time
             dateTime={newest.receivedAt}
-            className={`col-start-3 row-start-1 whitespace-nowrap text-end text-[13px] tabular-nums text-muted-foreground @md:col-start-4 ${hasActions ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
+            className={`col-start-3 row-start-1 whitespace-nowrap text-end text-[13px] tabular-nums text-muted-foreground @md:col-start-4 ${hasActions ? "[@media(hover:hover)]:@max-md:group-focus-within/row:opacity-0 [@media(hover:hover)]:@max-md:group-hover/row:opacity-0" : ""}`}
           >
             {formatMailTime(newest.receivedAt)}
           </time>
@@ -135,7 +138,7 @@ export function InboxSenderGroup({
                   size="icon-xs"
                   aria-label={t`Archive`}
                   tabIndex={selected ? 0 : -1}
-                  className={`absolute end-3 top-1/2 -translate-y-1/2 bg-muted text-muted-foreground @md:end-24 pointer-coarse:size-10 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
+                  className={`absolute end-3 top-1/2 -translate-y-1/2 bg-muted text-muted-foreground @md:end-24 pointer-coarse:size-10 pointer-coarse:@md:end-3 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
                   onClick={onArchiveGroup}
                 />
               }

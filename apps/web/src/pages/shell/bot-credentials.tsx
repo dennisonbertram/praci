@@ -8,6 +8,7 @@ import {
 } from "@rakazo/contracts";
 import { Button, Input, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import { useEffect, useId, useState } from "react";
+import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -213,13 +214,32 @@ export function BotCredentialsSection({ botId }: { botId: string }) {
       ? t`${commandVariable} is reserved and cannot be used as a command variable. Choose another name.`
       : null;
 
+  const missingSite = authType !== "command" && origin.trim().length === 0;
   const canAdd =
     !busy &&
     nameValid &&
-    (authType === "command" ? !commandVariableError : origin.trim().length > 0) &&
+    (authType === "command" ? !commandVariableError : !missingSite) &&
     (authType !== "header" || headerName.trim().length > 0) &&
     (authType !== "basic" || basicUsername.trim().length > 0) &&
     valueReady(authType);
+  // Why Save is off. Shown only once the person has started filling the form in.
+  const saveBlockedReason = canAdd
+    ? null
+    : busy
+      ? null
+      : !nameValid
+        ? t`Add a name.`
+        : missingSite
+          ? t`Add the site and the value.`
+          : commandVariableError
+            ? null
+            : authType === "header" && headerName.trim().length === 0
+              ? t`Add the header name.`
+              : authType === "basic" && basicUsername.trim().length === 0
+                ? t`Add the username.`
+                : authType === "login"
+                  ? t`Add the username and password.`
+                  : t`Add the value.`;
 
   return (
     <section data-testid="bot-credentials" className="mt-5 border-t border-border/20 pt-4">
@@ -278,6 +298,25 @@ export function BotCredentialsSection({ botId }: { botId: string }) {
                     · {t`Updated ${updated}`}
                   </div>
                 )}
+                {readableAuth !== null ? (
+                  secret.needsAttentionAt ? (
+                    <div
+                      data-testid="credential-needs-attention"
+                      className="text-[12px] text-destructive"
+                    >
+                      <Trans>Needs attention</Trans>
+                    </div>
+                  ) : (
+                    <div
+                      data-testid="credential-last-used"
+                      className="text-[12px] text-muted-foreground/70"
+                    >
+                      {secret.lastUsedAt
+                        ? t`Used ${formatRelativeTime(secret.lastUsedAt)}`
+                        : t`Not used yet`}
+                    </div>
+                  )
+                ) : null}
                 {readableAuth !== null && replacing === secret.name ? (
                   <form
                     className="mt-1"
@@ -422,7 +461,7 @@ export function BotCredentialsSection({ botId }: { botId: string }) {
                 data-testid="credential-command-variable"
                 className="mt-1 block text-[12px] text-muted-foreground"
               >
-                {t`Available to this bot's shell commands as ${commandVariable}`}
+                {t`The bot can read this value. Shell commands get it as ${commandVariable}.`}
               </span>
             ) : null}
           </label>
@@ -436,7 +475,7 @@ export function BotCredentialsSection({ botId }: { botId: string }) {
                 spellCheck={false}
                 value={origin}
                 onChange={(event) => setOrigin(event.target.value)}
-                placeholder="https://api.example.com"
+                placeholder="https://"
                 className="mt-1.5"
               />
             </label>
@@ -487,6 +526,14 @@ export function BotCredentialsSection({ botId }: { botId: string }) {
             </label>
           ) : null}
           {loginFields(authType, "credential")}
+          {saveBlockedReason ? (
+            <p
+              data-testid="credential-save-reason"
+              className="mt-3 text-[12px] text-muted-foreground/70"
+            >
+              {saveBlockedReason}
+            </p>
+          ) : null}
           <div className="mt-3 flex gap-2">
             <Button type="submit" size="sm" data-testid="credential-add-save" disabled={!canAdd}>
               {busy ? <Trans>Saving…</Trans> : <Trans>Save credential</Trans>}

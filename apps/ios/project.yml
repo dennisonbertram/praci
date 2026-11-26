@@ -27,7 +27,7 @@ targets:
       - package: RakazoUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app
+        PRODUCT_BUNDLE_IDENTIFIER: ai.praci.mobile
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
@@ -36,9 +36,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
       configs:
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app.dev
+          PRODUCT_BUNDLE_IDENTIFIER: ai.praci.mobile.dev
         Release:
-          PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app
+          PRODUCT_BUNDLE_IDENTIFIER: ai.praci.mobile
+          # The recorded-meeting fixture is for Debug builds and the Maestro flow only.
+          EXCLUDED_SOURCE_FILE_NAMES: FileAudioSource.swift meeting-fixture.m4a
     info:
       path: Praci-Info.plist
       properties:
@@ -47,6 +49,11 @@ targets:
           - CFBundleURLSchemes:
               - rakazo
         NSLocalNetworkUsageDescription: Connect to your Praci server on your local network.
+        NSCameraUsageDescription: Scan the QR code from your Praci server.
+        NSMicrophoneUsageDescription: Talk to your agent and record meetings.
+        UIBackgroundModes:
+          - audio
+        NSSpeechRecognitionUsageDescription: Turn your speech into messages.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
   PraciTests:
@@ -54,9 +61,15 @@ targets:
     platform: iOS
     sources:
       - Tests/PraciTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        PRODUCT_BUNDLE_IDENTIFIER: ai.praci.mobile.tests
     dependencies:
       - target: Praci
       - package: RakazoCore
+      - package: RakazoAPI
 schemes:
   Praci:
     build:

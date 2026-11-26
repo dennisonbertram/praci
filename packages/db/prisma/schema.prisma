@@ -22,13 +22,19 @@ model AiDataConsent {
 }
 
 model User {
+  approvalDecisions ApprovalDecision[]
+  equityLedgers     EquityLedger[]
+  pipelineRecords PipelineRecord[]
+  pipelineImports PipelineImport[]
   scratchpadApprovals         ScratchpadApproval[]
   aiDataConsents              AiDataConsent[]
   mailSearches                MailSearch[]
   contacts                    Contact[]
+  contactPhotos               ContactPhoto[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
   investorShares              InvestorShare[]
+  investorShareRequests       InvestorShareRequest[]
   investorPortalTokens        InvestorPortalToken[]
   portalSessions              PortalSession[]
   auditRequests               AuditRequest[]
@@ -39,6 +45,12 @@ model User {
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
   accountExports              AccountExport[]
+  passkeys                    Passkey[]
+  oauthClients                OauthClient[]
+  oauthAccessTokens           OauthAccessToken[]
+  oauthRefreshTokens          OauthRefreshToken[]
+  oauthConsents               OauthConsent[]
+  mcpConnections              McpConnection[]
   id                          String                       @id
   name                        String
   email                       String
@@ -62,10 +74,13 @@ model User {
   mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
   meetings                    Meeting[]
+  meetingCaptures             MeetingCapture[]
   meetingSyncStates           MeetingSyncState[]
   meetingTombstones           MeetingTombstone[]
+  meetingHandoffs             MeetingHandoff[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
+  mailReplyItems              MailReplyItem[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -96,6 +111,8 @@ model Session {
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeOrganizationId String?
+  oauthAccessTokens    OauthAccessToken[]
+  oauthRefreshTokens   OauthRefreshToken[]
 
   @@unique([token])
   @@index([userId])
@@ -120,6 +137,285 @@ model Account {
 
   @@index([userId])
   @@map("account")
+}
+
+/// Better Auth passkey plugin credentials; one row per registered authenticator.
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
+}
+
+/// Better Auth JWT plugin signing keys; the OAuth provider signs MCP access tokens with them.
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
+
+  @@map("jwks")
+}
+
+/// An outside application registered with the OAuth provider (MCP clients register themselves).
+model OauthClient {
+  id                               String                @id
+  clientId                         String                @unique
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?              @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]
+  userId                           String?
+  user                             User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?              @default(false)
+  referenceId                      String?
+  metadata                         Json?
+  accessTokens                     OauthAccessToken[]
+  refreshTokens                    OauthRefreshToken[]
+  consents                         OauthConsent[]
+  resources                        OauthClientResource[]
+
+  @@index([userId])
+  @@map("oauth_client")
+}
+
+/// A protected resource the OAuth provider issues tokens for (the MCP endpoint).
+model OauthResource {
+  id                            String                @id
+  identifier                    String                @unique
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  /// A list, or null to inherit the provider's scopes. Better Auth writes null, which a Postgres list cannot hold.
+  allowedScopes                 Json?
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?              @default(false)
+  disabled                      Boolean?              @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?                  @default(1)
+  metadata                      Json?
+  clients                       OauthClientResource[]
+
+  @@map("oauth_resource")
+}
+
+model OauthClientResource {
+  id         String        @id
+  clientId   String
+  client     OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId String
+  resource   OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata   Json?
+  createdAt  DateTime?
+
+  @@unique([clientId, resourceId])
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauth_client_resource")
+}
+
+model OauthRefreshToken {
+  id                      String             @id
+  token                   String             @unique
+  clientId                String
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+  accessTokens            OauthAccessToken[]
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@map("oauth_refresh_token")
+}
+
+model OauthAccessToken {
+  id                      String             @id
+  token                   String?            @unique
+  clientId                String
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  refresh                 OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@map("oauth_access_token")
+}
+
+/// What a user allowed a client to do. `referenceId` is the Space the user chose.
+model OauthConsent {
+  id                      String      @id
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime
+  updatedAt               DateTime
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauth_consent")
+}
+
+/// Single-use client assertion ids (private_key_jwt); unused by the public MCP clients.
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauth_client_assertion")
+}
+
+/// One outside client connected to one Space by one member. Every MCP call re-checks it.
+model McpConnection {
+  id            String    @id @default(cuid())
+  spaceId       String
+  space         Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "oauth" or "pat" (personal access token).
+  kind          String
+  label         String
+  clientName    String?
+  oauthClientId String?
+  /// Id of an OAuth grant, carried by its consent reference and every token it issued; null for PATs.
+  grantId       String?   @unique
+  /// SHA-256 of a personal access token; null for OAuth connections.
+  tokenHash     String?   @unique
+  tokenPrefix   String?
+  readOnly      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  /// Start of the minute that `rateCount` counts calls in (fixed-window rate limit).
+  rateWindowStart DateTime?
+  rateCount     Int       @default(0)
+  calls         McpCallLog[]
+  actions       ExternalAction[]
+
+  @@index([spaceId])
+  // mcp_connections_one_live_grant_key is raw SQL (partial unique on userId, spaceId, oauthClientId
+  // over live OAuth rows).
+  @@index([userId, spaceId, oauthClientId])
+  @@map("mcp_connections")
+}
+
+/// One tool call from an outside MCP client. Never holds arguments or results.
+model McpCallLog {
+  id           String        @id @default(cuid())
+  connectionId String
+  connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  spaceId      String
+  space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  tool         String
+  /// "ok", "error", "rate_limited", "pending" (waiting for approval) or "blocked".
+  outcome      String
+  durationMs   Int
+  createdAt    DateTime      @default(now())
+
+  @@index([connectionId, createdAt])
+  @@map("mcp_call_log")
+}
+
+/// A write an outside MCP client asked for that the Space's rules say a person must approve first.
+model ExternalAction {
+  id           String        @id @default(cuid())
+  spaceId      String
+  space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  connectionId String
+  connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tool         String
+  args         Json
+  /// "pending", "approved" (claimed, running), "denied", "expired", "done" or "failed".
+  status       String        @default("pending")
+  result       Json?
+  createdAt    DateTime      @default(now())
+  decidedAt    DateTime?
+
+  @@index([spaceId, userId, status])
+  @@index([connectionId, createdAt])
+  @@index([status, createdAt])
+  @@map("external_actions")
 }
 
 model Verification {
@@ -187,14 +483,58 @@ model ActionApprovalRule {
   space           Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   createdByUserId String
   createdByUser   User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  // always_allow, require_approval or block.
   effect          String
+  // Null for a space-wide rule; a bot id for that bot's override.
+  botId           String?
+  bot             Bot?     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  // Set only on an "Always for this routine" rule: it applies to that routine's runs and nothing else.
+  routineId       String?
+  routine         Routine? @relation(fields: [routineId], references: [id], onDelete: Cascade)
   matchKind       String
   matchValue      String
   createdAt       DateTime @default(now())
 
-  @@unique([spaceId, createdByUserId, effect, matchKind, matchValue])
+  // One rule per target: unique index action_approval_rules_target_key (raw SQL in migrations
+  // 20261227000000 and 20261231000053) on (spaceId, createdByUserId, COALESCE(botId, ''),
+  // COALESCE(routineId, ''), matchKind, lower(matchValue)).
   @@index([spaceId, createdByUserId])
+  @@index([botId])
+  @@index([routineId])
   @@map("action_approval_rules")
+}
+
+// Durable log of approval decisions: who answered and how (WP0.2). It outlives the thread and
+// the run so past decisions can inform the next one; it goes with the space or the account.
+model ApprovalDecision {
+  id               String   @id @default(cuid())
+  spaceId          String
+  space            Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId            String
+  routineId        String?
+  runId            String?
+  effectId         String?
+  externalActionId String?
+  tool             String
+  connectorKind    String?
+  actionType       String?
+  targetKey        String
+  // approved, denied, edited, undone, auto_approved, auto_asked or blocked.
+  decision         String
+  basis            String
+  // Null for an automatic decision.
+  decidedByUserId  String?
+  cleanRun         Boolean
+  tier             String
+  argsKeys         String[]
+  argsSize         Int
+  version          Int
+  createdAt        DateTime @default(now())
+
+  @@index([spaceId, userId, botId, tool, targetKey, createdAt])
+  @@map("approval_decisions")
 }
 
 model ActionAutoReviewPreference {
@@ -204,6 +544,9 @@ model ActionAutoReviewPreference {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   enabled   Boolean  @default(false)
+  background Boolean @default(true)
+  // "open", "ask_changes" or "ask_everything"; null follows RAKAZO_PERMISSIONS_DEFAULT. Owner-only.
+  permissionLevel String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -228,10 +571,27 @@ model Member {
 }
 
 model Space {
+  approvalDecisions ApprovalDecision[]
+  equityLedgers     EquityLedger[]
+  runFragments RunFragment[]
+  modelConnectionPauses ModelConnectionPause[]
+  pipelineRecords PipelineRecord[]
+  pipelineImports PipelineImport[]
+  artifactShares              ArtifactShare[]
   scratchpadApprovals         ScratchpadApproval[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
   aiDataConsents              AiDataConsent[]
+  mcpCallLogs                 McpCallLog[]
+  externalActions             ExternalAction[]
+  omiUploads                  OmiUpload[]
+  omiSegments                 OmiSegment[]
+  meetingCaptures             MeetingCapture[]
+  meetingCaptureChunks        MeetingCaptureChunk[]
+  /// "remind", "confirm" or "off": whether and how meetings may be recorded here.
+  meetingRecording            String                       @default("remind")
+  brexCardReservations        BrexCardReservation[]
+  mcpConnections              McpConnection[]
   id                          String                       @id
   organizationId              String
   organization                Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -258,7 +618,9 @@ model Space {
   tasks                       Task[]
   runs                        Run[]
   routines                    Routine[]
+  routineWatchStates          RoutineWatchState[]
   scratchpadItems             ScratchpadItem[]
+  threadGoals                 ThreadGoal[]
   taughtSkills                TaughtSkill[]
   agentSkills                 AgentSkill[]
   mailSearches                MailSearch[]
@@ -271,16 +633,23 @@ model Space {
   meetings                    Meeting[]
   meetingSyncStates           MeetingSyncState[]
   meetingTombstones           MeetingTombstone[]
+  meetingHandoffs             MeetingHandoff[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
+  mailReplyItems              MailReplyItem[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   botPages                    BotPage[]
+  pageSources                 PageSource[]
+  pageSourceSnapshots         PageSourceSnapshot[]
+  appControlSnapshots         AppControlSnapshot[]
   botPins                     BotPins[]
   contacts                    Contact[]
+  contactPhotos               ContactPhoto[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
   investorShares              InvestorShare[]
+  investorShareRequests       InvestorShareRequest[]
   investorPortalTokens        InvestorPortalToken[]
   portalSessions              PortalSession[]
   auditRequests               AuditRequest[]
@@ -417,10 +786,29 @@ model UserModelCredential {
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   preferences    SpaceModelPreference[]
+  creditPauses   ModelConnectionPause[]
 
   @@unique([id, userId])
   @@index([userId, provider, updatedAt])
   @@map("user_model_credentials")
+}
+
+/// The provider said this connection's account is out of credit, so routines on it in this space
+/// skip their occurrences until `pausedUntil`. A run on the connection that gets through deletes it.
+model ModelConnectionPause {
+  spaceId      String
+  space        Space                @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  credentialId String
+  credential   UserModelCredential  @relation(fields: [credentialId, userId], references: [id, userId], onDelete: Cascade)
+  pausedUntil  DateTime
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  routines     Routine[]
+
+  @@id([spaceId, userId, credentialId])
+  @@index([credentialId])
+  @@map("model_connection_pauses")
 }
 
 model UserVoiceCredential {
@@ -509,6 +897,7 @@ model SpaceVoicePreference {
 }
 
 model Bot {
+  actionApprovalRules    ActionApprovalRule[]
   scratchpadApprovals    ScratchpadApproval[]
   screenGeneration       Int                   @default(0)
   mailSearches           MailSearch[]
@@ -527,8 +916,12 @@ model Bot {
   sectionId              String?
   section                BotSection?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   archivedAt             DateTime?
+  /// Left out of the sidebar chat list by the person; the bot keeps working.
+  hiddenAt               DateTime?
   parentBotId            String?
   spawnKey               String?
+  // sha256 of the default system prompt the owner chose to keep their own text over; a new default shows the upgrade notice again.
+  instructionsUpgradeDismissedHash String?
   memoryScope            String?
   parent                 Bot?                  @relation("BotChildren", fields: [parentBotId], references: [id], onDelete: SetNull)
   children               Bot[]                 @relation("BotChildren")
@@ -542,10 +935,24 @@ model Bot {
   autoSpeak              Boolean               @default(false)
   modelProvider          String?
   modelId                String?
+  // The connection this bot's model runs on; null follows the space default. A plain column, not
+  // a foreign key: an automatic sign-out deletes the credential and the pin must survive it, so
+  // the run fails by name instead of quietly using another connection.
+  modelCredentialId      String?
   thinkingLevel          String?
   disabledBuiltinTools   String[]              @default([])
   // "internal" (default) or "external": talks to people outside the company. Server-owned; no bot tool reads or sets it.
   audience               String                @default("internal")
+  // Agent firewall: treat everything the agent reads as untrusted. Server-owned: only the owner's
+  // settings API sets it; no bot tool reads or sets it.
+  firewall               Boolean               @default(false)
+  // Overrides the owner's space permission level; null follows the space. Server-owned: only the owner's
+  // settings API sets it; no bot tool, MCP tool or token reads or sets it.
+  permissionLevel        String?
+  // Capability ids (packages/core request-access.ts) a firewalled agent may ask to use, each use still on a card. Server-owned: only the owner's answer to a request-access card or settings change it.
+  firewallAskCapabilities String[]             @default([])
+  // "low", "medium" (default) or "high": how far the agent goes beyond the request. Owner-only; no bot tool sets it and nothing reads it for an approval decision.
+  proactivity            String                @default("medium")
   // For an external bot: the internal bots it may message (bot ids; empty means none).
   externalMessageTargets String[]              @default([])
   // For an external bot: whether the browser and computer tools are on. Off unless the owner turns them on.
@@ -555,11 +962,20 @@ model Bot {
   webhookSecretId        String?
   teamChatAmbientEnabled Boolean               @default(false)
   teamChatRules          String                @default("")
+  crossSpaceCommunication Boolean              @default(false)
+  // Local desktop control (docs/local-desktop-control): off by default, owner-only.
+  appControlEnabled      Boolean               @default(false)
+  // [{ id, name }], max 20.
+  appControlApps         Json                  @default("[]")
+  appControlHeaded       Boolean               @default(false)
+  appControlSnapshots    AppControlSnapshot[]
   routines               Routine[]
   scratchpadItems        ScratchpadItem[]
+  threadGoals            ThreadGoal[]
   taughtSkills           TaughtSkill[]
   memoryDocuments        MemoryDocument[]
-  page                   BotPage?
+  pages                  BotPage[]
+  pageSources            PageSource[]
   pins                   BotPins?
   agentHome              AgentHome?
   browserProfile         BrowserProfile?
@@ -571,6 +987,8 @@ model Bot {
   agentForServers        McpServer[]           @relation("McpServerAgent")
   agentForConnections    Connection[]          @relation("ConnectionAgent")
   connectionAccess       BotConnectionAccess[]
+  agentForSources        CapabilityInstall[]   @relation("SourceAgent")
+  sourceAccess           BotSourceAccess[]
   groupMembers           ChatGroupMember[]
   botSecrets             BotSecret[]
   skillSettings          BotSkillSetting[]
@@ -581,11 +999,14 @@ model Bot {
 
   externalConversations ExternalConversation[]
 
+  meetingHandoffs MeetingHandoff[]
+
   @@unique([spaceId, spawnKey])
   @@index([spaceId, userId, archivedAt, pinned, updatedAt])
   @@index([sectionId])
   @@index([computerId])
   @@index([parentBotId])
+  @@index([modelCredentialId])
   @@map("bots")
 }
 
@@ -677,13 +1098,14 @@ model Thread {
   unread                      Boolean               @default(false)
   /// Highest message seq the thread's owner has read; -1 before any. Moves forward only, except markUnread.
   lastReadSeq                 Int                   @default(-1)
-  /// Set when meeting-source agent text reached this thread (directly or forwarded). Never cleared.
+  /// Set when meeting-source agent text reached this thread (directly or forwarded). Cleared with the thread; meeting-source agents set it again on their next run.
   meetingTaintedAt            DateTime?
   messages                    Message[]
   events                      Event[]
   tasks                       Task[]
   runs                        Run[]
   routines                    Routine[]
+  goals                       ThreadGoal[]
 
   @@index([spaceId])
   @@map("threads")
@@ -712,6 +1134,7 @@ model Message {
   @@unique([threadId, clientNonce])
   @@index([threadId, seq])
   @@index([replyToMessageId])
+  @@index([runId, seq])
   @@map("messages")
 }
 
@@ -767,8 +1190,15 @@ model Run {
   userId               String
   status               String
   trigger              String
+  // Decided once when the run is created (newRunUnattended in core); true when nobody is watching.
+  // Defaults to true so a creation path that forgets to set it fails closed.
+  unattended           Boolean           @default(true)
+  // The prompt carries outside content; calls outside the taint-safe list ask. Never cleared.
+  externalTaint        Boolean           @default(false)
   modelProvider        String?
   modelId              String?
+  // The routine's connection pin, captured with the model.
+  modelCredentialId    String?
   thinkingLevel        String?
   // True when these columns are the model the run must keep. A later attempt
   // may record the model it used in the same columns without setting this.
@@ -786,6 +1216,8 @@ model Run {
   sourceMessage        Message?          @relation("RunSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
   routineId            String?
   routine              Routine?          @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  // The failed routine run this run retries. Unique, so a run is retried at most once.
+  retryOfRunId         String?           @unique
   startedAt            DateTime?
   completedAt          DateTime?
   botOutcomeReturnedAt DateTime?
@@ -798,6 +1230,19 @@ model Run {
   usageRecords         UsageRecord[]
   steeringMessages     SteeringMessage[]
   externalMessage      ExternalMessage?
+  /// The thread goal this run works toward, while one is active. Cleared when the goal is deleted.
+  goalId               String?
+  goal                 ThreadGoal?       @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  /// What a goal run's tool calls returned, for the goal check: [{ id, tool, args, ok, result }], at most 24 KB.
+  goalEvidence         Json?
+  // Restriction markers, written the moment they are set so a continuation reads them here and
+  // not from the capped tool log (which trims). readOutsideContent: a tool result that can carry
+  // outside text entered the run. readDesktop: the run listed or read a desktop app.
+  readOutsideContent   Boolean           @default(false)
+  readDesktop          Boolean           @default(false)
+  /// The run's record of what it read is kept in run_fragments (set when the first attempt claims it).
+  fragmentRecord       Boolean           @default(false)
+  fragments            RunFragment[]
 
   @@unique([spaceId, clientNonce])
   @@index([status, leaseExpiresAt])
@@ -806,10 +1251,34 @@ model Run {
   @@index([trigger, status, messagingMirroredAt, updatedAt])
   @@index([trigger, status, teamChatMirroredAt, updatedAt])
   @@index([spaceId, botId])
+  @@index([botId])
+  @@index([taskId])
   @@index([sourceMessageId])
   @@index([threadId, status, createdAt])
   @@index([routineId])
+  @@index([goalId])
   @@map("runs")
+}
+
+/// Keyed hashes of what a run read, one row per recorded tool result, so a resumed attempt can
+/// check outbound text against it. Holds no readable private text; publicWords is public text only.
+model RunFragment {
+  id          Int      @id @default(autoincrement())
+  runId       String
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  fence       Int
+  /// First 8 hex of a keyed check value; differs after the server key changes.
+  keyId       String
+  /// 17-byte entries: one tag byte (public ? 4 : 0 | kind) then a 16-byte hash.
+  entries     Bytes
+  publicWords String?
+  createdAt   DateTime @default(now())
+
+  @@index([runId, id])
+  @@map("run_fragments")
 }
 
 model SteeringMessage {
@@ -823,9 +1292,17 @@ model SteeringMessage {
   run           Run?      @relation(fields: [runId], references: [id], onDelete: SetNull)
   /// Set when a pending row must resume as this trigger so its reply can be delivered.
   originTrigger String?
+  /// The model's full text when the visible bubble is only a label, such as an inbound delivery.
+  prompt        String?
+  /// The routine a queued inbound delivery belongs to; its continuation run names it.
+  routineId     String?
+  /// The mode the queued delivery's trigger implies, carried onto its continuation run.
+  unattended    Boolean?
+  externalTaint Boolean?
   /// Model agreed for an inbound delivery that had to wait. Empty follows the bot.
   modelProvider String?
   modelId       String?
+  modelCredentialId String?
   thinkingLevel String?
   claimedAt     DateTime?
   createdAt     DateTime  @default(now())
@@ -904,6 +1381,8 @@ model ExternalEffect {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  mailReplyItems MailReplyItem[]
+
   @@unique([idempotencyKey])
   @@index([runId, status])
   @@map("external_effects")
@@ -929,16 +1408,66 @@ model Routine {
   messageProvider String?
   modelProvider   String?
   modelId         String?
+  // Pins the routine's own model to one of the owner's connections.
+  modelCredentialId String?
   thinkingLevel   String?
   lastRunAt       DateTime?
   nextRunAt       DateTime?
+  /// Runs in a row the model provider refused for the account; each one spaces out the schedule.
+  accountFailures Int       @default(0)
+  /// The out-of-credit connection that held this routine's last occurrence; shown while that pause lasts.
+  pausedConnectionId String?
+  connectionPause    ModelConnectionPause? @relation(fields: [spaceId, userId, pausedConnectionId], references: [spaceId, userId, credentialId], onDelete: SetNull)
+  /// Server adds silent-reply guidance; a quiet run that says nothing shows "Nothing to report".
+  quiet           Boolean   @default(false)
+  /// WatchSpecSchema JSON ({ kind: "page", url, intervalMinutes }) or null.
+  watch           Json?
+  /// "check_in" marks the one managed check-in routine per bot; its crons/active are the bot's check-in setting.
+  managedKind     String?
+  /// Runs the skill's current playbook instead of `prompt`; null when the skill is deleted.
+  taughtSkillId   String?
+  taughtSkill     TaughtSkill? @relation(fields: [taughtSkillId], references: [id], onDelete: SetNull)
+  watchState      RoutineWatchState?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  /// When `prompt` last changed (updatedAt also moves with every schedule update); null reads as createdAt.
+  promptUpdatedAt DateTime?
   runs            Run[]
+  approvalRules   ActionApprovalRule[]
 
   @@index([active, nextRunAt])
   @@index([spaceId, botId])
+  @@index([taughtSkillId])
+  @@index([modelCredentialId])
   @@map("routines")
+}
+
+/// Probe state for a page watch, one row per watching routine.
+model RoutineWatchState {
+  routineId         String    @id
+  routine           Routine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  spaceId           String
+  space             Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  fingerprint       String?
+  /// Normalized page text, at most 16 KB (enforced in code).
+  snapshot          String?
+  lastCheckedAt     DateTime?
+  lastChangedAt     DateTime?
+  consecutiveErrors Int       @default(0)
+  nextCheckAt       DateTime?
+  /// "errors" | "noisy" | "budget" | "access"
+  pausedReason      String?
+  wakesToday        Int       @default(0)
+  /// YYYY-MM-DD in the routine's time zone.
+  wakesDay          String?
+  /// A change was seen but not yet delivered to the model (daily budget or a wake in flight).
+  pendingChange     Boolean   @default(false)
+  /// Last 10 check outcomes, 1 changed / 0 same, oldest first.
+  recentChanges     Int[]
+
+  @@index([nextCheckAt])
+  @@index([spaceId])
+  @@map("routine_watch_states")
 }
 
 model ScratchpadItem {
@@ -958,10 +1487,23 @@ model ScratchpadItem {
   proof        String?
   approvedAt   DateTime?
   approvedBy   String?
+  /// When the item is due. Not scheduledFor, which is a GTM post time.
+  dueAt        DateTime?
+  waitingOn    String?
+  resolvedReason String?
+  /// Set when the item tracks a mail thread. Deleting the connection drops the link, not the item.
+  mailConnectionId String?
+  mailConnection   Connection? @relation(fields: [mailConnectionId], references: [id], onDelete: SetNull)
+  mailThreadId     String?
+  /// The provider message id mail_get takes.
+  mailMessageId    String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   @@index([spaceId, botId, status])
+  @@index([spaceId, botId, status, dueAt])
+  @@index([mailConnectionId])
+  // Partial unique index scratchpad_items_open_mail_thread_key is created in SQL.
   @@index([spaceId, botId, updatedAt])
   @@map("scratchpad_items")
 }
@@ -1000,14 +1542,45 @@ model TaughtSkill {
   startedAt DateTime?
   expiresAt DateTime?
   stoppedAt DateTime?
+  /// Stamped when a chat, routine or test run uses the skill.
+  lastRunAt DateTime?
+  /// The card's latest Test run, and its outcome ("worked" | "stopped") once that run has ended.
+  lastTestRunId   String?
+  lastTestOutcome String?
+  lastTestNote    String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  /// When `playbook` last changed (updatedAt also moves on every run); null reads as createdAt.
+  playbookUpdatedAt DateTime?
+  routines   Routine[]
+  heldValues TeachHeldValue[]
 
   @@index([spaceId, botId])
   @@index([spaceId, botId, status])
   // Partial unique index taught_skills_botId_recording_key is created in SQL:
   // one recording session per bot.
   @@map("taught_skills")
+}
+
+/// A value typed into a password field while teaching, held (encrypted like a BotSecret) until
+/// the user saves it as a login or skips it. Deleted on save, skip, cancel, delete and after 30 minutes.
+model TeachHeldValue {
+  id         String      @id @default(cuid())
+  skillId    String
+  skill      TaughtSkill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  spaceId    String
+  userId     String
+  segment    Int
+  /// The playbook step that stands for this value; set when recording stops.
+  stepIndex  Int?
+  field      String      @default("")
+  ciphertext String
+  expiresAt  DateTime
+  createdAt  DateTime    @default(now())
+
+  @@unique([skillId, segment])
+  @@index([expiresAt])
+  @@map("teach_held_values")
 }
 
 /// Claude Agent Skills: SKILL.md recipes shared across assistants (not per-bot).
@@ -1029,6 +1602,19 @@ model AgentSkill {
   status         String   @default("active")
   /// An agent's proposed full SKILL.md for an active skill, applied when the owner approves.
   pendingContent String?
+  /// A bot-built tool: one self-contained JavaScript source defining `function run(input)`, run in the
+  /// QuickJS sandbox by tool_run. Null for an ordinary skill.
+  toolSource      String?
+  /// The tool's input schema (the subset validated by validateToolInputSchema).
+  toolInputSchema Json?
+  /// sha256 of the toolSource the owner approved. Null for a draft; tool_run refuses an active
+  /// tool whose source no longer matches.
+  toolSourceHash  String?
+  /// What the bot said about the tool, shown beside Approve: { reads, writes, sampleInput, sampleOutput }.
+  toolNotes       Json?
+  /// An agent's proposed replacement { source, inputSchema, notes } for an active tool, applied (and
+  /// hashed) only when the owner approves. The running source stays as it was until then.
+  pendingTool     Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1109,14 +1695,19 @@ model Connection {
   mailSenderDecisions MailSenderDecision[]
   mailActionLogs      MailActionLog[]
   inboxTodos          InboxTodo[]
+  scratchpadItems     ScratchpadItem[]
   meetings            Meeting[]
   meetingSyncState    MeetingSyncState?
   mailSyncState       MailSyncState?
+  contactPhotoSync    ContactPhotoSync?
   dataRoomSyncState   DataRoomSyncState?
   dataRoomItems       DataRoomItem[]
   composeSends        ComposeSend[]
+  mailReplyItems      MailReplyItem[]
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
   allAgents           Boolean               @default(true)
+  /// Agent-linked connection: other agents may be given access. Stays true while every other agent is off.
+  agentShared         Boolean               @default(false)
   botAccess           BotConnectionAccess[]
   writesEnabled       Boolean               @default(false)
   agentBotId          String?
@@ -1127,11 +1718,69 @@ model Connection {
   privateByDefault    Boolean               @default(false)
   companyEvidence     CompanyEvidence[]
   companyCandidates   CompanyCandidate[]    @relation("CompanyCandidateConnection")
+  omiUploads          OmiUpload[]
+  omiSegments         OmiSegment[]
 
   @@index([spaceId, userId, connectorId])
   @@unique([id, spaceId, userId])
   @@index([agentBotId])
   @@map("connections")
+}
+
+/// One piece of records a pendant uploaded, kept raw until the assemble job turns it into recordings.
+model OmiUpload {
+  id           String     @id @default(cuid())
+  spaceId      String
+  space        Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Sequence number of the first 444-byte record.
+  firstSeq     BigInt
+  /// SHA-256 (hex) of the body. A retry repeats both; a restarted counter repeats only firstSeq.
+  sha256       String
+  recordCount  Int
+  /// Omi codec byte: 20 (10 ms frames) or 21 (20 ms frames).
+  codec        Int
+  rtcValid     Boolean
+  receivedAt   DateTime   @default(now())
+  /// The raw bytes in the artifact store; removed once assembled.
+  storageKey   String
+  assembledAt  DateTime?
+
+  @@unique([connectionId, firstSeq, sha256])
+  @@index([connectionId, assembledAt])
+  @@map("omi_uploads")
+}
+
+/// One sorted stretch of an Omi recording: a meeting, a note or trash.
+model OmiSegment {
+  id           String       @id @default(cuid())
+  spaceId      String
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  connectionId String
+  connection   Connection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  audioItemId  String
+  audioItem    DataRoomItem @relation("OmiSegmentAudio", fields: [audioItemId], references: [id], onDelete: Cascade)
+  /// Seconds from the start of the recording.
+  start        Int
+  end          Int
+  /// "meeting", "note" or "trash".
+  kind         String
+  title        String
+  meetingId    String?
+  meeting      Meeting?     @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  noteItemId   String?
+  noteItem     DataRoomItem? @relation("OmiSegmentNote", fields: [noteItemId], references: [id], onDelete: SetNull)
+  /// "agent" or "user"; a re-sort never changes a user's choice.
+  sortedBy     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([audioItemId, start])
+  @@index([spaceId, userId, createdAt])
+  @@map("omi_segments")
 }
 
 model BotConnectionAccess {
@@ -1142,6 +1791,10 @@ model BotConnectionAccess {
   connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   botId        String
   bot          Bot        @relation(fields: [botId], references: [id], onDelete: Cascade)
+  /// Firewalled agents: the Gmail label this agent may read. Null means the whole connection.
+  supportLabel String?
+  /// Besides reading, this agent may make changes (each still asks the owner) while the connection's changes switch is on.
+  canWrite     Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   @@unique([connectionId, botId])
@@ -1150,21 +1803,48 @@ model BotConnectionAccess {
 }
 
 model CapabilityInstall {
-  id        String   @id @default(cuid())
-  spaceId   String
-  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId    String
-  kind      String
-  name      String
-  source    String
-  version   String?
-  digest    String?
-  secretId  String?
-  config    Json     @default("{}")
-  createdAt DateTime @default(now())
+  id            String            @id @default(cuid())
+  spaceId       String
+  space         Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId        String
+  kind          String
+  name          String
+  source        String
+  version       String?
+  digest        String?
+  secretId      String?
+  config        Json              @default("{}")
+  createdAt     DateTime          @default(now())
+  /// The source's own agent (MCP, API and GraphQL sources). Cleared if the bot is deleted.
+  agentBotId    String?
+  agentBot      Bot?              @relation("SourceAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  /// Every internal agent may use the source. New sources start false: private to their own agent.
+  allAgents     Boolean           @default(false)
+  /// Other agents may be given access. Stays true while every other agent is off.
+  agentShared   Boolean           @default(false)
+  /// Agents may make changes (each change still asks); a non-owner needs its own canWrite grant unless allAgents.
+  writesEnabled Boolean           @default(false)
+  botAccess     BotSourceAccess[]
 
   @@index([spaceId, userId])
   @@map("capability_installs")
+}
+
+/// Which agents besides the source's own may use a directly connected source (the shape of BotConnectionAccess).
+model BotSourceAccess {
+  id        String            @id @default(cuid())
+  spaceId   String
+  userId    String
+  installId String
+  install   CapabilityInstall @relation(fields: [installId], references: [id], onDelete: Cascade)
+  botId     String
+  bot       Bot               @relation(fields: [botId], references: [id], onDelete: Cascade)
+  canWrite  Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@unique([installId, botId])
+  @@index([botId])
+  @@map("bot_source_access")
 }
 
 model MemoryDocument {
@@ -1178,6 +1858,13 @@ model MemoryDocument {
   path      String
   content   String
   revision  Int              @default(1)
+  /// "preference", "fact" or "task": how fast recall lets it fade (packages/adapter-kit memory-strength).
+  kind      String           @default("fact")
+  /// Times a run loaded it into its prompt, and when last; both keep it strong.
+  useCount   Int             @default(0)
+  lastUsedAt DateTime?
+  /// Set when the owner edited it by hand: it never fades.
+  pinned     Boolean         @default(false)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   revisions MemoryRevision[]
@@ -1201,24 +1888,107 @@ model MemoryRevision {
   @@map("memory_revisions")
 }
 
-/// One Markdown page per bot, written by the bot's tools and edited by its owner.
+/// A bot's named Markdown pages (up to 20), written by the bot's tools and edited by its owner.
 model BotPage {
   id        String            @id @default(cuid())
   spaceId   String
   space     Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  botId     String            @unique
+  botId     String
   bot       Bot               @relation(fields: [botId], references: [id], onDelete: Cascade)
   userId    String
+  title     String
   content   String
+  /// "blocks" (Markdown with live blocks) or "html" (one sandboxed HTML document). Fixed at creation.
+  kind      String            @default("blocks")
   revision  Int               @default(1)
   /// "bot" or "user"
   updatedBy String
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   revisions BotPageRevision[]
+  sources   PageSource[]
+  sidebarPages SidebarPage[]
 
+  // Titles are unique per bot ignoring case: unique index bot_pages_botId_title_key (raw SQL in
+  // migration 20261231000026) on (botId, lower(title)).
+  @@index([botId])
   @@index([spaceId])
   @@map("bot_pages")
+}
+
+/// A saved read-only data call on a bot page. Page blocks name it; the server reruns it without a model and stores each result as a snapshot.
+model PageSource {
+  id               String               @id @default(cuid())
+  spaceId          String
+  space            Space                @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  /// The bot's owner.
+  userId           String
+  botId            String
+  bot              Bot                  @relation(fields: [botId], references: [id], onDelete: Cascade)
+  pageId           String
+  page             BotPage              @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name             String
+  /// "praci" for now.
+  kind             String
+  call             Json
+  schedule         String
+  /// "pending" | "active" | "paused" | "denied"
+  status           String
+  nextRefreshAt    DateTime?
+  leaseUntil       DateTime?
+  failures         Int                  @default(0)
+  lastError        String?
+  lastRefreshAt    DateTime?
+  approvedCallHash String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  snapshots        PageSourceSnapshot[]
+
+  // Names are unique per page ignoring case: unique index page_sources_pageId_name_key (raw SQL in
+  // migration 20261231000029) on (pageId, lower(name)).
+  @@index([spaceId])
+  @@index([status, nextRefreshAt])
+  @@map("page_sources")
+}
+
+/// Snapshot ids a run's app control produced, so refs stay owned by one run across processes.
+model AppControlSnapshot {
+  id         String   @id @default(cuid())
+  spaceId    String
+  space      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  botId      String
+  bot        Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  runId      String
+  snapshotId String
+  appId      String
+  windowId   String?
+  surface    String
+  sensitive  Boolean
+  spent      Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([spaceId, userId, botId, runId, snapshotId])
+  @@index([runId])
+  @@index([createdAt])
+  @@map("app_control_snapshots")
+}
+
+/// One successful result of a page source.
+model PageSourceSnapshot {
+  id        String     @id @default(cuid())
+  spaceId   String
+  space     Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  sourceId  String
+  source    PageSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  fetchedAt DateTime   @default(now())
+  value     Json
+  bytes     Int
+
+  @@index([sourceId, fetchedAt(sort: Desc)])
+  /// The per-space daily refresh budget counts a space's snapshots since UTC midnight.
+  @@index([spaceId, fetchedAt])
+  @@map("page_source_snapshots")
 }
 
 /// A bot's numbers strip (stats) and one sidebar list; separate from the page so refreshes never conflict with page edits.
@@ -1351,6 +2121,7 @@ model ComputerExecutionLease {
   @@unique([computerId, botId])
   @@index([runId])
   @@index([computerId, expiresAt])
+  @@index([botId, expiresAt])
   @@map("computer_execution_leases")
 }
 
@@ -1376,6 +2147,7 @@ model Artifact {
   rootArtifactId String?
   rootArtifact   Artifact?  @relation("ArtifactVersions", fields: [rootArtifactId], references: [id], onDelete: Cascade)
   versions       Artifact[] @relation("ArtifactVersions")
+  shares         ArtifactShare[]
   version        Int        @default(1)
   // Client-chosen per upload so a retried upload that already landed returns this row.
   clientNonce    String?
@@ -1386,6 +2158,27 @@ model Artifact {
   @@index([rootArtifactId])
   // artifacts_family_version_key is raw SQL: Prisma cannot express COALESCE indexes.
   @@map("artifacts")
+}
+
+/// A view-only public link to one exact artifact version. Only the sha256 of the token is stored.
+model ArtifactShare {
+  id              String    @id @default(cuid())
+  spaceId         String
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  artifactId      String
+  artifact        Artifact  @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  lastOpenedAt    DateTime?
+  /// Public opens in the current one-minute window, kept in Postgres so every API process agrees.
+  openWindowStart DateTime?
+  openCount       Int       @default(0)
+
+  @@index([spaceId, artifactId])
+  @@map("artifact_shares")
 }
 
 model UsageRecord {
@@ -1519,6 +2312,8 @@ model NotificationEndpoint {
   address   String
   deviceId  String
   sessionId String?
+  /// Which push service the address belongs to: "expo" or "apns". Only used by the push channel.
+  platform  String   @default("expo")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1588,6 +2383,8 @@ model McpServer {
   agentExclusive        Boolean                @default(false)
   /// Set when creating the server made its agent; only such servers stay exclusive after the agent is released.
   agentProvisionedAt    DateTime?
+  /// Set when the server refused the stored sign-in; cleared when the user signs in again.
+  oauthReauthAt         DateTime?
   revision              Int                    @default(1)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -1599,6 +2396,7 @@ model McpServer {
   financeBills          FinanceBill[]
   financeSyncState      FinanceSyncState?
   devinConnectionState  DevinConnectionState?
+  brexCards             BrexCardsConnection?
   devinSessions         DevinSession[]
   meetings              Meeting[]
   meetingSyncState      MeetingSyncState?
@@ -1661,6 +2459,9 @@ model MessagingIdentity {
   verifiedAt           DateTime?
   lastInboundAt        DateTime?
   outboundSinceInbound Int       @default(0)
+  /// Provider handle of the reply that last released messages held behind the outbound cap.
+  /// A redelivery of that reply answers no request: it was sent before they went out.
+  capReleaseHandle     String?
   /// When the "you're messaging an AI" line went out; set once, for providers whose terms require it.
   disclosedAt          DateTime?
   createdAt            DateTime  @default(now())
@@ -1758,6 +2559,7 @@ model MessagingPollCursor {
 }
 
 model AgentConnection {
+  requestVersion Int      @default(1)
   id             String   @id @default(cuid())
   requesterBotId String
   targetBotId    String
@@ -1784,6 +2586,10 @@ model BotSecret {
   ciphertext String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  // Stamped on each successful use (secret_request, login fill). Not a counter.
+  lastUsedAt DateTime?
+  // Set when the saved origin answered 401/403; cleared on a later success or on replace.
+  needsAttentionAt DateTime?
 
   @@unique([userId, spaceId, botId, name])
   @@index([botId])
@@ -1846,6 +2652,7 @@ model ExternalMessage {
 
   @@unique([externalConversationId, providerEventId])
   @@index([status, nextAttemptAt])
+  @@index([externalConversationId, senderIsBot, createdAt])
   @@map("external_messages")
 }
 
@@ -1975,6 +2782,8 @@ model CachedMailMessage {
   dueOn             DateTime?   @db.Date
   /// Computed in code: the user sent a later message in the same thread.
   alreadyHandled    Boolean     @default(false)
+  /// The user said this message needs no reply; triage never puts it back in Needs reply.
+  replyDismissedAt  DateTime?
   /// Last time a sync or a search wrote this row.
   seenAt            DateTime
   /// Sync archived this message because its sender skips the inbox. Set once and never cleared, so an undo is not archived again.
@@ -2030,6 +2839,9 @@ model MailSenderStat {
   learnedAt             DateTime?
   /// The user forgot the learned pile; only mail received after this counts toward learning again.
   learnedForgottenAt    DateTime?
+  /// Messages from this sender the user said needed no reply. At 3 the sender no longer reaches Needs reply; writing to the sender resets it.
+  noReplyCount          Int        @default(0)
+  noReplyAt             DateTime?
 
   @@unique([connectionId, senderAddress])
   @@map("mail_sender_stats")
@@ -2085,6 +2897,8 @@ model MailActionLog {
   senderAddresses String[]   @default([])
   /// Provider thread ids that changed. Undo works from these, so it still works after sync prunes the cache rows.
   threadIds       String[]   @default([])
+  /// The agent call that made the change, for the approval decision log's Undo signal.
+  effectId        String?
   createdAt       DateTime   @default(now())
   undoneAt        DateTime?
 
@@ -2172,6 +2986,52 @@ model ComposeSend {
   @@unique([spaceId, userId, clientId])
   @@index([connectionId])
   @@map("compose_sends")
+}
+
+/// One row of a mail_reply_batch call: a reply, or a new email with no replyToId or thread. The ExternalEffect is the batch header; each outgoing
+/// message is built from this row, and its send state is the row's ComposeSend
+/// (clientId `agent:batch_<id>`), never a copy here.
+model MailReplyItem {
+  id               String         @id @default(cuid())
+  effectId         String
+  effect           ExternalEffect @relation(fields: [effectId], references: [id], onDelete: Cascade)
+  position         Int
+  spaceId          String
+  space            Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId     String
+  connection       Connection     @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// The provider's id of the message answered. Null, with providerThreadId, for a new email.
+  replyToId        String?
+  providerThreadId String?
+  to               String[]
+  cc               String[]
+  bcc              String[]
+  subject          String
+  body             String
+  /// Newest inbound message in the thread the owner has seen (at the proposal, then at the press).
+  seenMessageId    String?
+  /// Hash of the row as the owner approved it; the worker recomputes it before each attempt.
+  approvedHash     String?
+  /// "reviewing" | "skipped" | "queued" | "claimed" | "held" | "composer".
+  dispatch         String         @default("reviewing")
+  /// With "held": why, as a stable code.
+  error            String?
+  /// The run had read outside content when it proposed this row.
+  outsideContent   Boolean        @default(false)
+  /// The place this row holds in the account's daily new-recipient limit: how many, and since when.
+  newRecipientCount Int           @default(0)
+  newRecipientAt   DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([effectId, position])
+  @@index([spaceId, userId])
+  @@index([connectionId])
+  @@index([connectionId, newRecipientAt])
+  @@index([dispatch, updatedAt])
+  @@map("mail_reply_items")
 }
 
 /// Sync throttle and in-flight claim for one mail connection.
@@ -2437,6 +3297,21 @@ model FinanceCryptoHolding {
   @@map("finance_crypto_holdings")
 }
 
+/// A token's USD price on one UTC day, for the Holdings sparkline. Prices are public, so this table
+/// has no space or user and is shared; the crypto sync writes it (the last price that day wins).
+model CryptoPriceDay {
+  chainId      Int
+  /// Lowercase contract address; "" for the chain's native coin.
+  tokenAddress String
+  /// UTC day, YYYY-MM-DD.
+  day          String
+  /// USD per whole token as a decimal string.
+  usdPrice     String
+
+  @@id([chainId, tokenAddress, day])
+  @@map("crypto_price_days")
+}
+
 /// Per user and space: what counts as cash for runway. "bank" (default) | "stablecoins" | "all".
 model FinancePreference {
   id           String   @id @default(cuid())
@@ -2448,6 +3323,21 @@ model FinancePreference {
 
   @@unique([spaceId, userId])
   @@map("finance_preferences")
+}
+
+/// A note a space member pinned to a day on the Finance Burn chart. Shown on whichever bucket holds the day; read by the Finance agent.
+model FinanceChartNote {
+  id        String   @id @default(cuid())
+  spaceId   String
+  /// The author; only they can delete it.
+  userId    String
+  /// YYYY-MM-DD, the start of the bucket it was added to.
+  day       String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([spaceId, day])
+  @@map("finance_chart_notes")
 }
 
 /// One wallet's priced crypto value for one UTC day, rewritten by every sync that day (the last value wins).
@@ -2540,6 +3430,7 @@ model Contact {
   /// A ContactKind: "investor", "auditor", "customer", "vendor", "partner", "advisor", "legal", "prospect" or "other"
   kind             String                @default("investor")
   notes            String?
+  /// Frozen by migration 20261231000052: pipeline_records holds stage, check size, next step, round and Waiting for Mercury. Dropped in a later release.
   /// Prospect pipeline stage: target, intro, meeting, diligence, committed or passed; null for other contacts.
   stage            String?
   checkSizeCents   BigInt?
@@ -2560,9 +3451,14 @@ model Contact {
   /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
   botId            String?
   bot              Bot?                  @relation(fields: [botId], references: [id], onDelete: SetNull)
+  /// The agent that last changed this contact with contacts_save. A Firewall agent's edit marks the contact as untrusted text (see readsFirewalledContent).
+  lastEditedByBotId String?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   companyEntities CompanyEntity[] @relation("CompanyEntityContact")
+  pipelinePeople  PipelineRecordPerson[]
+  /// Records this contact referred.
+  referredRecords PipelineRecord[] @relation("PipelineRecordReferrer")
 
   @@unique([spaceId, userId, email])
   @@unique([id, spaceId, userId])
@@ -2570,6 +3466,35 @@ model Contact {
   @@index([botId])
   @@index([roundId])
   @@map("contacts")
+  equityStakeholders EquityStakeholder[]
+}
+
+/// A contact's profile photo, stored as a blob in the object store. One per user and lower-cased email.
+model ContactPhoto {
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email       String
+  storageKey  String
+  /// Where the photo came from, for example "google".
+  source      String
+  contentType String
+  /// SHA-256 of the bytes, hex.
+  contentHash String
+  fetchedAt   DateTime
+
+  @@id([spaceId, userId, email])
+  @@map("contact_photos")
+}
+
+/// When a connected Google account's contact photos were last fetched; at most one fetch a day.
+model ContactPhotoSync {
+  connectionId String     @id
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  fetchedAt    DateTime
+
+  @@map("contact_photo_syncs")
 }
 
 /// A Data room document one investor contact may download from the portal.
@@ -2712,6 +3637,7 @@ model FundraiseRound {
   updatedAt   DateTime  @updatedAt
   contacts    Contact[]
   safes       Safe[]
+  pipelineRecords PipelineRecord[]
 
   @@index([spaceId, userId])
   @@map("fundraise_rounds")
@@ -2805,18 +3731,22 @@ model CapTableSnapshot {
   @@map("cap_table_snapshots")
 }
 
-/// An optional sidebar page the user added from SIDEBAR_PAGE_TEMPLATES.
+/// An optional sidebar page the user added: a SIDEBAR_PAGE_TEMPLATES entry (templateKey) or one of
+/// their bot pages (pageId). Exactly one is set (CHECK sidebar_pages_one_target, raw SQL in the migration).
 model SidebarPage {
   id          String   @id @default(cuid())
   spaceId     String
   space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  templateKey String
+  templateKey String?
+  pageId      String?
+  page        BotPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
   position    Int
   createdAt   DateTime @default(now())
 
   @@unique([spaceId, userId, templateKey])
+  @@unique([spaceId, userId, pageId])
   @@index([spaceId, userId])
   @@map("sidebar_pages")
 }
@@ -2853,8 +3783,10 @@ model DataRoomItem {
   /// The import that filed this item, when one did.
   importId           String?
   import             DataRoomImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
-  /// "upload", "drive", "box", "gmail", "chat" or "finance".
+  /// "upload", "scan", "drive", "box", "gmail", "chat", "finance", "omi" or "meeting" (a meeting's notes in Recordings).
   source             String
+  /// The one automatic Scanner task created after this scan's text is ready.
+  scannerRunId       String?
   sourceConnectionId String?
   sourceConnection   Connection?       @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)
   externalId         String?
@@ -2902,6 +3834,9 @@ model DataRoomItem {
   companyEntities    CompanyEntity[] @relation("CompanyEntityDataRoomItem")
   companyEvidence    CompanyEvidence[] @relation("CompanyEvidenceDataRoomItem")
   companyCandidates  CompanyCandidate[] @relation("CompanyCandidateDataRoomItem")
+  omiAudioSegments   OmiSegment[]      @relation("OmiSegmentAudio")
+  omiNoteSegments    OmiSegment[]      @relation("OmiSegmentNote")
+  equityDocumentLinks EquityDocumentLink[] @relation("EquityDocumentItem")
 
   @@index([spaceId, folderId])
   @@unique([id, spaceId, userId])
@@ -2911,6 +3846,7 @@ model DataRoomItem {
   @@index([spaceId, userId, docDate, id])
   @@index([spaceId, userId, name, id])
   @@index([spaceId, userId, docType, id])
+  @@index([spaceId, userId, source, status, scannerRunId, createdAt])
   @@index([parties], type: Gin)
   @@index([tags], type: Gin)
   @@map("data_room_items")
@@ -3156,20 +4092,21 @@ model LegalEdge {
 /// account_exports_one_active_key in the migration SQL). The zip lives in the artifact store under
 /// `storageKey`, scoped to `spaceId`; the row and the blob are removed once `expiresAt` passes.
 model AccountExport {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// The space whose blob scope holds the zip.
-  spaceId    String
+  spaceId      String
   /// "pending", "running", "ready" or "failed".
-  status     String   @default("pending")
+  status       String   @default("pending")
   /// 0 to 100.
-  progress   Int      @default(0)
-  storageKey String?
-  size       BigInt?
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  progress     Int      @default(0)
+  missingFiles Int      @default(0)
+  storageKey   String?
+  size         BigInt?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId, createdAt])
   @@index([expiresAt])
@@ -3211,6 +4148,51 @@ model DevinConnectionState {
   lastError       String?
 
   @@map("devin_connection_states")
+}
+
+/// The owner's hard limits for the Brex cards server. One row per space.
+model BrexCardsConnection {
+  serverId               String    @id
+  server                 McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  spaceId                String    @unique
+  createdByUserId        String
+  /// Brex company id (GET /v2/company), set at connect. The daily card cap is per Brex account.
+  brexAccountId          String
+  /// Amounts are USD cents.
+  maxNewCardLimitCents   Int       @default(100000)
+  maxCardLimitCents      Int       @default(500000)
+  maxSpendLimitBaseCents Int       @default(1000000)
+  /// New cards per rolling 24 hours, per Brex account.
+  maxCardsPerDay         Int       @default(5)
+  allowedDurations       String[]  @default(["MONTHLY", "ONE_TIME"])
+  /// A ONE_TIME card must lock within this many days; null means no rule.
+  oneTimeMaxDays         Int?      @default(90)
+  updatedAt              DateTime  @updatedAt
+
+  @@map("brex_cards_connections")
+}
+
+enum BrexCardReservationStatus {
+  reserved
+  created
+  failed
+  uncertain
+}
+
+/// A durable claim on the daily card cap, written before the Brex call. Reserved, created and
+/// uncertain rows count against the cap; failed rows do not.
+model BrexCardReservation {
+  id            String                    @id @default(cuid())
+  /// For row security. The cap itself is per brexAccountId.
+  spaceId       String
+  space         Space                     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  brexAccountId String
+  reservedAt    DateTime                  @default(now())
+  status        BrexCardReservationStatus
+  brexCardId    String?
+
+  @@index([brexAccountId, reservedAt])
+  @@map("brex_card_reservations")
 }
 
 /// The last-seen state of one Devin session, read by the page and the alert step.
@@ -3270,7 +4252,11 @@ model Meeting {
   transcriptIndexed Boolean                  @default(false)
   digest            Json?
   digestStatus      String?
+  /// investor | customer | hiring | team | other; from the digest call.
+  category          String?
   sourceUpdatedAt   DateTime
+  /// Content version from a source whose update time does not change on an edit (Omi cloud).
+  sourceVersion     String?
   /// Only for providers that report deletions.
   deletedAt         DateTime?
   createdAt         DateTime                 @default(now())
@@ -3278,6 +4264,9 @@ model Meeting {
   /// GENERATED ALWAYS AS (to_tsvector('english', title || summary || transcript)) STORED; see the migration.
   tsv               Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, ((((title || ' '::text) || summary) || ' '::text) || COALESCE(transcript, ''::text)))"))
   inboxTodos        InboxTodo[]
+  omiSegments       OmiSegment[]
+  captures          MeetingCapture[]
+  handoffs          MeetingHandoff[]
 
   @@unique([spaceId, userId, provider, externalId])
   @@index([spaceId, userId, startedAt])
@@ -3310,6 +4299,31 @@ model MeetingSyncState {
   updatedAt         DateTime    @updatedAt
 
   @@map("meeting_sync_states")
+}
+
+/// One row per (meeting, agent) that was woken or handed the meeting. It is the guard that keeps
+/// the follow-up job from starting a second run, and it is also written when the owner opens the
+/// meeting first. kind: source | route | share.
+model MeetingHandoff {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  botId     String
+  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  runId     String?
+  kind      String
+  /// share only: the run that handed the meeting over; unique, so a run shares at most once.
+  sourceRunId String?
+  createdAt DateTime @default(now())
+
+  @@unique([meetingId, botId])
+  @@unique([sourceRunId])
+  @@index([spaceId, userId, createdAt])
+  @@map("meeting_handoffs")
 }
 
 /// A meeting the user deleted; sync skips it so it does not come back.
@@ -3829,4 +4843,1167 @@ model CompanyImportCall {
 
   @@index([spaceId, ownerUserId, runId, status])
   @@map("company_import_calls")
+}
+
+/// One recording in progress (or just finished) on a device. Holds no content once finalized.
+model MeetingCapture {
+  id                 String                @id @default(cuid())
+  spaceId            String
+  space              Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Chosen by the client; makes `start` idempotent per user.
+  clientId           String
+  title              String?
+  /// "device" (text from the client) or "server" (audio transcribed here).
+  engine             String
+  /// "microphone" and/or "system".
+  tracks             String[]
+  /// "recording", "finishing", "done", "failed" or "discarded".
+  status             String                @default("recording")
+  startedAt          DateTime              @default(now())
+  endedAt            DateTime?
+  lastChunkAt        DateTime?
+  consentConfirmedAt DateTime?
+  meetingId          String?
+  meeting            Meeting?              @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  /// Short reason only; never audio or text.
+  error              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  chunks             MeetingCaptureChunk[]
+
+  @@unique([userId, clientId])
+  @@index([spaceId, userId, status])
+  @@map("meeting_captures")
+}
+
+/// One stretch of one track. Audio lives in the artifact store until it is transcribed.
+model MeetingCaptureChunk {
+  id        String         @id @default(cuid())
+  spaceId   String
+  space     Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  captureId String
+  capture   MeetingCapture @relation(fields: [captureId], references: [id], onDelete: Cascade)
+  /// "microphone" or "system".
+  track     String
+  seq       Int
+  startMs   Int
+  endMs     Int
+  sha256    String
+  blobKey   String?
+  text      String?
+  /// "pending", "done" or "failed".
+  status    String         @default("pending")
+  attempts  Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  @@unique([captureId, track, seq])
+  @@map("meeting_capture_chunks")
+}
+
+/// One row on a pipeline: a firm or person being raised from, with zero or more linked contacts.
+model PipelineRecord {
+  id                  String    @id @default(cuid())
+  spaceId             String
+  space               Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "fundraising" for now.
+  pipeline            String    @default("fundraising")
+  name                String
+  /// Lowercase letters and digits of the name; two records can never be the same firm.
+  normalizedName      String
+  /// A PipelineStatus.
+  status              String    @default("not_reached")
+  statusBeforePassed  String?
+  /// The investor's stance: "in", "maybe" or "out". Never touches money.
+  interest            String?
+  referredByContactId String?
+  referredBy          Contact?  @relation("PipelineRecordReferrer", fields: [referredByContactId, spaceId, userId], references: [id, spaceId, userId], onDelete: SetNull)
+  amountCents         BigInt?
+  nextStep            String?
+  nextCallAt          DateTime?
+  nextCallHasTime     Boolean   @default(false)
+  /// Latest mail either way, or past meeting, with one of the record's people; set by the auto-status job.
+  lastContactAt       DateTime?
+  /// When Send SAFE opened Mercury; null when not waiting for a Mercury SAFE.
+  waitingSince        DateTime?
+  /// The round open when the status was last saved as committed; null otherwise.
+  roundId             String?
+  round               FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  /// [{label, value, source: list|agent|owner, url?, at}]
+  details             Json      @default("[]")
+  /// A list's priority tier, such as "Wave 2".
+  group               String?
+  /// A list's row order; breaks ties when sorting.
+  listOrder           Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  people              PipelineRecordPerson[]
+  events              PipelineEvent[]
+
+  @@unique([spaceId, userId, pipeline, normalizedName])
+  @@unique([id, spaceId, userId, pipeline])
+  @@unique([id, spaceId, userId])
+  @@index([roundId])
+  @@index([referredByContactId])
+  @@map("pipeline_records")
+}
+
+/// A contact on a record. A contact sits in one record per pipeline; at most one person per record is primary (partial unique index in the migration).
+model PipelineRecordPerson {
+  id        String         @id @default(cuid())
+  spaceId   String
+  userId    String
+  pipeline  String         @default("fundraising")
+  recordId  String
+  record    PipelineRecord @relation(fields: [recordId, spaceId, userId, pipeline], references: [id, spaceId, userId, pipeline], onDelete: Cascade)
+  contactId String
+  contact   Contact        @relation(fields: [contactId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  isPrimary Boolean        @default(false)
+  createdAt DateTime       @default(now())
+
+  @@unique([spaceId, userId, pipeline, contactId])
+  @@index([recordId])
+  @@map("pipeline_record_people")
+}
+
+/// One entry on a record's timeline.
+model PipelineEvent {
+  id       String         @id @default(cuid())
+  spaceId  String
+  userId   String
+  recordId String
+  record   PipelineRecord @relation(fields: [recordId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  /// "call" | "note" | "status" | "interest" | "invite" | "import" | "auto"
+  kind     String
+  /// "user" or a bot id.
+  actor    String         @default("user")
+  at       DateTime       @default(now())
+  payload  Json           @default("{}")
+
+  @@index([recordId, at])
+  @@map("pipeline_events")
+}
+
+/// One list import, reviewed on one card. At most one is open per user (partial unique index in the migration).
+model PipelineImport {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pipeline  String   @default("fundraising")
+  /// "staging" | "reviewing" | "applying" | "done" | "discarded"
+  status    String   @default("staging")
+  /// The run that started it; another run's `start` discards it, a retry of this one does not.
+  runId     String?
+  /// The agent that staged it, for "added by" on its new contacts.
+  botId     String?
+  /// The external effect of its latest card.
+  effectId  String?
+  /// Contacts this import made so far, by person key, so two rows naming one person share one.
+  created   Json     @default("{}")
+  /// The PipelineImportResult, once done.
+  result    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rows      PipelineImportRow[]
+
+  @@unique([id, spaceId, userId])
+  @@index([spaceId, userId])
+  @@index([status, updatedAt])
+  @@map("pipeline_imports")
+}
+
+/// One firm of a list import.
+model PipelineImportRow {
+  id             String         @id @default(cuid())
+  spaceId        String
+  userId         String
+  importId       String
+  import         PipelineImport @relation(fields: [importId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  position       Int
+  normalizedFirm String
+  /// A PipelineImportRow. On an import closed by migration 20261231000057, whatever the old column held.
+  data           Json
+  /// "staged" | "queued" | "applied" | "skipped" | "unchanged" | "failed"
+  state          String         @default("staged")
+  /// The answered decisions the worker applies.
+  plan           Json?
+  /// What applying it did, for the result.
+  outcome        Json?
+  error          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([importId, normalizedFirm])
+  @@unique([importId, position])
+  @@index([importId, state, position])
+  @@map("pipeline_import_rows")
+}
+
+/// What the owner asked a bot to keep working toward in its own thread (`/goal`). At most one is
+/// open (active or paused) per thread; the partial unique index thread_goals_one_open_key is in SQL.
+model ThreadGoal {
+  id               String    @id @default(cuid())
+  spaceId          String
+  space            Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId           String
+  threadId         String
+  thread           Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  botId            String
+  bot              Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  text             String
+  /// active | paused | met | blocked | stopped | cleared
+  status           String
+  /// runs | time | spend | stalled | owner | check_failed | model_error
+  stopReason       String?
+  continuations    Int       @default(0)
+  stalls           Int       @default(0)
+  lastCheckedRunId String?
+  /// { verdict, reason, evidence, next }
+  lastVerdict      Json?
+  /// Reset when a paused goal resumes.
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  runs             Run[]
+
+  @@index([threadId, status])
+  @@map("thread_goals")
+}
+
+// ==== Cap table ledger (Equity*) ===========================================================
+// Foundation section. Areas append their own fields and models in a marked block below this one.
+// Every Equity row belongs to one EquityLedger (spaceId, userId); the composite relations keep a
+// row and what it points at in the same ledger. Money is integer cents (BigInt), share counts are
+// BigInt, prices and ratios are Decimal. Enumerated values are listed in packages/contracts/src/equity.
+
+/// One cap table ledger per user in a space: the root every Equity row hangs off.
+model EquityLedger {
+  id              String    @id @default(cuid())
+  spaceId         String
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// When the snapshot was copied in (once); null for a ledger started empty or from CSV.
+  importedAt      DateTime?
+  /// securities area: the SAFE funding the board approved, in cents; null until set.
+  safeBoardApprovedCents BigInt?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  stakeholders          EquityStakeholder[]
+  stakeholderProperties EquityStakeholderProperty[]
+  customProperties      EquityCustomProperty[]
+  shareClasses          EquityShareClass[]
+  shareClassVersions    EquityShareClassVersion[]
+  plans                 EquityPlan[]
+  vestingTemplates      EquityVestingTemplate[]
+  vestingSchedules      EquityVestingSchedule[]
+  certificates          EquityCertificate[]
+  convertibleBlocks     EquityConvertibleBlock[]
+  convertibles          EquityConvertible[]
+  optionGrants          EquityOptionGrant[]
+  exercises             EquityExercise[]
+  transactions          EquityTransaction[]
+  draftSets             EquityDraftSet[]
+  fundingRounds         EquityFundingRound[]
+  savedViews            EquitySavedView[]
+  accessGroups          EquityAccessGroup[]
+  accessGrants          EquityAccessGrant[]
+  healthFindings        EquityHealthFinding[]
+  // views area
+  roundScenarios        EquityRoundScenario[]
+  viewsSettings         EquityViewsSettings?
+  reportRuns            EquityReportRun[]
+  // stakeholders area
+  stakeholderChanges    EquityStakeholderChange[]
+  hrisPreferences       EquityHrisPreferences?
+  warrants              EquityWarrant[]
+  // access area
+  documentLinks         EquityDocumentLink[]
+  auditEvents           EquityAuditEvent[]
+
+  @@unique([spaceId, userId])
+  @@map("equity_ledgers")
+}
+
+/// A holder: a person or an organization (a firm, fund or trust).
+model EquityStakeholder {
+  id               String       @id @default(cuid())
+  spaceId          String
+  userId           String
+  ledger           EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// individual | organization
+  type             String
+  /// Display name: "First Last" for a person, the one name for an organization.
+  name             String
+  firstName        String?
+  lastName         String?
+  /// The company-entered contact email.
+  contactEmail     String?
+  /// The holder's login; locked once the holder accepts a security (portfolioEmailLockedAt).
+  portfolioEmail   String?
+  portfolioEmailLockedAt DateTime?
+  /// More addresses the company keeps for the holder.
+  otherEmails      String[]     @default([])
+  dateOfBirth      DateTime?    @db.Date
+  taxId            String?
+  employeeId       String?
+  payrollId        String?
+  /// [{ country, street, city, state, postalCode }], first is the primary address.
+  addresses        Json         @default("[]")
+  /// The current relationship, job title, cost center and department: the latest dated property of
+  /// each kind on or before today, kept in step by the store so the list can sort and filter.
+  relationship     String?
+  jobTitle         String?
+  costCenter       String?
+  department       String?
+  /// { [EquityCustomProperty.id]: string }
+  customValues     Json         @default("{}")
+  /// A firm this fund rolls up to.
+  parentId         String?
+  parent           EquityStakeholder?  @relation("EquityStakeholderParent", fields: [parentId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  children         EquityStakeholder[] @relation("EquityStakeholderParent")
+  warrants         EquityWarrant[]
+  contactId        String?
+  /// The database foreign key is ON DELETE SET NULL ("contactId") (migration 107, Postgres 15+), which Prisma cannot express. Do not trust `prisma migrate diff` on it.
+  contact          Contact?     @relation(fields: [contactId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  majorInvestor    Boolean      @default(false)
+  terminatedAt     DateTime?    @db.Date
+  /// Set when merged into another stakeholder; the row stays readable.
+  mergedIntoId     String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  properties       EquityStakeholderProperty[]
+  certificates     EquityCertificate[]
+  convertibles     EquityConvertible[]
+  optionGrants     EquityOptionGrant[]
+  accessGrant      EquityAccessGrant?
+  stakeholderChanges EquityStakeholderChange[]
+  documentLinks    EquityDocumentLink[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@index([spaceId, userId, name])
+  @@index([spaceId, userId, relationship])
+  @@unique([spaceId, userId, contactId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_stakeholders")
+}
+
+/// One dated value of a stakeholder property: relationship, job title, cost center or department.
+model EquityStakeholderProperty {
+  id            String            @id @default(cuid())
+  spaceId       String
+  userId        String
+  ledger        EquityLedger      @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  stakeholderId String
+  stakeholder   EquityStakeholder @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  /// relationship | job_title | cost_center | department
+  kind          String
+  effectiveDate DateTime          @db.Date
+  value         String
+  createdAt     DateTime          @default(now())
+
+  @@index([stakeholderId, kind, effectiveDate])
+  @@map("equity_stakeholder_properties")
+}
+
+/// A company-defined stakeholder property; values live on EquityStakeholder.customValues.
+model EquityCustomProperty {
+  id        String       @id @default(cuid())
+  spaceId   String
+  userId    String
+  ledger    EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name      String
+  /// The HRIS field it maps to, when any.
+  hrisField String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([spaceId, userId, name])
+  @@map("equity_custom_properties")
+}
+
+/// A share class. Its terms are versioned by incorporation document date (EquityShareClassVersion).
+model EquityShareClass {
+  id        String       @id @default(cuid())
+  spaceId   String
+  userId    String
+  ledger    EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name      String
+  /// Used in security labels, e.g. CS, PS, PSP.
+  prefix    String
+  /// common | preferred
+  classType String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  versions     EquityShareClassVersion[]
+  certificates EquityCertificate[]
+  plans        EquityPlan[]
+  optionGrants EquityOptionGrant[] @relation("EquityOptionGrantShareClass")
+  convertibles EquityConvertible[]
+  warrants     EquityWarrant[]
+
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, name])
+  @@unique([spaceId, userId, prefix])
+  @@map("equity_share_classes")
+}
+
+/// A share class's terms as of one incorporation document date. The latest is the current version.
+model EquityShareClassVersion {
+  id                    String           @id @default(cuid())
+  spaceId               String
+  userId                String
+  ledger                EquityLedger     @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  shareClassId          String
+  shareClass            EquityShareClass @relation(fields: [shareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  /// The incorporation document (charter) date these terms come from.
+  documentDate          DateTime         @db.Date
+  authorizedShares      BigInt
+  votesPerShare         Decimal          @default(1) @db.Decimal(24, 10)
+  certificated          Boolean          @default(true)
+  parValue              Decimal?         @db.Decimal(24, 10)
+  /// Lower is paid first; equal seniority with pariPassu shares a rank.
+  seniority             Int              @default(1)
+  pariPassu             Boolean          @default(true)
+  originalIssuePrice    Decimal?         @db.Decimal(24, 10)
+  conversionPrice       Decimal?         @db.Decimal(24, 10)
+  conversionRatio       Decimal          @default(1) @db.Decimal(24, 10)
+  /// Liquidation preference multiple.
+  multiplier            Decimal          @default(1) @db.Decimal(24, 10)
+  participating         Boolean          @default(false)
+  /// Participation cap as a multiple of the original issue price; null is uncapped.
+  participationCap      Decimal?         @db.Decimal(24, 10)
+  dividend              Boolean          @default(false)
+  /// Percent per year.
+  dividendYield         Decimal?         @db.Decimal(24, 10)
+  cumulative            Boolean          @default(false)
+  /// daily | monthly | quarterly | semi_annually | annually
+  dividendAccrual       String?
+  compoundingInterest   Boolean          @default(false)
+  /// actual_365 | actual_360 | 30_360
+  dayCountConvention    String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@unique([shareClassId, documentDate])
+  @@map("equity_share_class_versions")
+}
+
+/// An equity incentive plan and its reserved pool.
+model EquityPlan {
+  id             String           @id @default(cuid())
+  spaceId        String
+  userId         String
+  ledger         EquityLedger     @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name           String
+  /// active | inactive
+  status         String           @default("active")
+  /// The class the plan's awards are in (usually common).
+  shareClassId   String
+  shareClass     EquityShareClass @relation(fields: [shareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  reservedShares BigInt
+  boardApprovedOn DateTime?       @db.Date
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  certificates   EquityCertificate[]
+  optionGrants   EquityOptionGrant[] @relation("EquityOptionGrantPlan")
+  transactions   EquityTransaction[]
+
+  @@unique([id, spaceId, userId])
+  @@unique([id, shareClassId, spaceId, userId])
+  @@unique([spaceId, userId, name])
+  @@map("equity_plans")
+}
+
+/// A reusable vesting rule, e.g. "1/48 monthly, 1 year cliff".
+model EquityVestingTemplate {
+  id              String       @id @default(cuid())
+  spaceId         String
+  userId          String
+  ledger          EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name            String
+  totalMonths     Int
+  cliffMonths     Int          @default(0)
+  /// Months between vesting events after the cliff (1 is monthly).
+  frequencyMonths Int          @default(1)
+  /// Custom tranches instead of the even rule: [{ monthOffset, percent }], percents summing to 100.
+  tranches        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  schedules       EquityVestingSchedule[]
+
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, name])
+  @@map("equity_vesting_templates")
+}
+
+/// The vesting of one security: a template (or its own tranches) from a start date.
+model EquityVestingSchedule {
+  id                String                 @id @default(cuid())
+  spaceId           String
+  userId            String
+  ledger            EquityLedger           @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  templateId        String?
+  template          EquityVestingTemplate? @relation(fields: [templateId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  startDate         DateTime               @db.Date
+  totalMonths       Int
+  cliffMonths       Int                    @default(0)
+  frequencyMonths   Int                    @default(1)
+  /// [{ monthOffset, percent }] or null for the even rule.
+  tranches          Json?
+  /// Shares vested at once on acceleration, and when.
+  acceleratedShares BigInt?
+  acceleratedOn     DateTime?              @db.Date
+  /// Vesting stops on this date (termination).
+  stoppedOn         DateTime?              @db.Date
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  certificate       EquityCertificate?
+  optionGrant       EquityOptionGrant?
+
+  @@unique([id, spaceId, userId])
+  @@map("equity_vesting_schedules")
+}
+
+/// An issued share certificate. Never deleted: canceled, transferred, repurchased or converted.
+model EquityCertificate {
+  id                       String                 @id @default(cuid())
+  spaceId                  String
+  userId                   String
+  ledger                   EquityLedger           @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// Security ID shown in the ledger, e.g. CS-12.
+  label                    String
+  stakeholderId            String
+  stakeholder              EquityStakeholder      @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  shareClassId             String
+  shareClass               EquityShareClass       @relation(fields: [shareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  planId                   String?
+  plan                     EquityPlan?            @relation(fields: [planId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// See EQUITY_CERTIFICATE_STATUSES.
+  status                   String                 @default("outstanding")
+  /// See EQUITY_ACCEPTANCE_STATUSES.
+  acceptanceStatus         String                 @default("accepted")
+  /// paper | electronic
+  paperStatus              String                 @default("electronic")
+  quantity                 BigInt
+  /// Company-provided price per share.
+  pricePerShare            Decimal?               @db.Decimal(24, 10)
+  pricePaidPerShare        Decimal?               @db.Decimal(24, 10)
+  cashPaidCents            BigInt                 @default(0)
+  debtCanceledCents        BigInt                 @default(0)
+  ipTransferredCents       BigInt                 @default(0)
+  otherConsiderationCents  BigInt                 @default(0)
+  costBasisCents           BigInt?
+  issueDate                DateTime               @db.Date
+  originalAcquisitionDate  DateTime?              @db.Date
+  issuedBy                 String?
+  boardApprovedOn          DateTime?              @db.Date
+  rule144Date              DateTime?              @db.Date
+  federalExemption         String?
+  stateExemption           String?
+  stateOfResidency         String?
+  legend                   String?
+  /// The holder's details as of the issue date: { name, email, dateOfBirth, relationship, taxId, employeeId, payrollId }.
+  personnel                Json?
+  collateralized           Boolean                @default(false)
+  vestingScheduleId        String?                @unique
+  vestingSchedule          EquityVestingSchedule? @relation(fields: [vestingScheduleId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// The certificate this one came from (transfer remainder, conversion, exercise lineage).
+  parentId                 String?
+  parent                   EquityCertificate?     @relation("EquityCertificateLineage", fields: [parentId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  children                 EquityCertificate[]    @relation("EquityCertificateLineage")
+  roundId                  String?
+  round                    EquityFundingRound?    @relation(fields: [roundId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  canceledOn               DateTime?              @db.Date
+  adminNotes               String?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  convertedFrom            EquityConvertible[]    @relation("EquityConvertibleConvertedTo")
+  exercises                EquityExercise[]
+  transactions             EquityTransaction[]
+  documentLinks            EquityDocumentLink[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@unique([vestingScheduleId, spaceId, userId])
+  @@unique([spaceId, userId, label])
+  @@index([spaceId, userId, status])
+  @@index([stakeholderId])
+  @@index([shareClassId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_certificates")
+}
+
+/// Convertibles sharing terms, e.g. one block per SAFE round.
+model EquityConvertibleBlock {
+  id                 String       @id @default(cuid())
+  spaceId            String
+  userId             String
+  ledger             EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name               String
+  /// safe | note
+  kind               String
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  convertibles       EquityConvertible[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, name])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_convertible_blocks")
+}
+
+/// A SAFE or a convertible note.
+model EquityConvertible {
+  id                     String                  @id @default(cuid())
+  spaceId                String
+  userId                 String
+  ledger                 EquityLedger            @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// Security ID shown in the ledger, e.g. SAFE-3.
+  label                  String
+  stakeholderId          String
+  stakeholder            EquityStakeholder       @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  blockId                String?
+  block                  EquityConvertibleBlock? @relation(fields: [blockId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// safe | note
+  kind                   String
+  /// See EQUITY_CONVERTIBLE_STATUSES.
+  status                 String                  @default("outstanding")
+  principalCents         BigInt
+  issueDate              DateTime                @db.Date
+  issuedBy               String?
+  boardApprovedOn        DateTime?               @db.Date
+  /// Notes: percent per year, simple or compound interest from interestStartDate.
+  interestRate           Decimal?                @db.Decimal(24, 10)
+  interestStartDate      DateTime?               @db.Date
+  /// simple | compound
+  interestType           String?
+  /// actual_365 | actual_360 | 30_360
+  dayCountConvention     String?
+  maturityDate           DateTime?               @db.Date
+  valuationCapCents      BigInt?
+  /// pre_money | post_money
+  valuationCapType       String?
+  /// Percent off the round price.
+  discountPercent        Decimal?                @db.Decimal(24, 10)
+  conversionPriceBasis   String?
+  liquidityPriority      String?
+  convertsToShareClassId String?
+  convertsToShareClass   EquityShareClass?       @relation(fields: [convertsToShareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  cashoutMultiplier      Decimal?                @db.Decimal(24, 10)
+  mfn                    Boolean                 @default(false)
+  proRata                Boolean                 @default(false)
+  federalExemption       String?
+  stateExemption         String?
+  stateOfResidency       String?
+  canceledOn             DateTime?               @db.Date
+  closedOn               DateTime?               @db.Date
+  cancellationReason     String?
+  convertedToId          String?
+  convertedTo            EquityCertificate?      @relation("EquityConvertibleConvertedTo", fields: [convertedToId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  roundId                String?
+  round                  EquityFundingRound?     @relation(fields: [roundId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// securities area: the Fundraising `Safe` this convertible records, so the read-through list hides it.
+  sourceSafeId           String?
+  adminNotes             String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  transactions           EquityTransaction[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, label])
+  @@index([spaceId, userId, status])
+  @@unique([spaceId, userId, sourceSafeId])
+  @@index([stakeholderId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_convertibles")
+}
+
+/// An option grant under a plan.
+model EquityOptionGrant {
+  id                         String                 @id @default(cuid())
+  spaceId                    String
+  userId                     String
+  ledger                     EquityLedger           @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// Security ID shown in the ledger, e.g. ES-40.
+  label                      String
+  stakeholderId              String
+  stakeholder                EquityStakeholder      @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  planId                     String
+  plan                       EquityPlan             @relation("EquityOptionGrantPlan", fields: [planId, shareClassId, spaceId, userId], references: [id, shareClassId, spaceId, userId], onDelete: NoAction)
+  shareClassId               String
+  shareClass                 EquityShareClass       @relation("EquityOptionGrantShareClass", fields: [shareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// See EQUITY_OPTION_STATUSES.
+  status                     String                 @default("outstanding")
+  /// iso | nso
+  optionType                 String
+  /// Original quantity granted.
+  quantity                   BigInt
+  exercisedQuantity          BigInt                 @default(0)
+  canceledQuantity           BigInt                 @default(0)
+  exercisePrice              Decimal                @db.Decimal(24, 10)
+  grantDate                  DateTime               @db.Date
+  expirationDate             DateTime?              @db.Date
+  boardApprovedOn            DateTime?              @db.Date
+  /// Months after termination the holder may still exercise.
+  postTerminationExerciseMonths Int?
+  earlyExercise              Boolean                @default(false)
+  acceptanceStatus           String                 @default("accepted")
+  vestingScheduleId          String?                @unique
+  vestingSchedule            EquityVestingSchedule? @relation(fields: [vestingScheduleId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  canceledOn                 DateTime?              @db.Date
+  adminNotes                 String?
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+
+  exercises                  EquityExercise[]
+  transactions               EquityTransaction[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@unique([vestingScheduleId, spaceId, userId])
+  @@unique([spaceId, userId, label])
+  @@index([spaceId, userId, status])
+  @@index([stakeholderId])
+  @@index([planId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_option_grants")
+}
+
+/// An exercise of options, pending until it settles into a certificate.
+model EquityExercise {
+  id            String             @id @default(cuid())
+  spaceId       String
+  userId        String
+  ledger        EquityLedger       @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  optionGrantId String
+  optionGrant   EquityOptionGrant  @relation(fields: [optionGrantId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  quantity      BigInt
+  exerciseDate  DateTime           @db.Date
+  /// pending | completed | canceled
+  status        String             @default("pending")
+  paymentCents  BigInt             @default(0)
+  requestKey    String?            @db.Uuid
+  certificateId String?
+  certificate   EquityCertificate? @relation(fields: [certificateId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([spaceId, userId, exerciseDate, id])
+  @@index([optionGrantId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_exercises")
+}
+
+/// One change to a holding, append-only (row security allows only SELECT and INSERT for the app).
+model EquityTransaction {
+  id             String             @id @default(cuid())
+  spaceId        String
+  userId         String
+  ledger         EquityLedger       @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// See EQUITY_TRANSACTION_KINDS.
+  kind           String
+  effectiveDate  DateTime           @db.Date
+  /// The reason picked on the form (transfer, repurchase, cancellation or modification reason).
+  reason         String?
+  certificateId  String?
+  certificate    EquityCertificate? @relation(fields: [certificateId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  convertibleId  String?
+  convertible    EquityConvertible? @relation(fields: [convertibleId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  optionGrantId  String?
+  optionGrant    EquityOptionGrant? @relation(fields: [optionGrantId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  /// Only the stakeholder merge writes this, so a warrant that moves holders has an audit row.
+  warrantId      String?
+  warrant        EquityWarrant?     @relation(fields: [warrantId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  planId         String?
+  plan           EquityPlan?        @relation(fields: [planId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  quantity       BigInt?
+  valueCents     BigInt?
+  /// The record before and after, as the contract shapes them; null before an issue.
+  before         Json?
+  after          Json?
+  /// Ids of rows this transaction created (new certificates of a transfer or conversion).
+  resulting      Json               @default("[]")
+  note           String?
+  /// Who made the change: the signed-in user's display name at the time.
+  actorName      String?
+  createdAt      DateTime           @default(now())
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@index([spaceId, userId, createdAt])
+  @@index([certificateId])
+  @@index([convertibleId])
+  @@index([optionGrantId])
+  @@index([warrantId])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_transactions")
+}
+
+/// A named set of draft securities, issued together.
+model EquityDraftSet {
+  id           String       @id @default(cuid())
+  spaceId      String
+  userId       String
+  ledger       EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name         String
+  /// certificate | option_grant | convertible
+  securityKind String
+  /// draft | issued | discarded
+  status       String       @default("draft")
+  revision     Int          @default(1)
+  issuedIds    String[]     @default([])
+  /// The draft securities, each the create input of its kind.
+  items        Json         @default("[]")
+  issuedAt     DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([spaceId, userId, status])
+  @@map("equity_draft_sets")
+}
+
+/// A funding round. Securities join it by roundId; without members it groups by issue date.
+model EquityFundingRound {
+  id                     String       @id @default(cuid())
+  spaceId                String
+  userId                 String
+  ledger                 EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  name                   String
+  startDate              DateTime     @db.Date
+  endDate                DateTime?    @db.Date
+  closingDate            DateTime?    @db.Date
+  originalIssuePrice     Decimal?     @db.Decimal(24, 10)
+  preMoneyValuationCents BigInt?
+  pricingSnapshot        Json?
+  /// Values typed over the computed ones: { cashRaisedCents?, sharesIssued?, fullyDilutedShares?, postMoneyValuationCents? }.
+  overrides              Json         @default("{}")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  certificates           EquityCertificate[]
+  convertibles           EquityConvertible[]
+  documentLinks          EquityDocumentLink[]
+
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, name])
+  @@map("equity_funding_rounds")
+}
+
+/// A saved filtered view of one cap table list.
+model EquitySavedView {
+  id        String       @id @default(cuid())
+  spaceId   String
+  userId    String
+  ledger    EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// The tab it belongs to, e.g. stakeholders, securities.
+  page      String
+  name      String
+  /// The list's query string (filters, sort, columns).
+  params    String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([spaceId, userId, page, name])
+  @@map("equity_saved_views")
+}
+
+/// The cap table access level for one stakeholder group.
+model EquityAccessGroup {
+  id        String       @id @default(cuid())
+  spaceId   String
+  userId    String
+  ledger    EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// founders | investors | employees | former_employees | other
+  key       String
+  /// full_detail | advanced | basic | restricted | none
+  level     String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([spaceId, userId, key])
+  @@map("equity_access_groups")
+}
+
+/// One stakeholder's access: an override of the group level and an open request for more.
+model EquityAccessGrant {
+  id             String            @id @default(cuid())
+  spaceId        String
+  userId         String
+  ledger         EquityLedger      @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  stakeholderId  String
+  stakeholder    EquityStakeholder @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  /// Null uses the group level.
+  level          String?
+  requestedLevel String?
+  requestedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([stakeholderId, spaceId, userId])
+  @@index([spaceId, userId])
+  @@map("equity_access_grants")
+}
+
+/// One data health check result: open until resolved, or dismissed.
+model EquityHealthFinding {
+  id          String       @id @default(cuid())
+  spaceId     String
+  userId      String
+  ledger      EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// The check's key, e.g. duplicated_stakeholder.
+  check       String
+  /// share_classes | company | securities | documents | stakeholder
+  tag         String
+  /// required | recommended
+  severity    String
+  /// open | dismissed | resolved
+  status      String       @default("open")
+  /// Identifies the offending rows so a rerun updates the same finding.
+  fingerprint String
+  /// The offending rows, as the check shapes them.
+  rows        Json         @default("[]")
+  detectedAt  DateTime     @default(now())
+  dismissedAt DateTime?
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([spaceId, userId, check, fingerprint])
+  @@index([spaceId, userId, status])
+  @@map("equity_health_findings")
+}
+
+// ==== End cap table foundation section ======================================================
+// ---- cap table: stakeholders area ----
+/// A proposed change to the stakeholder list, waiting for review: an external employee to match
+/// (kind match), a termination (termination) or new profile values (profile). Imported from a
+/// file today; the holder's portfolio may also propose profile values (source portfolio).
+model EquityStakeholderChange {
+  id              String       @id @default(cuid())
+  spaceId         String
+  userId          String
+  ledger          EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// match | termination | profile
+  kind            String
+  /// file | portfolio
+  source          String
+  /// The stakeholder it applies to; null for an external employee not matched yet.
+  stakeholderId   String?
+  stakeholder     EquityStakeholder? @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  employeeId      String?
+  externalName    String?
+  externalEmail   String?
+  /// The proposed values: { firstName, lastName, contactEmail, dateOfBirth, taxId, jobTitle,
+  /// costCenter, department, address } (only the fields the source gave).
+  proposed        Json         @default("{}")
+  terminationDate DateTime?    @db.Date
+  /// pending | accepted | rejected
+  status          String       @default("pending")
+  acceptedFields  String[]     @default([])
+  resolvedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([spaceId, userId, status, kind])
+  @@map("equity_stakeholder_changes")
+}
+
+/// How file and HRIS data may update stakeholders without review. One row per ledger.
+model EquityHrisPreferences {
+  id          String       @id @default(cuid())
+  spaceId     String
+  userId      String
+  ledger      EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  autoUpdates Boolean      @default(false)
+  /// address | cost_center | department | hire_date | job_title | tax_id
+  autoFields  String[]     @default([])
+  autoCreate  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([spaceId, userId])
+  @@map("equity_hris_preferences")
+}
+// ---- cap table: securities area ----
+// ---- cap table: options area ----
+/// A warrant: the right to buy shares of a class at a price. Never deleted; canceled instead.
+model EquityWarrant {
+  id             String            @id @default(cuid())
+  spaceId        String
+  userId         String
+  ledger         EquityLedger      @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// Security ID, e.g. W-3.
+  label          String
+  stakeholderId  String
+  stakeholder    EquityStakeholder @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  shareClassId   String
+  shareClass     EquityShareClass  @relation(fields: [shareClassId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  quantity       BigInt
+  exercisePrice  Decimal           @db.Decimal(24, 10)
+  issueDate      DateTime          @db.Date
+  expirationDate DateTime?         @db.Date
+  /// outstanding | canceled
+  status         String            @default("outstanding")
+  canceledOn     DateTime?         @db.Date
+  adminNotes     String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  transactions   EquityTransaction[]
+
+  /// Client idempotency key and a hash of the request, so a retry replays the first create.
+  requestKey String? @db.Uuid
+  requestHash String?
+  @@unique([id, spaceId, userId])
+  @@unique([spaceId, userId, label])
+  @@index([spaceId, userId, status])
+  @@unique([spaceId, userId, requestKey])
+  @@map("equity_warrants")
+}
+// ---- cap table: views area ----
+
+/// A saved round modeling scenario. Never changes the ledger.
+model EquityRoundScenario {
+  id                     String   @id @default(cuid())
+  spaceId                String
+  userId                 String
+  name                   String
+  preMoneyValuationCents BigInt
+  /// Unallocated pool as a percent of post-money fully diluted; null keeps the pool.
+  targetPoolPercent      Decimal? @db.Decimal(24, 10)
+  /// [{ name, amountCents }]
+  investments            Json     @default("[]")
+  /// Convertible ids to convert; null converts every outstanding one.
+  convertibleIds         Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  ledger                 EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+
+  @@unique([spaceId, userId, name])
+  @@map("equity_round_scenarios")
+}
+
+/// A report someone generated: its kind, options and as-of date, so it can be reopened.
+model EquityReportRun {
+  id        String       @id @default(cuid())
+  spaceId   String
+  userId    String
+  /// See EQUITY_REPORT_KINDS.
+  kind      String
+  asOf      DateTime     @db.Date
+  /// { groupBy, fullyDiluted, includeConvertibles }
+  options   Json         @default("{}")
+  createdAt DateTime     @default(now())
+  ledger    EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+
+  @@index([spaceId, userId, createdAt])
+  @@map("equity_report_runs")
+}
+
+/// Views settings for one ledger: the estimated value of holdings.
+model EquityViewsSettings {
+  spaceId                  String
+  userId                   String
+  /// hidden | holders
+  estimatedValueVisibility String    @default("hidden")
+  pricePerShare            Decimal?  @db.Decimal(24, 10)
+  effectiveDate            DateTime? @db.Date
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  ledger                   EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+
+  @@id([spaceId, userId])
+  @@map("equity_views_settings")
+}
+/// Append-only history of cap table changes that are not securities transactions: access levels,
+/// contact and document links, the estimated value settings and stakeholder edits. A trigger blocks
+/// UPDATE and DELETE (migration 20261231000161), except when the whole ledger is deleted.
+model EquityAuditEvent {
+  id            String       @id @default(cuid())
+  spaceId       String
+  userId        String
+  ledger        EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// access.group_level | access.grant_level | access.request | access.resolve | contact.link |
+  /// contact.unlink | document.link | document.unlink | estimated_value.set | stakeholder.update
+  kind          String
+  /// group | stakeholder | document_link | views_settings
+  subjectType   String
+  subjectId     String
+  /// The signed-in user who made the change. Not a foreign key: the row outlives the user record.
+  actorUserId   String
+  before        Json?
+  after         Json?
+  at            DateTime     @default(now())
+
+  @@index([spaceId, userId, at])
+  @@index([spaceId, userId, subjectType, subjectId])
+  @@map("equity_audit_events")
+}
+
+// ---- cap table: access area ----
+
+/// A Data room document attached to one stakeholder, certificate or funding round of the ledger.
+/// Exactly one target is set. The ids are checked against the ledger by the store.
+model EquityDocumentLink {
+  id             String       @id @default(cuid())
+  spaceId        String
+  userId         String
+  ledger         EquityLedger @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  dataRoomItemId String
+  dataRoomItem   DataRoomItem @relation("EquityDocumentItem", fields: [dataRoomItemId, spaceId, userId], references: [id, spaceId, userId], onDelete: Cascade)
+  stakeholderId  String?
+  stakeholder    EquityStakeholder? @relation(fields: [stakeholderId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  certificateId  String?
+  certificate    EquityCertificate? @relation(fields: [certificateId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  roundId        String?
+  round          EquityFundingRound? @relation(fields: [roundId, spaceId, userId], references: [id, spaceId, userId], onDelete: NoAction)
+  createdAt      DateTime     @default(now())
+
+  @@index([spaceId, userId, dataRoomItemId])
+  @@map("equity_document_links")
+}
+
+/// A Data room document delivery that was already made, so a retry with the same key sends nothing.
+model InvestorShareRequest {
+  id          String   @id @default(cuid())
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestKey  String   @db.Uuid
+  requestHash String
+  createdAt   DateTime @default(now())
+  /// Null while the first delivery is in flight.
+  completedAt DateTime?
+
+  @@unique([spaceId, userId, requestKey])
+  @@map("investor_share_requests")
 }

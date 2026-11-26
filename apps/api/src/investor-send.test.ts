@@ -1,5 +1,5 @@
 import type { Actor, ComposeFields, ComposeResult } from "@rakazo/contracts";
-import { getInvestorUpdate, SENDING_STALE_MS } from "@rakazo/db";
+import { getInvestorUpdate, IsolationError, SENDING_STALE_MS } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { InvestorSendDeps } from "./investor-send.js";
 import {
@@ -46,7 +46,11 @@ function fakePrisma() {
           : test(row[key], cond),
     );
   const delegate = (rows: Record[]) => ({
-    findFirst: async ({ where }: { where: Record }) => rows.find((r) => matches(r, where)) ?? null,
+    // Rows are copied out, as a database would: a caller mutating one must not edit the table.
+    findFirst: async ({ where }: { where: Record }) => {
+      const row = rows.find((r) => matches(r, where));
+      return row ? structuredClone(row) : null;
+    },
     findMany: async ({ where }: { where: Record }) => rows.filter((r) => matches(r, where)),
     updateMany: async ({ where, data }: { where: Record; data: Record }) => {
       const hit = rows.filter((r) => matches(r, where));
@@ -122,6 +126,35 @@ function setup(results: Record = {}) {
 }
 
 describe("startInvestorUpdateSend", () => {
+  it("stops without composing or recording an attempt once the update is no longer sending", async () => {
+    const { deps, tables, compose } = setup();
+    const row = tables.investorUpdate[0] as Record;
+    row.recipientContactIds = ["ann", "bob"];
+    compose.mockImplementationOnce(async (_actor, fields) => {
+      row.status = "sent";
+      tables.composeSend.push({ ...actor, clientId: fields.clientId, state: "sent" });
+      return { status: "sent" };
+    });
+    const { done } = await startInvestorUpdateSend(deps, actor, "upd1");
+    await done;
+    expect(compose).toHaveBeenCalledTimes(1);
+    expect(Object.keys(row.deliveries as Record)).toEqual(["ann"]);
+    expect(row.status).toBe("sent");
+  });
+
+  it("returns the update to draft when no recipient is left after the claim", async () => {
+    const { deps, tables, compose } = setup();
+    deps.gmailConnectionIds = async () => {
+      for (const c of tables.contact) c.email = null;
+      return ["conn-1"];
+    };
+    await expect(startInvestorUpdateSend(deps, actor, "upd1")).rejects.toThrow(
+      "Pick at least one recipient",
+    );
+    expect((tables.investorUpdate[0] as Record).status).toBe("draft");
+    expect(compose).not.toHaveBeenCalled();
+  });
+
   it("sends one message per recipient with an email, each under its own attempt key", async () => {
     const { deps, calls } = setup();
     const { update, done } = await startInvestorUpdateSend(deps, actor, "upd1");
@@ -230,6 +263,16 @@ describe("markdownToHtml", () => {
     ).toBe(
       '<p><strong>Highlights</strong></p><ul><li>one <strong>big</strong> win</li><li>&lt;b&gt;two&lt;/b&gt;</li></ul><p>See <a href="https://example.test">site</a></p>',
     );
+  });
+
+  it("escapes quotes in a link URL, so it cannot break out of the href", () => {
+    expect(markdownToHtml('[x](https://a.test/"onmouseover="y)')).toBe(
+      '<p><a href="https://a.test/&quot;onmouseover=&quot;y">x</a></p>',
+    );
+  });
+
+  it("escapes quotes in plain text", () => {
+    expect(markdownToHtml('He said "hi"')).toBe("<p>He said &quot;hi&quot;</p>");
   });
 });
 
@@ -384,6 +427,21 @@ describe("deliverPortalLinks", () => {
     expect(noProvider.links.map((l) => l.contactId)).toEqual(["bob"]);
   });
 
+  it("emails one link that lists the files the contact gained in a batch share", async () => {
+    const { deps } = setup();
+    const files = new Map([["ann", ["Deck.pdf", "Notes.pdf"]]]);
+    const result = await deliverPortalLinks(deps, actor, ["ann"], { copy: false, files });
+    expect(result.links).toEqual([]);
+    const send = vi.mocked(deps.email!.send);
+    expect(send).toHaveBeenCalledTimes(1);
+    const [message] = send.mock.calls[0] ?? [];
+    expect(message?.to).toBe("ann@example.test");
+    expect(message?.text).toContain("Deck.pdf");
+    expect(message?.text).toContain("Notes.pdf");
+    expect(message?.text).toContain("#tok-ann");
+    expect(message?.text).not.toContain("tok-bob");
+  });
+
   it("hands back the link when an email fails and still tries the rest", async () => {
     const { deps } = setup();
     vi.mocked(deps.email!.send).mockRejectedValueOnce(new Error("smtp down"));
@@ -396,5 +454,13 @@ describe("deliverPortalLinks", () => {
     const { deps } = setup();
     const result = await deliverPortalLinks(deps, actor, ["ghost"], { copy: true });
     expect(result.links).toEqual([]);
+  });
+
+  it("strict resend refuses a contact that is not the owner's", async () => {
+    const { deps } = setup();
+    await expect(
+      deliverPortalLinks(deps, actor, ["ghost"], { copy: false, strict: true }),
+    ).rejects.toBeInstanceOf(IsolationError);
+    expect(deps.email!.send).not.toHaveBeenCalled();
   });
 });

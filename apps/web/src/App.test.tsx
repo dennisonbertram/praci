@@ -120,14 +120,13 @@ it.each(["/pricing", "/app/inbox/x"])("shows Page not found at %s", async (path)
 });
 
 it.each([
-  ["/app/cap-table", "/app/investors"],
-  ["/app/cap-table?kind=auditor", "/app/investors?kind=auditor"],
-  ["/app/cap-table?kind=shareholder", "/app/investors"],
-  ["/app/cap-table?kind=options&security=SAFE", "/app/investors?security=SAFE"],
-  ["/app/cap-table/x?kind=investor", "/app/investors/x?kind=investor"],
-  ["/app/CAP-TABLE?kind=auditor", "/app/investors?kind=auditor"],
+  // The cap table is its own page inside the shell now, like Fundraising.
+  ["/app/cap-table", "/app/cap-table"],
+  ["/app/cap-table?kind=auditor", "/app/cap-table?kind=auditor"],
+  ["/app/cap-table/overview", "/app/cap-table/overview"],
+  ["/app/cap-table/share-classes?sort=name", "/app/cap-table/share-classes?sort=name"],
   ["/app/settings", "/app?settings=general"],
-])("sends the old Cap table address %s to %s", async (from, to) => {
+])("opens the shell at %s instead of a redirect (%s)", async (from, to) => {
   const at = await renderAt(
     from,
     (c) => c.querySelector("[data-at]")?.getAttribute("data-at") ?? "",
@@ -142,4 +141,15 @@ it("returns a signed-out visitor to the page they asked for", async () => {
   } finally {
     session.user = { id: "user-1" };
   }
+});
+
+it("keeps the investor portal route outside the app shell", async () => {
+  expect(
+    await renderAt("/portal/open", (container) =>
+      JSON.stringify({
+        portal: container.querySelector("main") !== null,
+        shell: container.querySelector("[data-at]") !== null,
+      }),
+    ),
+  ).toBe('{"portal":true,"shell":false}');
 });

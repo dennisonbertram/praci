@@ -93,6 +93,12 @@ export const Choice: Story = {
   render: () => <ChoiceCard botId="bot_ada" block={choice} onBotChanged={noop} />,
 };
 
+/** Dark theme: muted options must still read as separate cards on the card surface. */
+export const ChoiceDark: Story = {
+  render: () => <ChoiceCard botId="bot_ada" block={choice} onBotChanged={noop} />,
+  globals: { theme: "dark" },
+};
+
 export const ChoiceAnswered: Story = {
   render: () => (
     <ChoiceCard botId="bot_ada" block={{ ...choice, answerId: "b" }} onBotChanged={noop} />
@@ -175,6 +181,16 @@ export const McpApprovalStdio: Story = {
       botId="bot_ada"
       threadId="thread_1"
       block={{ ...mcp, endpoint: null, transport: "stdio" }}
+    />
+  ),
+};
+
+export const McpApprovalTransportFallback: Story = {
+  render: () => (
+    <McpApprovalCard
+      botId="bot_ada"
+      threadId="thread_1"
+      block={{ ...mcp, endpoint: null, transport: "streamable_http" }}
     />
   ),
 };

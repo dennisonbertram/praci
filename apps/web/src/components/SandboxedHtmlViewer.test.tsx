@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { HTML_VIEWER_PATH } from "@rakazo/contracts/content-security-policy";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
@@ -9,6 +12,17 @@ import {
   EMAIL_HEIGHT_SCRIPT_HASH,
   SandboxedHtmlViewer,
 } from "./SandboxedHtmlViewer";
+
+const shell = readFileSync(
+  path.join(import.meta.dirname, "../../public", HTML_VIEWER_PATH),
+  "utf8",
+);
+
+interface Posted {
+  srcdoc: string;
+  sandbox: string;
+  csp: string;
+}
 
 async function render(html: string, scripts?: boolean, email?: boolean) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -19,32 +33,69 @@ async function render(html: string, scripts?: boolean, email?: boolean) {
     root.render(<SandboxedHtmlViewer title="Notes" html={html} scripts={scripts} email={email} />);
   });
   const iframe = container.querySelector("iframe");
+  if (!iframe?.contentWindow) throw new Error("viewer frame missing");
+  const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+  const load = async () =>
+    act(async () => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+  await load();
+  const posted = (postMessage.mock.lastCall?.[0] ?? {}) as Posted;
   return {
     iframe,
     container,
-    srcDoc: iframe?.getAttribute("srcdoc") ?? "",
+    postMessage,
+    load,
+    posted,
+    /** The message document the shell hands to the preview frame. */
+    srcDoc: posted.srcdoc ?? "",
     async cleanup() {
       await act(async () => root.unmount());
       container.remove();
       vi.unstubAllGlobals();
+      vi.restoreAllMocks();
     },
   };
 }
 
-it("keeps the preview iframe opaque and blocks remote images and fonts", async () => {
+it("loads the shell from the network so it does not inherit the app's CSP", async () => {
+  const view = await render("<p>Hello</p>");
+
+  expect(view.iframe.getAttribute("src")).toBe(HTML_VIEWER_PATH);
+  expect(view.iframe.hasAttribute("srcdoc")).toBe(false);
+  expect(view.iframe.getAttribute("sandbox")).toBe("allow-scripts");
+  expect(view.iframe.getAttribute("referrerpolicy")).toBe("no-referrer");
+
+  await view.cleanup();
+});
+
+it("posts the preview once the shell loads, and again on change or reload", async () => {
+  const view = await render("<p>Hello</p>");
+  expect(view.postMessage).toHaveBeenCalledTimes(1);
+  expect(view.postMessage.mock.lastCall?.[1]).toBe("*");
+
+  await view.load();
+  expect(view.postMessage).toHaveBeenCalledTimes(2);
+
+  await view.cleanup();
+});
+
+it("keeps the preview opaque and blocks remote images and fonts", async () => {
   const view = await render(
     '<img src="https://example.invalid/pixel.png"><style>@font-face { src: url(https://example.invalid/font.woff); }</style>',
   );
 
-  expect(view.iframe?.getAttribute("sandbox")).toBe("allow-scripts");
-  expect(view.iframe?.getAttribute("referrerpolicy")).toBe("no-referrer");
-  expect(view.srcDoc).toContain("frame-src about:");
-  expect(view.srcDoc).toContain("child-src 'none'");
-  expect(view.srcDoc).toContain("img-src data:");
-  expect(view.srcDoc).toContain("font-src data:");
-  expect(view.srcDoc).not.toContain("allow-same-origin");
-  expect(view.srcDoc).not.toMatch(/img-src[^;]*https:/);
-  expect(view.srcDoc).not.toMatch(/font-src[^;]*https:/);
+  expect(view.posted.sandbox).toBe("allow-scripts");
+  expect(shell).toContain('referrerpolicy="no-referrer"');
+  expect(shell).toContain("frame-src about:");
+  expect(shell).toContain("child-src 'none'");
+  expect(view.posted.csp).toContain("img-src data:");
+  expect(view.posted.csp).toContain("font-src data:");
+  expect(view.posted.csp).not.toMatch(/img-src[^;]*https:/);
+  expect(view.posted.csp).not.toMatch(/font-src[^;]*https:/);
+  expect(view.srcDoc).toContain("content=\"default-src 'none'; script-src 'unsafe-inline'");
+  expect(shell).not.toContain("allow-same-origin");
+  expect(view.posted.sandbox).not.toContain("allow-same-origin");
   expect(view.srcDoc).toContain("https://example.invalid/pixel.png");
 
   await view.cleanup();
@@ -55,73 +106,253 @@ it("runs no scripts in the preview when scripts is off, and still blocks link na
     '<a href="https://example.invalid/x">link</a><script>alert(1)</script>',
     false,
   );
-  const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
 
-  expect(shell).toContain('<iframe id="preview" sandbox=""');
-  expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
-  expect(shell).not.toMatch(/csp="[^"]*unsafe-inline'; style/);
+  expect(view.posted.sandbox).toBe("");
+  expect(view.posted.csp).toContain("script-src 'none'");
+  expect(view.posted.csp).not.toContain("unsafe-inline'; style");
   expect(view.srcDoc).not.toContain("addEventListener");
-  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
+  expect(shellContentSecurityPolicy(shell)).toContain("frame-src about:");
 
   await view.cleanup();
 });
 
-it("embeds attacker markup so it cannot take over the navigation shell", async () => {
-  const view = await render(
-    '</script><script>location.href="https://example.invalid/nav"</script><iframe sandbox="allow-scripts allow-same-origin" src="https://example.invalid/frame"></iframe>',
-  );
+it("renders only well-formed messages from the embedding app", () => {
+  const script = shell.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  if (!script) throw new Error("shell script missing");
+  const run = (embedded: boolean) => {
+    const forwarded: unknown[] = [];
+    const frameWindow = { postMessage: (data: unknown) => forwarded.push(data) };
+    const attributes = new Map<string, string>();
+    let onLoad: (() => void) | undefined;
+    const preview = {
+      srcdoc: "",
+      contentWindow: frameWindow,
+      setAttribute: (name: string, value: string) => attributes.set(name, value),
+      addEventListener: (_type: string, handler: () => void) => {
+        onLoad = handler;
+      },
+    };
+    const self = {};
+    const reports: unknown[] = [];
+    const parent = embedded ? { postMessage: (data: unknown) => reports.push(data) } : self;
+    let listener: ((event: { source: unknown; data: unknown }) => void) | undefined;
+    new Function("addEventListener", "parent", "window", "document", script)(
+      (_type: string, handler: typeof listener) => {
+        listener = handler;
+      },
+      parent,
+      self,
+      { getElementById: () => preview },
+    );
+    return {
+      preview,
+      attributes,
+      parent,
+      frameWindow,
+      reports,
+      forwarded,
+      load: () => onLoad?.(),
+      send: (source: unknown, data: unknown) => listener?.({ source, data }),
+    };
+  };
+  const message = { srcdoc: "<p>Hello</p>", sandbox: "allow-scripts", csp: "default-src 'none'" };
 
-  const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
-  expect(shell).toContain('sandbox="allow-scripts"');
-  expect(shell).not.toContain("allow-same-origin");
-  expect(view.srcDoc).not.toContain("</script><script>");
-  expect(view.srcDoc).toContain("\\u003c/script>");
-  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
+  const shellFrame = run(true);
+  shellFrame.send({}, message);
+  shellFrame.send(shellFrame.parent, "<p>a string</p>");
+  shellFrame.send(shellFrame.parent, { ...message, sandbox: 1 });
+  expect(shellFrame.preview.srcdoc).toBe("");
+  shellFrame.send(shellFrame.parent, message);
+  expect(shellFrame.preview.srcdoc).toBe("<p>Hello</p>");
+  expect(shellFrame.attributes.get("sandbox")).toBe("allow-scripts");
+  expect(shellFrame.attributes.get("csp")).toBe("default-src 'none'");
 
-  await view.cleanup();
+  // A frame that was not configured as an email never reports a height to the app.
+  shellFrame.send(shellFrame.frameWindow, { type: "rakazo-email-height", height: 10 });
+  expect(shellFrame.reports).toEqual([]);
+  shellFrame.send(shellFrame.parent, { ...message, sandbox: "allow-scripts allow-popups" });
+  // Only the email frame's well-formed height reports go on to the app.
+  shellFrame.send({}, { type: "rakazo-email-height", height: 10 });
+  shellFrame.send(shellFrame.frameWindow, { type: "other", height: 10 });
+  shellFrame.send(shellFrame.frameWindow, { type: "rakazo-email-height", height: "10" });
+  expect(shellFrame.reports).toEqual([]);
+  shellFrame.send(shellFrame.frameWindow, { type: "rakazo-email-height", height: 10 });
+  expect(shellFrame.reports).toEqual([{ type: "rakazo-email-height", height: 10 }]);
+
+  const topLevel = run(false);
+  topLevel.send(topLevel.parent, message);
+  expect(topLevel.preview.srcdoc).toBe("");
+
+  // Data for an HTML page goes into the frame only from the app, as exactly {type, sources}.
+  const bridge = run(true);
+  const data = { type: "praci-data", sources: { Cash: { status: "ok" } }, extra: "x" };
+  bridge.send({}, data);
+  bridge.send(bridge.frameWindow, data);
+  bridge.send(bridge.parent, { ...data, type: "praci-data2" });
+  bridge.send(bridge.parent, { sources: {} });
+  expect(bridge.forwarded).toEqual([]);
+  expect(bridge.reports).toEqual([]);
+  bridge.send(bridge.parent, data);
+  expect(bridge.forwarded).toEqual([{ type: "praci-data", sources: { Cash: { status: "ok" } } }]);
+  expect(bridge.reports).toEqual([]);
+
+  // Nothing from the frame reaches the app but height reports; the shell's own load ping carries no data.
+  bridge.send(bridge.frameWindow, { type: "praci-viewer-ready", leak: "secret" });
+  bridge.send(bridge.frameWindow, { type: "praci-data", sources: {} });
+  bridge.send(bridge.frameWindow, { srcdoc: "<p>x</p>", sandbox: "allow-same-origin", csp: "" });
+  expect(bridge.reports).toEqual([]);
+  expect(bridge.preview.srcdoc).toBe("");
+  bridge.load();
+  expect(bridge.reports).toEqual([{ type: "praci-viewer-ready" }]);
 });
 
-it("lets the shell load the nested srcdoc preview and rejects http(s) navigations", async () => {
-  const view = await render("<p>Hello</p>");
-  const sources = operativeFrameSources(shellContentSecurityPolicy(view.srcDoc));
+it("switches DNS prefetch off first, in the shell and in every preview document", async () => {
+  const off = '<meta http-equiv="x-dns-prefetch-control" content="off">';
+  expect(shell.indexOf(off)).toBeGreaterThanOrEqual(0);
+  expect(shell.startsWith(`<!DOCTYPE html>${off}`)).toBe(true);
+  for (const [scripts, email] of [
+    [true, false],
+    [false, false],
+    [false, true],
+  ] as const) {
+    const view = await render('<link rel="dns-prefetch" href="//x.example">', scripts, email);
+    expect(view.srcDoc.startsWith(off)).toBe(true);
+    await view.cleanup();
+  }
+});
+
+it("pushes data to the shell after the frame is ready and whenever it changes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const show = async (data?: Record<string, unknown>) =>
+    act(async () => {
+      root.render(<SandboxedHtmlViewer title="Page" html="<p>x</p>" data={data} />);
+    });
+  await show({ Cash: { status: "ok", value: 1 } });
+  const iframe = container.querySelector("iframe");
+  if (!iframe?.contentWindow) throw new Error("viewer frame missing");
+  const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+  const dataPosts = () =>
+    postMessage.mock.calls.map(([message]) => message).filter((m) => m?.type === "praci-data");
+  const fromFrame = async (source: unknown, data: unknown) =>
+    act(async () => {
+      window.dispatchEvent(new MessageEvent("message", { source: source as Window, data }));
+    });
+
+  await act(async () => {
+    iframe.dispatchEvent(new Event("load"));
+  });
+  // Not before the shell reports a loaded document, and never for a message from anywhere else.
+  expect(dataPosts()).toEqual([]);
+  await fromFrame(window, { type: "praci-viewer-ready" });
+  await fromFrame(iframe.contentWindow, { type: "something-else" });
+  expect(dataPosts()).toEqual([]);
+
+  await fromFrame(iframe.contentWindow, { type: "praci-viewer-ready" });
+  expect(dataPosts()).toEqual([
+    { type: "praci-data", sources: { Cash: { status: "ok", value: 1 } } },
+  ]);
+  expect(postMessage.mock.lastCall?.[1]).toBe("*");
+
+  await show({ Cash: { status: "ok", value: 2 } });
+  expect(dataPosts()).toHaveLength(2);
+  expect(dataPosts()[1]).toEqual({
+    type: "praci-data",
+    sources: { Cash: { status: "ok", value: 2 } },
+  });
+
+  // A new document in the frame needs the data again.
+  await fromFrame(iframe.contentWindow, { type: "praci-viewer-ready" });
+  expect(dataPosts()).toHaveLength(3);
+
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+it("posts data that arrives after the frame's ready ping", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const show = async (data?: Record<string, unknown>) =>
+    act(async () => {
+      root.render(<SandboxedHtmlViewer title="Page" html="<p>x</p>" data={data} />);
+    });
+  await show(undefined);
+  const iframe = container.querySelector("iframe");
+  if (!iframe?.contentWindow) throw new Error("viewer frame missing");
+  const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+  const dataPosts = () =>
+    postMessage.mock.calls.map(([message]) => message).filter((m) => m?.type === "praci-data");
+
+  await act(async () => {
+    iframe.dispatchEvent(new Event("load"));
+  });
+  // The frame reports ready while the data request is still in flight.
+  await act(async () => {
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow as Window,
+        data: { type: "praci-viewer-ready" },
+      }),
+    );
+  });
+  expect(dataPosts()).toEqual([]);
+
+  await show({ Cash: { status: "ok", value: 1 } });
+  expect(dataPosts()).toEqual([
+    { type: "praci-data", sources: { Cash: { status: "ok", value: 1 } } },
+  ]);
+
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+it("lets the shell load the nested srcdoc preview and rejects http(s) navigations", () => {
+  const sources = operativeFrameSources(shellContentSecurityPolicy(shell));
 
   expect(frameSourceAllows(sources, "about:srcdoc")).toBe(true);
   expect(frameSourceAllows(sources, "https://example.invalid/nav")).toBe(false);
   expect(frameSourceAllows(sources, "http://example.invalid/nav")).toBe(false);
-
-  await view.cleanup();
 });
 
 it("email mode loads data and proxied images, opens links in new tabs, and still runs no script in the message", async () => {
   const view = await render('<img src="https://example.invalid/pixel.png">', true, true);
-  const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
 
   // Even when the caller asks for scripts, an email's own scripts never run: the message frame
   // allows exactly one pinned script (the height reporter) and nothing inline.
-  const innerScriptSources = directiveSources(/csp="([^"]*)"/.exec(shell)?.[1] ?? "", "script-src");
-  expect(innerScriptSources).toEqual([`'${EMAIL_HEIGHT_SCRIPT_HASH}'`]);
-  expect(shell).not.toMatch(/csp="[^"]*unsafe-(inline|hashes)[^"]*script/);
-  expect(shell).toContain(`img-src data: ${window.location.origin}`);
-  expect(shell).not.toMatch(/img-src[^;]*https:/);
-  // The message frame inherits the shell's policy, so the shell must not block images either.
-  expect(directiveSources(shellContentSecurityPolicy(view.srcDoc), "img-src")).toEqual([
-    "data:",
-    window.location.origin,
+  expect(directiveSources(view.posted.csp, "script-src")).toEqual([
+    `'${EMAIL_HEIGHT_SCRIPT_HASH}'`,
   ]);
-  const innerSandbox = /<iframe id="preview" sandbox="([^"]*)"/.exec(shell)?.[1] ?? "";
+  expect(view.posted.csp).not.toMatch(
+    /unsafe-(inline|hashes)[^;]*script|script-src[^;]*unsafe-inline/,
+  );
+  expect(directiveSources(view.posted.csp, "img-src")).toEqual(["data:", window.location.origin]);
+  expect(view.posted.csp).not.toMatch(/img-src[^;]*https:/);
+  // The message frame inherits the shell's policy, so the shell must not block the image proxy.
+  expect(directiveSources(shellContentSecurityPolicy(shell), "img-src")).toEqual([
+    "data:",
+    "'self'",
+  ]);
   // allow-scripts runs only the pinned height script; without allow-same-origin the frame stays opaque.
-  expect(innerSandbox.split(" ").sort()).toEqual([
+  expect(view.posted.sandbox.split(" ").sort()).toEqual([
     "allow-popups",
     "allow-popups-to-escape-sandbox",
     "allow-scripts",
   ]);
-  const outer = view.iframe?.getAttribute("sandbox")?.split(" ").sort();
+  const outer = view.iframe.getAttribute("sandbox")?.split(" ").sort();
   expect(outer).toEqual(["allow-popups", "allow-popups-to-escape-sandbox", "allow-scripts"]);
   // The app origin is never shared with the frame, and form posts stay blocked.
-  expect(view.iframe?.getAttribute("sandbox")).not.toContain("allow-same-origin");
-  expect(view.srcDoc).toContain("form-action 'none'");
-  expect(view.srcDoc).toContain("base-uri 'none'");
-  expect(view.srcDoc).toContain("frame-src about:");
+  expect(view.iframe.getAttribute("sandbox")).not.toContain("allow-same-origin");
+  expect(view.posted.sandbox).not.toContain("allow-same-origin");
+  expect(view.posted.csp).toContain("form-action 'none'");
+  expect(view.posted.csp).toContain("base-uri 'none'");
 
   await view.cleanup();
 });
@@ -129,9 +360,8 @@ it("email mode loads data and proxied images, opens links in new tabs, and still
 it("leaves remote images blocked for a plain scripts-off preview", async () => {
   const view = await render('<img src="https://example.invalid/pixel.png">', false);
 
-  expect(view.srcDoc).not.toMatch(/img-src[^;]*https:/);
-  expect(directiveSources(shellContentSecurityPolicy(view.srcDoc), "img-src")).toBeUndefined();
-  expect(view.iframe?.getAttribute("sandbox")).toBe("allow-scripts");
+  expect(directiveSources(view.posted.csp, "img-src")).toEqual(["data:"]);
+  expect(view.iframe.getAttribute("sandbox")).toBe("allow-scripts");
 
   await view.cleanup();
 });
@@ -181,8 +411,8 @@ it("email mode still embeds attacker markup safely and keeps the script policy",
   // The only script left in the message is the pinned height reporter.
   const scripts = [...embeddedMessage(view.srcDoc).querySelectorAll("script")];
   expect(scripts.map((script) => script.textContent)).toEqual([EMAIL_HEIGHT_SCRIPT]);
-  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
-  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("child-src 'none'");
+  expect(shellContentSecurityPolicy(shell)).toContain("frame-src about:");
+  expect(shellContentSecurityPolicy(shell)).toContain("child-src 'none'");
   expect(embeddedMessage(view.srcDoc).querySelector("a")?.getAttribute("target")).toBe("_blank");
 
   await view.cleanup();
@@ -229,15 +459,13 @@ it("email mode sizes the frame from height messages sent only by its own frame",
   await view.cleanup();
 });
 
-/** The message document the shell hands to the preview frame, parsed back from the shell's script. */
+/** The message document the shell hands to the preview frame, parsed. */
 function embeddedMessage(srcDoc: string): Document {
-  const literal = /srcdoc=(".*");<\/script>$/s.exec(srcDoc)?.[1];
-  if (!literal) throw new Error("embedded message missing");
-  return new DOMParser().parseFromString(JSON.parse(literal) as string, "text/html");
+  return new DOMParser().parseFromString(srcDoc, "text/html");
 }
 
-function shellContentSecurityPolicy(srcDoc: string): string {
-  const match = srcDoc.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/);
+function shellContentSecurityPolicy(html: string): string {
+  const match = html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/);
   if (!match?.[1]) throw new Error("shell CSP missing");
   return match[1];
 }
@@ -312,7 +540,7 @@ it("email mode shows white paper with base styles, not dimmed in dark mode", asy
   const email = await render("<p>hi</p>", false, true);
   const css = embeddedMessage(email.srcDoc).head.innerHTML;
   expect(css).toContain("html,body{margin:0;background:#fff;color:#1f1f1f}");
-  expect(css).toContain("padding:20px 24px");
+  expect(css).toContain("html{overflow-x:auto;padding:24px 32px!important}");
   expect(css).toContain("system-ui");
   expect(css).toContain("max-width:100%!important;height:auto");
   expect(css).toContain("overflow-wrap:anywhere");

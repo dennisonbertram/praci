@@ -478,8 +478,11 @@ const TILE_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 py-3 px-4 md:px-7 @min-[800px]/bd:ps-2";
 /** The icon area at the top of every tile: no fill of its own, so file and folder tiles match. */
 const ICON_AREA = "grid h-20 place-items-center rounded-md [&>svg]:size-6";
+/** The tile's "⋯" shows on hover, focus inside the tile, or an open menu; always on touch. */
+const TILE_ACTIONS =
+  "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-has-[[aria-expanded=true]]:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100";
 const TILE =
-  "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
+  "group relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * The open folder's sub-folders, above its files, so a folder that holds only folders never looks
@@ -507,7 +510,7 @@ export function SubfolderList({
     return (
       <ul aria-label={t`Sub-folders`} className={cn(TILE_GRID, "pb-0")}>
         {folders.map((folder) => (
-          <li key={folder.id} className="relative flex">
+          <li key={folder.id} className="group relative flex">
             <Button
               variant="ghost"
               onClick={() => onOpen(folder.id)}
@@ -523,7 +526,11 @@ export function SubfolderList({
                 {contents(folder)}
               </span>
             </Button>
-            <ItemMenu item={folder} onAction={onAction} className="absolute top-3 right-3" />
+            <ItemMenu
+              item={folder}
+              onAction={onAction}
+              className={cn("absolute top-3 right-3", TILE_ACTIONS)}
+            />
           </li>
         ))}
       </ul>
@@ -604,7 +611,7 @@ export function ListView({
 
 /** The picture area at the top of a file tile: one fixed shape, so tiles line up. */
 const PREVIEW_AREA =
-  "relative grid aspect-4/3 w-full place-items-center @min-[640px]/list:aspect-4/5 overflow-hidden rounded-md bg-muted [&>svg]:size-6";
+  "relative grid aspect-4/3 max-sm:aspect-video w-full place-items-center @min-[640px]/list:aspect-4/5 overflow-hidden rounded-md bg-muted [&>svg]:size-6";
 
 /**
  * The drawn thumbnail, fetched with the session once the tile nears the screen. The file icon
@@ -733,7 +740,10 @@ export function GridView({
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
-            className="absolute top-3 right-3 rounded-full bg-background/80 ring-1 ring-border"
+            className={cn(
+              "absolute top-3 right-3 rounded-full bg-background/80 ring-1 ring-border",
+              TILE_ACTIONS,
+            )}
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
           <span

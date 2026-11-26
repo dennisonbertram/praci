@@ -80,5 +80,6 @@ export const Loading: Story = {
 };
 
 export const LoadFailed: Story = {
+  parameters: { docs: { description: { story: "A failed status load offers Try again." } } },
   beforeEach: () => mockRpc({ "billing.status": () => Promise.reject(new Error("offline")) }),
 };

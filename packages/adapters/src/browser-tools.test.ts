@@ -1,5 +1,5 @@
 import type { AdapterContext, ComputerRef } from "@rakazo/adapter-kit";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   browserActFromTool,
   browserNavigateFromTool,
@@ -144,6 +144,51 @@ describe("browser tools", () => {
       expect(JSON.stringify(acted)).not.toContain(values.password);
     });
 
+    it("marks a login used only after the page action succeeds", async () => {
+      const browser = loginPage("https://login.example.test/signin");
+      const { email } = await refs(browser, "https://login.example.test/signin");
+      const markUsed = vi.fn(async () => undefined);
+      const resolve = async () => ({
+        ...(await resolveSecretFill({ field: "username" })),
+        markUsed,
+      });
+      const fill = (ref: string) => ({
+        actions: [{ kind: "fill_secret", ref, secret: "site_login", field: "username" }],
+      });
+      const failed = await browserActFromTool(browser, computer, context, fill("missing-ref"), {
+        resolveSecretFill: resolve,
+      });
+      expect(failed).toMatchObject({ ok: false });
+      expect(markUsed).not.toHaveBeenCalled();
+      const fresh = await refs(browser, "https://login.example.test/signin");
+      const filled = await browserActFromTool(browser, computer, context, fill(fresh.email), {
+        resolveSecretFill: resolve,
+      });
+      expect(filled).toMatchObject({ ok: true });
+      expect(markUsed).toHaveBeenCalledTimes(1);
+    });
+
+    it("types the password only into a password field and the username never into one", async () => {
+      const browser = loginPage("https://login.example.test/signin");
+      for (const [target, field, error] of [
+        ["email", "password", /password field/],
+        ["password", "username", /text, email, or telephone/],
+      ] as const) {
+        const ref = (await refs(browser, "https://login.example.test/signin"))[target];
+        const acted = await browserActFromTool(
+          browser,
+          computer,
+          context,
+          { actions: [{ kind: "fill_secret", ref, secret: "site_login", field }] },
+          { resolveSecretFill },
+        );
+        expect(acted, field).toMatchObject({ ok: false, completed: 0, uncertain: false });
+        expect(acted, field).not.toHaveProperty("fallback");
+        expect(JSON.stringify(acted), field).toMatch(error);
+        expect(JSON.stringify(acted), field).not.toContain(values[field]);
+      }
+    });
+
     it("never reports a login-filled field's value, even when too short to redact", async () => {
       const browser = loginPage("https://login.example.test/signin");
       const { email } = await refs(browser, "https://login.example.test/signin");
@@ -213,7 +258,7 @@ describe("browser tools", () => {
         { resolveSecretFill },
       );
       expect(acted).toMatchObject({ ok: false, completed: 0 });
-      expect(JSON.stringify(acted)).toMatch(/text, email, password, or telephone/);
+      expect(JSON.stringify(acted)).toMatch(/text, email, or telephone/);
     });
 
     it("refuses to type a saved login into a textarea or a non-login input type", async () => {
@@ -258,7 +303,7 @@ describe("browser tools", () => {
           { resolveSecretFill },
         );
         expect(acted, name).toMatchObject({ ok: false, completed: 0 });
-        expect(JSON.stringify(acted), name).toMatch(/text, email, password, or telephone/);
+        expect(JSON.stringify(acted), name).toMatch(/text, email, or telephone/);
       }
       const phone = await browserActFromTool(
         browser,
@@ -318,8 +363,11 @@ describe("browser tools", () => {
         { actions: [{ kind: "fill_secret", ref: email, secret: "site_login", field: "username" }] },
         { resolveSecretFill },
       );
-      expect(acted).toMatchObject({ ok: false, completed: 0 });
-      expect(JSON.stringify(acted)).toMatch(/not on the site/);
+      expect(acted).toMatchObject({ ok: false, completed: 0, uncertain: false });
+      expect(JSON.stringify(acted)).toMatch(/not on the site.*browser_navigate/);
+      // A refusal is settled: nothing points the bot at desktop tools or takeover.
+      expect(acted).not.toHaveProperty("fallback");
+      expect(acted).not.toHaveProperty("note");
     });
 
     it("acts on nothing when a saved login cannot be resolved", async () => {

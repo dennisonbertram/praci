@@ -1,6 +1,7 @@
 import {
   LEGAL_CONSENT_REQUIRED_MESSAGE,
   MISSING_TOOL_FINAL_RESPONSE_ERROR,
+  PINNED_CONNECTION_LOST_MESSAGE,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ComposerError } from "./composer-error";
@@ -11,6 +12,7 @@ const meta = {
   args: {
     onDismiss: () => {},
     onOpenModelSettings: () => {},
+    onOpenBotSettings: () => {},
     onNavigate: () => {},
     onRetry: () => {},
   },
@@ -33,6 +35,7 @@ export const RunFailed: Story = { args: { message: "The run stopped: the model t
 /** The provider rejected the API key: the error says so and opens Models settings. */
 export const KeyRejected: Story = {
   args: {
+    fix: "models",
     message: "The model provider did not accept your API key. Check it in Settings > Models.",
   },
 };
@@ -46,3 +49,16 @@ export const ConsentRequired: Story = {
 
 /** The run ended without a reply: Retry sends the last message again. */
 export const NoReply: Story = { args: { message: MISSING_TOOL_FINAL_RESPONSE_ERROR } };
+
+/** The model provider is rate limiting: Retry sends the last message again. */
+export const RateLimited: Story = {
+  args: {
+    message: "The model provider is rate limiting requests. Try again in a few minutes.",
+    fix: "retry",
+  },
+};
+
+/** The bot's pinned connection was signed out or removed: sign in again, or pick another. */
+export const ConnectionLost: Story = {
+  args: { fix: "connection", message: PINNED_CONNECTION_LOST_MESSAGE },
+};

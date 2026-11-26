@@ -3,10 +3,13 @@ import type { Actor } from "@rakazo/contracts";
 import { BOT_SHARE_DECLINED_MESSAGE, BOT_SHARE_HELD_MESSAGE } from "@rakazo/contracts";
 import { PrivateFragments } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb, createRepos } from "@rakazo/db";
+import { createDb, createRepos, createThreadMessage, runAsTenant } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { messageBot } from "./bot-messages.js";
-import { answerBotShare, findBotShareEffect } from "./bot-share.js";
+import { messageBot as sendBotMessage } from "./bot-messages.js";
+import {
+  answerBotShare as answerBotShareInTenant,
+  findBotShareEffect as findBotShareEffectInTenant,
+} from "./bot-share.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -36,6 +39,25 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
       events: { notify: async () => undefined },
       jobs: { enqueue: async () => undefined },
     }) as never;
+  const asOwner = <T>(fn: () => T | PromiseLike<T>) => runAsTenant(actor, fn);
+  const messageBot = (...args: Parameters<typeof sendBotMessage>) =>
+    asOwner(() => sendBotMessage(...args));
+  const answerBotShare = (
+    deps: Parameters<typeof answerBotShareInTenant>[0],
+    who: Parameters<typeof answerBotShareInTenant>[1],
+    input: Parameters<typeof answerBotShareInTenant>[2],
+  ) =>
+    runAsTenant({ spaceId: who.spaceId, userId: who.userId }, () =>
+      answerBotShareInTenant(deps, who, input),
+    );
+  const findBotShareEffect = (
+    prisma: PrismaClient,
+    who: Parameters<typeof findBotShareEffectInTenant>[1],
+    input: Parameters<typeof findBotShareEffectInTenant>[2],
+  ) =>
+    runAsTenant({ spaceId: who.spaceId, userId: who.userId }, () =>
+      findBotShareEffectInTenant(prisma, who, input),
+    );
 
   const secret = "priya.shah@halcyon-ventures.example";
   const fragments = () => {
@@ -46,19 +68,26 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
   const heldText = `The lead investor is ${secret.toUpperCase()}.`;
 
   async function chiefRun(status = "running") {
-    const task = await prisma.task.create({
-      data: { spaceId, botId: chief.id, threadId: chief.threadId, userId, prompt: "x", status },
-    });
-    return prisma.run.create({
-      data: {
-        spaceId,
-        botId: chief.id,
+    return asOwner(async () => {
+      await createThreadMessage(prisma, {
         threadId: chief.threadId,
-        taskId: task.id,
-        userId,
-        status,
-        trigger: "user",
-      },
+        role: "user",
+        blocks: [{ kind: "text", text: "Start a separate test turn." }],
+      });
+      const task = await prisma.task.create({
+        data: { spaceId, botId: chief.id, threadId: chief.threadId, userId, prompt: "x", status },
+      });
+      return prisma.run.create({
+        data: {
+          spaceId,
+          botId: chief.id,
+          threadId: chief.threadId,
+          taskId: task.id,
+          userId,
+          status,
+          trigger: "user",
+        },
+      });
     });
   }
   const textsIn = async (threadId: string) =>
@@ -71,12 +100,14 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
   const scope = (threadId = chief.threadId, user = userId) => ({ spaceId, userId: user, threadId });
   const hold = async (text = heldText, deliveryKey?: string) => {
     const run = await chiefRun();
-    const sent = await messageBot(
-      deps(),
-      run,
-      { id: chief.id, name: chief.name },
-      { bot_id: support.id, message: text, intent: "request", deliveryKey },
-      { outbound: async () => fragments() },
+    const sent = await asOwner(() =>
+      messageBot(
+        deps(),
+        run,
+        { id: chief.id, name: chief.name },
+        { bot_id: support.id, message: text, intent: "request", deliveryKey },
+        { outbound: async () => fragments() },
+      ),
     );
     const card = await prisma.message.findFirstOrThrow({
       where: { threadId: chief.threadId, runId: run.id, role: "bot" },
@@ -281,9 +312,10 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
     expect(internal).toMatchObject({ ok: true });
     expect(await textsIn(finance.threadId)).toContain(heldText);
     // No snapshot of the run's reads to an external bot: held, not sent.
+    const nextRun = await chiefRun();
     const unknown = await messageBot(
       deps(),
-      run,
+      nextRun,
       { id: chief.id, name: chief.name },
       { bot_id: support.id, message: "Unchecked text.", intent: "request" },
     );

@@ -10,11 +10,13 @@ import {
   toolStepsSummary,
 } from "@rakazo/core";
 
+import type { PrismaClient } from "./client.js";
+import { Prisma } from "./client.js";
+
 export const activeRunStatuses = [...ACTIVE_RUN_STATUSES];
 const backgroundRunTriggers = [...BACKGROUND_RUN_TRIGGERS];
 const userVisibleBotRunTriggers = ["bot_message", ...BACKGROUND_RUN_TRIGGERS];
 const activeRunOrderBy = [{ status: "desc" as const }, { createdAt: "desc" as const }];
-const latestBotRunOrderBy = [{ createdAt: "desc" as const }, { id: "desc" as const }];
 
 /**
  * The newest conversational/foreground run for a bot's sidebar status. Background
@@ -38,13 +40,35 @@ export function storedRunPhase(phase: unknown): RunPhase | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** Latest user-visible run for a bot roster error signal; later success clears an older failure. */
-export const latestBotRunSelection = {
-  where: { trigger: { notIn: userVisibleBotRunTriggers } },
-  orderBy: latestBotRunOrderBy,
-  take: 1,
-  select: { id: true, status: true },
-} as const;
+/** Latest user-visible run per thread, bounded in SQL rather than by Prisma in memory. */
+export async function withLatestBotRuns<T extends { thread: { id: string } | null }>(
+  prisma: PrismaClient,
+  parents: T[],
+) {
+  const threadIds = parents.flatMap((parent) => (parent.thread ? [parent.thread.id] : []));
+  const loaded =
+    threadIds.length === 0
+      ? []
+      : await prisma.$queryRaw<Array<{ id: string; threadId: string; status: string }>>(Prisma.sql`
+    SELECT r.id, r."threadId", r.status
+    FROM unnest(${threadIds}::text[]) AS t(id)
+    CROSS JOIN LATERAL (
+      SELECT id, "threadId", status
+      FROM runs
+      WHERE "threadId" = t.id AND trigger NOT IN (${Prisma.join(userVisibleBotRunTriggers)})
+      ORDER BY "createdAt" DESC, id DESC
+      LIMIT 1
+    ) r
+  `);
+  const byThread = new Map(loaded.map((run) => [run.threadId, run]));
+  return parents.map((parent) => {
+    const run = parent.thread ? byThread.get(parent.thread.id) : undefined;
+    return {
+      ...parent,
+      thread: parent.thread ? { ...parent.thread, runs: run ? [run] : [] } : null,
+    };
+  });
+}
 
 /** Tool ids run together ("get_active_integration get_banking_tr…") are not words a person wrote. */
 const TOOL_ID_LIST = /^\s*[a-z\d]+(?:_[a-z\d]+)+(?:\s+[a-z\d]+(?:_[a-z\d]+)+)*…?\s*$/;

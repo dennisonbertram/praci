@@ -23,6 +23,20 @@ export function isLocalMcpHost(hostname: string): boolean {
   );
 }
 
+/**
+ * The connector never sends a stored token to plain-HTTP loopback, so a sign-in there would
+ * succeed and every later call would be refused. Sign-in is offered only where the token is sent.
+ */
+export function mcpOAuthSupported(endpoint: string | null | undefined): boolean {
+  if (!endpoint) return true;
+  try {
+    const url = new URL(endpoint);
+    return !(url.protocol === "http:" && isLocalMcpHost(url.hostname));
+  } catch {
+    return true;
+  }
+}
+
 export const McpRemoteEndpointSchema = z
   .string()
   .max(2048)
@@ -41,7 +55,8 @@ export const McpRemoteEndpointSchema = z
   }, "MCP remote endpoint must be an HTTP(S) URL without credentials or a fragment");
 
 export const McpHeadersSchema = z
-  .record(z.string().regex(/^[A-Za-z0-9-]+$/), z.string().max(4096))
+  // HTTP field names are tokens (RFC 9110 section 5.6.2), including underscores.
+  .record(z.string().regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/), z.string().max(4096))
   .superRefine((value, ctx) => {
     if (Object.keys(value).length > 32) {
       ctx.addIssue({ code: "custom", message: "At most 32 headers are allowed" });

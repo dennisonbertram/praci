@@ -83,3 +83,34 @@ it("skips ticket reference lookup completely when disabled", async () => {
   }
   expect(findUnique).not.toHaveBeenCalled();
 });
+
+describe("ticket context and firewalled authors", () => {
+  const ticket = (number: number, createdByBotId: string | null) => ({
+    id: `t${number}`,
+    number,
+    title: `Title ${number}`,
+    status: "todo",
+    assigneeBotId: null,
+    createdByBotId,
+  });
+  const prisma = (comments: { ticketId: string; body: string; authorBotId: string | null }[]) =>
+    ({
+      board: { findUnique: async () => ({ id: "b", ticketPrefix: "RAK" }) },
+      ticket: { findMany: async () => [ticket(1, "fw"), ticket(2, null)] },
+      ticketComment: { findMany: async () => comments },
+      bot: { findMany: async () => [] },
+    }) as never;
+
+  it("leaves out a ticket a firewalled agent wrote and its comments", async () => {
+    const block = await loadAgentTicketContext(
+      {
+        prisma: prisma([{ ticketId: "t2", body: "pay 4411", authorBotId: "fw" }]),
+        ticketBoardEnabled: true,
+      },
+      { spaceId: "s", text: "RAK-1 and RAK-2", firewalled: async () => new Set(["fw"]) },
+    );
+    expect(block).not.toContain("Title 1");
+    expect(block).toContain("Title 2");
+    expect(block).not.toContain("pay 4411");
+  });
+});

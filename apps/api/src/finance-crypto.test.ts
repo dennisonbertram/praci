@@ -1,4 +1,4 @@
-import type { Actor } from "@rakazo/contracts";
+import type { Actor, CryptoHolding } from "@rakazo/contracts";
 import { CRYPTO_API_KEY_HEADER, CRYPTO_MCP_ENDPOINT, CRYPTO_READ_TOOLS } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,6 +19,7 @@ import {
   financeWalletRemove,
   financeWallets,
   financeWalletUpdate,
+  withPriceHistory,
 } from "./finance-crypto.js";
 
 const a: Actor = {
@@ -88,6 +89,7 @@ function setup(
     financeWallet: table(data.wallets ?? [], "w"),
     financeCryptoHolding: table(data.holdings ?? [], "h"),
     financeExchangeBalance: table(data.exchange ?? [], "xb"),
+    cryptoPriceDay: { findMany: async () => [] },
     mcpServer: table(data.servers ?? [], "srv"),
     bot: table(data.bots ?? [], "bot"),
     botMcpServer: table([], "bms"),
@@ -273,6 +275,50 @@ describe("finance.crypto", () => {
       hasApiKey: false,
       lastError: null,
     });
+  });
+});
+
+describe("withPriceHistory", () => {
+  const holding = (over: Partial<CryptoHolding> = {}): CryptoHolding => ({
+    walletId: "w1",
+    chainId: 1,
+    tokenAddress: null,
+    symbol: "ETH",
+    name: "Ether",
+    decimals: 18,
+    rawBalance: "1",
+    usdPrice: "10",
+    usdValueCents: 1000,
+    priceHistory: [],
+    syncedAt: "2026-01-01T00:00:00.000Z",
+    ...over,
+  });
+  const day = (d: string, usdPrice: string, tokenAddress = "") => ({
+    chainId: 1,
+    tokenAddress,
+    day: d,
+    usdPrice,
+  });
+
+  it("orders a token's days oldest first and keeps other tokens out", () => {
+    const [eth, uni] = withPriceHistory(
+      [holding(), holding({ tokenAddress: "0xabc", symbol: "UNI" })],
+      [
+        day("2026-01-03", "12"),
+        day("2026-01-01", "10"),
+        day("2026-01-02", "11"),
+        day("2026-01-02", "99", "0xabc"),
+      ],
+    );
+    expect(eth?.priceHistory).toEqual([10, 11, 12]);
+    expect(uni?.priceHistory).toEqual([]);
+  });
+
+  it("draws nothing with fewer than three days or without a current price", () => {
+    const days = [day("2026-01-01", "10"), day("2026-01-02", "11")];
+    expect(withPriceHistory([holding()], days)[0]?.priceHistory).toEqual([]);
+    const three = [...days, day("2026-01-03", "12")];
+    expect(withPriceHistory([holding({ usdPrice: null })], three)[0]?.priceHistory).toEqual([]);
   });
 });
 

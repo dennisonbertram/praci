@@ -11,6 +11,8 @@ import {
   progressMessageId,
   reduceLiveMessageBlocks,
   runFailureError,
+  settleRunSubagents,
+  stopsRunHelpers,
   subagentBlockFromPayload,
 } from "./events.js";
 import { upsertMessageById } from "./message-pages.js";
@@ -22,8 +24,10 @@ const runTriggers = new Set<string>(RUN_TRIGGERS);
 
 function runFromStartedEvent(event: ProductEvent, previous: Run | undefined): Run {
   const trigger = event.payload.trigger;
+  const userId = typeof event.payload.userId === "string" ? event.payload.userId : previous?.userId;
   return {
     id: event.runId ?? previous?.id ?? event.id,
+    ...(userId ? { userId } : {}),
     botId: event.botId,
     threadId: event.threadId,
     taskId: previous?.taskId ?? event.runId ?? event.id,
@@ -79,6 +83,10 @@ export function reduceThreadSnapshot(
   event: ProductEvent,
 ): ThreadSnapshot | null {
   if (!prev) return prev;
+  if (stopsRunHelpers(event)) {
+    const messages = settleRunSubagents(prev.messages, event.runId);
+    if (messages !== prev.messages) prev = { ...prev, messages };
+  }
   if (event.type === "thread.cleared") {
     return {
       ...prev,
@@ -343,6 +351,7 @@ export function reduceThreadSnapshot(
       botId: event.botId,
       runId: event.runId,
       callId: typeof event.payload.callId === "string" ? event.payload.callId : known?.callId,
+      via: typeof event.payload.via === "string" ? event.payload.via : known?.via,
       ...replyMetadata(event.payload, known),
       createdAt: known?.createdAt ?? event.createdAt,
     };

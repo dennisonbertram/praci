@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findComponents,
   findSwiftViews,
+  parseTokensCss,
   renderComponentsMd,
   storiesFor,
 } from "./design-system.mjs";
@@ -40,6 +41,36 @@ describe("native SwiftUI catalog", () => {
     });
     expect(catalog).toContain("SwiftUI views: 1 in 1 files");
     expect(catalog).toContain("native story pending | iOS |");
+  });
+});
+
+describe("mobile catalog areas", () => {
+  it("groups Expo Router screens under app (screens) and everything else together", () => {
+    const catalog = renderComponentsMd({
+      web: [],
+      mobile: [
+        { file: "apps/mobile/app/(tabs)/home.tsx", names: ["Home"] },
+        { file: "apps/mobile/components/Badge.tsx", names: ["Badge"] },
+      ],
+    });
+    expect(catalog).toContain("## Mobile app (screens)");
+    expect(catalog).toContain("## Mobile mobile");
+  });
+});
+
+describe("parseTokensCss", () => {
+  const css = `:root,\n[data-theme="dark"] {\n  --background: #111;\n}\n\n[data-theme="light"] {\n  --background: #eee;\n}\n`;
+  it("reads the dark and light blocks", () => {
+    expect(parseTokensCss(css)).toEqual({
+      dark: { background: "#111" },
+      light: { background: "#eee" },
+    });
+  });
+  it("throws when a theme selector is missing instead of rendering empty cells", () => {
+    expect(() => parseTokensCss(css.replace('[data-theme="light"] {', ".light {"))).toThrow(
+      /\[data-theme="light"\]/,
+    );
+    expect(() => parseTokensCss(":root {\n  --a: 1;\n}\n")).toThrow(/data-theme="dark"/);
   });
 });
 

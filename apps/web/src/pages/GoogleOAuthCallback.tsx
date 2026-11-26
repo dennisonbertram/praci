@@ -18,7 +18,7 @@ export function GoogleOAuthCallbackPage() {
     const code = params.get("code");
     const state = params.get("state");
     if (!code || !state) {
-      setError(params.get("error_description") ?? t`OAuth authorization was cancelled.`);
+      setError(t`OAuth authorization was cancelled.`);
       return;
     }
     if (handledState.current === state) return;

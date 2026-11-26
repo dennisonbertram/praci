@@ -252,29 +252,20 @@ export function AiDataSharingSection() {
     setRecipients(status.recipients.filter((recipient) => recipient.use === "model"));
   };
   const load = () => {
-    loadChatKeys();
-    aiConsentStatus()
-      .then(show)
-      .catch(() => setRecipients([]));
-    documentConsent()
-      .then(setDocuments)
-      .catch((cause) => {
+    return Promise.all([
+      loadChatKeys(),
+      aiConsentStatus().then(show, (cause) => {
+        setRecipients(null);
+        setError(errorText(cause));
+      }),
+      documentConsent().then(setDocuments, (cause) => {
         setDocuments(null);
         setError(errorText(cause));
-      });
+      }),
+    ]);
   };
   useEffect(() => {
-    let live = true;
-    loadChatKeys();
-    aiConsentStatus()
-      .then((status) => live && show(status))
-      .catch(() => live && setRecipients([]));
-    documentConsent()
-      .then((status) => live && setDocuments(status))
-      .catch((cause) => live && setError(errorText(cause)));
-    return () => {
-      live = false;
-    };
+    void load();
   }, []);
 
   if (recipients?.length === 0) return null;
@@ -293,7 +284,7 @@ export function AiDataSharingSection() {
       .catch((cause) => {
         setError(errorText(cause));
         // What was shown is out of date: show the current state and ask again.
-        load();
+        return load();
       })
       .finally(() => setPending(false));
   };
@@ -331,6 +322,19 @@ export function AiDataSharingSection() {
   const partlyAllowed =
     !allAllowed &&
     ((recipients?.some((recipient) => recipient.allowed) ?? false) || documents?.allowed === true);
+  const retry = (
+    <Button
+      variant="link"
+      size="sm"
+      className="mt-2 h-auto p-0"
+      onClick={() => {
+        setError("");
+        void load();
+      }}
+    >
+      <Trans>Retry</Trans>
+    </Button>
+  );
   return (
     <section className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -344,14 +348,18 @@ export function AiDataSharingSection() {
       ) : null}
       {/* The text above is fixed, so only the row waits. */}
       {recipients === null ? (
-        // The switch row and the "Per model" link at their loaded heights, drawn so they show on the card.
-        <div aria-hidden="true" className="mt-3 flex flex-col gap-3">
-          <div className="flex h-10 items-center gap-3 pointer-coarse:h-11">
-            <Skeleton static className="h-5 w-9 rounded-full" />
-            <Skeleton static className="h-8 w-40" />
+        error ? (
+          retry
+        ) : (
+          // The switch row and the "Per model" link at their loaded heights, drawn so they show on the card.
+          <div aria-hidden="true" className="mt-3 flex flex-col gap-3">
+            <div className="flex h-10 items-center gap-3 pointer-coarse:h-11">
+              <Skeleton static className="h-5 w-9 rounded-full" />
+              <Skeleton static className="h-8 w-40" />
+            </div>
+            <Skeleton static className="h-5 w-44" />
           </div>
-          <Skeleton static className="h-5 w-44" />
-        </div>
+        )
       ) : (
         <SwitchRow
           className="mt-3"
@@ -362,6 +370,7 @@ export function AiDataSharingSection() {
           onCheckedChange={setAll}
         />
       )}
+      {recipients !== null && error && documents === null ? retry : null}
       {/* With one model the switch above already is that model. */}
       {recipients && (recipients.length > 1 || documentsNeeded) ? (
         <details className="group mt-3" open={partlyAllowed}>

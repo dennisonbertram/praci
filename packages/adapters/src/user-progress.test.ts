@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   botMessageOutcomeFromMidTurn,
   clampUserProgressMessage,
+  createNarrationGate,
   extractNarrationText,
   finalBlocksAfterMidTurnProgress,
   isProgressMessageTruncated,
   isUserProgressClientNonce,
+  toolIsQuietForNarration,
   USER_PROGRESS_MESSAGE_MAX_LENGTH,
   userProgressClientNonce,
 } from "./user-progress.js";
@@ -100,5 +102,70 @@ describe("userProgressClientNonce", () => {
     expect(userProgressClientNonce("run-1", 0)).not.toBe(nonce);
     expect(isUserProgressClientNonce(null)).toBe(false);
     expect(isUserProgressClientNonce("other")).toBe(false);
+  });
+});
+
+describe("createNarrationGate", () => {
+  const LOOKUP = true;
+  const ACTION = false;
+
+  it("keeps one line for a group of lookups", () => {
+    const gate = createNarrationGate();
+    expect(gate.admit("Pulling your list.", LOOKUP)).toBe(true);
+    expect(gate.admit("I'll pull the list now.", LOOKUP)).toBe(false);
+    expect(gate.admit("Checking the sent folder.", LOOKUP)).toBe(false);
+  });
+
+  it("keeps the line attached to an action and the next line after it", () => {
+    const gate = createNarrationGate();
+    gate.admit("Reading the sheet.", LOOKUP);
+    expect(gate.admit("Sending the first batch.", ACTION)).toBe(true);
+    gate.noteTool(ACTION);
+    expect(gate.admit("Batch sent; checking what is left.", LOOKUP)).toBe(true);
+    expect(gate.admit("Still checking.", LOOKUP)).toBe(false);
+  });
+
+  it("drops a repeat even before an action", () => {
+    const gate = createNarrationGate();
+    gate.admit("Sending the batch.", ACTION);
+    gate.noteTool(ACTION);
+    expect(gate.admit("  sending   the BATCH. ", ACTION)).toBe(false);
+  });
+
+  it("keeps a long line, which is a finding rather than a status", () => {
+    const gate = createNarrationGate();
+    gate.admit("Reading.", LOOKUP);
+    expect(gate.admit("x".repeat(240), LOOKUP)).toBe(true);
+  });
+
+  it("counts a line posted earlier in the run as said, but still allows the first new line", () => {
+    const gate = createNarrationGate(["Reading the sheet."]);
+    expect(gate.admit("Reading the sheet.", LOOKUP)).toBe(false);
+    expect(gate.admit("Picking up where I stopped.", LOOKUP)).toBe(true);
+  });
+
+  it("counts a message_user update as the line for this group", () => {
+    const gate = createNarrationGate();
+    gate.notePosted("Working through the list.");
+    expect(gate.admit("Looking at the list.", LOOKUP)).toBe(false);
+  });
+});
+
+describe("toolIsQuietForNarration", () => {
+  it.each([
+    ["mail_search", undefined, true],
+    ["search_history", undefined, true],
+    ["read_history", undefined, true],
+    ["list_files", undefined, true],
+    ["task_catalog", true, true],
+    ["inbox_overview", true, true],
+    ["shell", undefined, true],
+    ["scratchpad_update", undefined, true],
+    ["mail_send", undefined, false],
+    ["mail_reply_batch", undefined, false],
+    ["schedule_create", undefined, false],
+    ["ask_user", undefined, false],
+  ])("%s", (name, readOnly, quiet) => {
+    expect(toolIsQuietForNarration(name, readOnly)).toBe(quiet);
   });
 });

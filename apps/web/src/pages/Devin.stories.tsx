@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { DevinPage } from "./Devin";
 import {
+  connectingOverview,
   connectorGone,
   emptyOverview,
   notConnected,
@@ -47,9 +48,20 @@ export const Member: Story = {
 
 export const Empty: Story = { beforeEach: reads(emptyOverview) };
 
+export const ConnectingFirstRead: Story = { beforeEach: reads(connectingOverview) };
+
 /** The last read is old: the header says how old, and some sessions could not be read. */
 export const StalePartial: Story = {
   beforeEach: reads({ ...overview, stale: true, partial: true }),
+};
+
+/** Devin cannot be reached: the rows stay, the header says how old they are, and there is no error notice. */
+export const Unreachable: Story = {
+  beforeEach: reads({
+    ...overview,
+    stale: true,
+    connection: { ...overview.connection, status: "unreachable" },
+  }),
 };
 
 export const Rejected: Story = { beforeEach: reads(rejected) };

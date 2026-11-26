@@ -129,6 +129,87 @@ it("does not link unsafe, unpublished, or unrecognised-account provider targets"
   expect(host.querySelector('a[href^="https://x.com"]')).toBeNull();
 });
 
+it("shows a queued post once instead of as both a local item and a queue entry", async () => {
+  const queued = {
+    ...planned,
+    id: "queued_local",
+    title: "Local copy of the queued post",
+    status: "open" as const,
+    proof: "zernio:p1",
+  };
+  const data = {
+    ...overview,
+    groups: { ...emptyOverview.groups, in_progress: [queued] },
+  };
+  queue.mockResolvedValue({
+    status: "ready",
+    complete: true,
+    posts: [{ ...provider, id: "p1", content: "Provider copy of the queued post" }],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <GtmCalendar overview={data} initialDate={new Date("2026-11-02T12:00:00")} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.textContent).toContain("Provider copy of the queued post");
+  expect(host.textContent).not.toContain("Local copy of the queued post");
+  // The grid and the narrow layout each render the one entry.
+  expect(host.textContent?.split("Provider copy of the queued post")).toHaveLength(3);
+});
+
+it("keeps the local queued post when the queue entry renders no platform", async () => {
+  const queued = {
+    ...planned,
+    id: "queued_local",
+    title: "Local copy of the queued post",
+    status: "open" as const,
+    proof: "zernio:p1",
+  };
+  const data = {
+    ...overview,
+    groups: { ...emptyOverview.groups, in_progress: [queued] },
+  };
+  queue.mockResolvedValue({
+    status: "ready",
+    complete: true,
+    posts: [{ ...provider, id: "p1", content: "Hidden provider copy", platforms: [] }],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <GtmCalendar overview={data} initialDate={new Date("2026-11-02T12:00:00")} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.textContent).toContain("Local copy of the queued post");
+  expect(host.textContent).not.toContain("Hidden provider copy");
+});
+
+it("keeps the local queued post when the queue call fails", async () => {
+  const queued = {
+    ...planned,
+    id: "queued_local",
+    title: "Local copy of the queued post",
+    status: "open" as const,
+    proof: "zernio:p1",
+  };
+  const data = {
+    ...overview,
+    groups: { ...emptyOverview.groups, in_progress: [queued] },
+  };
+  queue.mockRejectedValue(new Error("offline"));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <GtmCalendar overview={data} initialDate={new Date("2026-11-02T12:00:00")} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.textContent).toContain("Local copy of the queued post");
+});
+
 it("loads the next week rather than retaining the previous queue window", async () => {
   await render();
   await act(async () =>

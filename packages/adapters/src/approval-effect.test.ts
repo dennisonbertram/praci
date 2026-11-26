@@ -6,6 +6,7 @@ import {
   approvalReplayResourceError,
   approvalRoutesMatch,
   approvedCatalogReplay,
+  approvedEffectOccurrence,
   approvedPaymentResult,
   approvedReplayArgs,
   boundDirectApprovalDetails,
@@ -80,6 +81,17 @@ describe("approved effect replay", () => {
     expect(queue.assertDrained).toThrow();
     expect(queue.take("destination.write")).toEqual({ sequence: 2 });
     expect(queue.assertDrained).not.toThrow();
+  });
+
+  it("reads the occurrence an approved row's key encodes", () => {
+    const base = approvalEffectKey("run", "destination.write", { sequence: 1 });
+    expect(approvedEffectOccurrence(base, base)).toBe(0);
+    expect(approvedEffectOccurrence(`${base}:2`, base)).toBe(2);
+    expect(approvedEffectOccurrence(`${base}:0`, base)).toBeUndefined();
+    expect(approvedEffectOccurrence(`${base}:x`, base)).toBeUndefined();
+    expect(
+      approvedEffectOccurrence(approvalEffectKey("run", "destination.write", {}), base),
+    ).toBeUndefined();
   });
 
   it("does not consume a later tool before the next approved request", () => {
@@ -284,6 +296,45 @@ describe("approved effect replay", () => {
       text: "approved exactly",
       mode: "fast",
     });
+  });
+});
+
+describe("Brex cards approval", () => {
+  const route = {
+    connectorId: "mcp",
+    resourceId: "server-1",
+    resourceRevision: 3,
+    toolName: "create_vendor_card",
+  };
+  const approved = { cardName: "Notion", amountCents: 25_000, duration: "MONTHLY" };
+
+  it("replays the approved card arguments, not a later model reconstruction", () => {
+    const request = boundDirectApprovalRequest(route, approved, "marker");
+    const reconstructed = { ...approved, amountCents: 900_000 };
+
+    expect(approvedReplayArgs(request, reconstructed, "marker")).toEqual(approved);
+  });
+
+  it("goes stale when the server's revision moves, as it does when the token is replaced", () => {
+    const details = boundDirectApprovalDetails(
+      boundDirectApprovalRequest(route, approved, "marker"),
+      "marker",
+    );
+
+    expect(approvalRoutesMatch(route, details?.route)).toBe(true);
+    expect(approvalRoutesMatch({ ...route, resourceRevision: 4 }, details?.route)).toBe(false);
+    expect(approvalRoutesMatch({ ...route, resourceId: "server-2" }, details?.route)).toBe(false);
+  });
+
+  it("is claimed once: a second claim of the same approved effect does not dispatch again", async () => {
+    const store = {
+      externalEffect: {
+        updateMany: vi.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }),
+      },
+    };
+
+    await expect(claimApprovedEffect(store, "effect-brex-1")).resolves.toBe(true);
+    await expect(claimApprovedEffect(store, "effect-brex-1")).resolves.toBe(false);
   });
 });
 
@@ -602,7 +653,7 @@ describe("payment outcome wording for the model", () => {
   });
 
   it("speaks to the person in the second person after a denial", () => {
-    expect(DENIED_ACTION_MESSAGE).toContain("you denied");
+    expect(DENIED_ACTION_MESSAGE).toContain("you declined it");
     expect(DENIED_ACTION_MESSAGE).not.toMatch(/the user denied/i);
   });
 

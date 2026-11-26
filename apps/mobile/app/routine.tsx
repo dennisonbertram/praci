@@ -1,13 +1,13 @@
 import type { Routine } from "@rakazo/contracts";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { glassHeaderOptions } from "../components/glass-title";
 import { NativeActionButton } from "../components/native-action-button";
 import { rpc } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { native, useMobileTokens } from "../lib/native";
-import { routineStatusLine } from "../lib/routine";
+import { routineActivityLine, routineStatusLine } from "../lib/routine";
 import { errorText } from "../lib/user-error";
 
 export default function RoutineDetail() {
@@ -22,34 +22,52 @@ export default function RoutineDetail() {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestGeneration = useRef(0);
 
-  useEffect(() => {
+  const loadRoutine = useCallback(() => {
+    let cancelled = false;
+    const generation = ++requestGeneration.current;
     if (!botId || !routineId) {
       setError(t("Routine link is incomplete"));
       setLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
-    let cancelled = false;
     setLoading(true);
+    setError(null);
     void rpc<Routine[]>("routines/list", { botId })
       .then((routines) => {
-        if (cancelled) return;
+        if (cancelled || generation !== requestGeneration.current) return;
         const match = routines.find((item) => item.id === routineId);
         if (match) setRoutine(match);
-        else setError(t("This routine no longer exists"));
+        else {
+          setRoutine(null);
+          setError(t("This routine no longer exists"));
+        }
       })
       .catch((loadError) => {
-        if (!cancelled) {
+        if (!cancelled && generation === requestGeneration.current) {
+          if (
+            typeof loadError === "object" &&
+            loadError !== null &&
+            "status" in loadError &&
+            loadError.status === 404
+          ) {
+            setRoutine(null);
+          }
           setError(errorText(loadError, t("Could not load routine")));
         }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && generation === requestGeneration.current) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [botId, routineId]);
+  }, [botId, routineId, t]);
+
+  useFocusEffect(loadRoutine);
 
   return (
     <ScrollView
@@ -60,6 +78,7 @@ export default function RoutineDetail() {
       <Stack.Screen options={glassHeaderOptions(routine?.name ?? t("Routine"))} />
       {loading ? <ActivityIndicator color={tokens.mutedForeground} /> : null}
       {error ? <Text style={{ color: tokens.destructive, fontSize: 15 }}>{error}</Text> : null}
+      {error ? <NativeActionButton label={t("Try again")} onPress={loadRoutine} /> : null}
       {routine ? (
         <>
           <View
@@ -72,6 +91,11 @@ export default function RoutineDetail() {
             <Text style={{ color: tokens.mutedForeground, fontSize: 14 }}>
               {routineStatusLine(routine)}
             </Text>
+            {routineActivityLine(routine) ? (
+              <Text style={{ color: tokens.mutedForeground, fontSize: 14, marginTop: 6 }}>
+                {routineActivityLine(routine)}
+              </Text>
+            ) : null}
           </View>
           <View style={{ gap: 8 }}>
             <Text

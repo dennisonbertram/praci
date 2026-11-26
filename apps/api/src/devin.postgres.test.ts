@@ -348,8 +348,9 @@ describePostgres("Devin shared connection (PostgreSQL)", () => {
     });
 
     it("returns the cache while another process holds the lease", async () => {
+      // Older than the 60 s cache (so the read meets the lease) but under the 5 min stale mark.
       await connected(owner1, {
-        lastSucceededAt: new Date(Date.now() - 120_000),
+        lastSucceededAt: new Date(Date.now() - 4 * 60_000),
         leaseToken: "other",
         leaseUntil: new Date(Date.now() + 60_000),
       });
@@ -357,6 +358,47 @@ describePostgres("Devin shared connection (PostgreSQL)", () => {
       expect(callTool).not.toHaveBeenCalled();
       expect(read.sessions).toHaveLength(2);
       expect(read.stale).toBe(false);
+    });
+
+    it("marks cached data stale by age while another process holds the lease", async () => {
+      await connected(owner1, {
+        lastSucceededAt: new Date(Date.now() - 10 * 60_000),
+        leaseToken: "other",
+        leaseUntil: new Date(Date.now() + 60_000),
+      });
+      const read = await client(member).devin.sessions();
+      expect(callTool).not.toHaveBeenCalled();
+      expect(read.stale).toBe(true);
+    });
+
+    it("does not report a capped listing as partial", async () => {
+      await connected(owner1, { lastSucceededAt: new Date(Date.now() - 120_000) });
+      callTool.mockClear();
+      callTool.mockImplementation(async (_serverId, name) =>
+        name === "devin_session_search" ? "next_cursor: more\n" : MESSAGES_TEXT,
+      );
+      const read = await client(member).devin.sessions();
+      expect(callTool.mock.calls.filter((call) => call[1] === "devin_session_search")).toHaveLength(
+        10,
+      );
+      expect((await state())?.complete).toBe(false);
+      expect((await state())?.skipped).toBe(0);
+      expect(read.partial).toBe(false);
+    });
+
+    it("reports a later page failure as partial", async () => {
+      await connected(owner1, { lastSucceededAt: new Date(Date.now() - 120_000) });
+      callTool.mockClear();
+      let searches = 0;
+      callTool.mockImplementation(async (_serverId, name) => {
+        if (name !== "devin_session_search") return MESSAGES_TEXT;
+        searches += 1;
+        if (searches === 2) throw new Error("network unreachable");
+        return "next_cursor: more\n";
+      });
+      const read = await client(member).devin.sessions();
+      expect((await state())?.skipped).toBeGreaterThanOrEqual(1);
+      expect(read.partial).toBe(true);
     });
 
     it("returns stored rows, muted, for a rejected connection without calling Devin", async () => {

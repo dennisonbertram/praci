@@ -141,6 +141,49 @@ describePostgres("notifications (PostgreSQL)", () => {
     ).toBe("created");
   });
 
+  it("does not count run notices (done, failed, needs_input) against the agent's own limits", async () => {
+    const botId = `bot-run-notice-${suffix}`;
+    const now = new Date();
+    for (const kind of ["done", "failed", "needs_input"] as const) {
+      const r = await createNotification(prisma, {
+        ...mine,
+        botId,
+        surface: "threads",
+        title: `Run ${kind}`,
+        importance: "attention",
+        kind,
+        skipRateLimits: true,
+        now,
+      });
+      expect(r.status).toBe("created");
+    }
+    // Three run notices are already stored; the agent's own two urgent messages still go through.
+    for (const title of ["own-1", "own-2"]) {
+      const r = await createNotification(prisma, {
+        ...mine,
+        botId,
+        surface: "threads",
+        title,
+        importance: "attention",
+        now,
+      });
+      expect(r.status).toBe("created");
+    }
+    // Its own messages (no kind) still count, so the third is limited.
+    expect(
+      (
+        await createNotification(prisma, {
+          ...mine,
+          botId,
+          surface: "threads",
+          title: "own-3",
+          importance: "attention",
+          now,
+        })
+      ).status,
+    ).toBe("rateLimited");
+  });
+
   it("limits attention to 2 per hour and queues deliveries only for attention", async () => {
     await prisma.notificationEndpoint.create({
       data: { userId: mine.userId, channel: "push", address: "tok-a", deviceId: "dev-a" },

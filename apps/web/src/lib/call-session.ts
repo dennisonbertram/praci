@@ -18,7 +18,7 @@ import { dictation } from "./dictation.js";
 import { rpc } from "./rpc.js";
 import { isThreadSnapshotEvent, reduceThreadSnapshot } from "./thread-events.js";
 import { speaker } from "./tts.js";
-import { errorText } from "./user-error";
+import { errorText, runErrorText } from "./user-error";
 
 export type CallPhase = "listening" | "thinking" | "speaking";
 export type CallExchange = { role: "user" | "bot"; text: string };
@@ -32,6 +32,7 @@ export interface CallState {
   muted: boolean;
   transcriptOpen: boolean;
   caption: string;
+  captionIsError: boolean;
   heard: string;
   exchanges: CallExchange[];
 }
@@ -69,6 +70,10 @@ let micOpen = false;
 let bargedIn = false;
 /** A turn is in flight: its reply must be spoken even if the mic reopened meanwhile. */
 let awaitingReply = false;
+/** The turn reached the server: a run that ends without a reply is the turn's outcome. */
+let turnSent = false;
+/** The sent turn's run was seen active, so a run gone from the snapshot means it ended. */
+let runSeen = false;
 /** Counting down an interim phrase heard over the reply, before it counts as cutting in. */
 let interimTimer: ReturnType<typeof setTimeout> | null = null;
 const watchers = new Set<() => void>();
@@ -94,8 +99,15 @@ function emit() {
 
 function set(patch: Partial<CallState>) {
   if (!state) return;
+  if (Object.hasOwn(patch, "caption") && !Object.hasOwn(patch, "captionIsError")) {
+    patch = { ...patch, captionIsError: false };
+  }
   state = { ...state, ...patch };
   emit();
+}
+
+function microphoneErrorCaption(message: string): string {
+  return `${message}. ${t`Allow microphone access in this site's settings.`}`;
 }
 
 export function startCall(call: {
@@ -112,6 +124,8 @@ export function startCall(call: {
   micOpen = false;
   bargedIn = false;
   awaitingReply = false;
+  turnSent = false;
+  runSeen = false;
   state = {
     botId: call.botId,
     botName: call.botName,
@@ -121,6 +135,7 @@ export function startCall(call: {
     muted: false,
     transcriptOpen: false,
     caption: "",
+    captionIsError: false,
     heard: "",
     exchanges: [],
   };
@@ -135,7 +150,7 @@ export function startCall(call: {
       set({ caption: "" });
       guardThenListen();
     }
-    if (speech.error) set({ caption: speech.error });
+    if (speech.error) set({ caption: speech.error, captionIsError: true });
   });
   unsubDictation = dictation.subscribe((heard) => {
     if (!state) return;
@@ -145,7 +160,11 @@ export function startCall(call: {
     } else clearInterim();
     if (heard.error) {
       if (heard.status === "idle") micOpen = false;
-      set({ caption: heard.error });
+      set({
+        caption:
+          heard.errorKind === "permission" ? microphoneErrorCaption(heard.error) : heard.error,
+        captionIsError: true,
+      });
     }
   });
   watchThread(call.botId);
@@ -180,6 +199,8 @@ export function endCall(): void {
   micOpen = false;
   bargedIn = false;
   awaitingReply = false;
+  turnSent = false;
+  runSeen = false;
   unsubSpeech?.();
   unsubDictation?.();
   unsubSpeech = null;
@@ -218,9 +239,18 @@ function watchThread(botId: string) {
   const controller = new AbortController();
   feed = controller;
   const load = async () => commit(await rpc.threads.get({ botId }, { signal: controller.signal }));
+  // Only the first load: the reply already in the thread belongs to an earlier conversation.
+  const loadFirst = async () => {
+    const first = await rpc.threads.get({ botId }, { signal: controller.signal });
+    if (!controller.signal.aborted && first) {
+      const earlier = [...first.messages].reverse().find((message) => message.role === "bot");
+      if (earlier) spokenMessageIds.add(earlier.id);
+    }
+    return commit(first);
+  };
   void runThreadSubscription({
     signal: controller.signal,
-    loadInitial: load,
+    loadInitial: loadFirst,
     loadHead: () => rpc.threads.head({ botId }, { signal: controller.signal }),
     refresh: load,
     currentSnapshot: () => thread,
@@ -254,6 +284,8 @@ function speakFarewell(payload: Record<string, unknown>) {
     return;
   }
   awaitingReply = false;
+  turnSent = false;
+  runSeen = false;
   set({ exchanges: [...state.exchanges, { role: "bot", text: farewell }], heard: "" });
   spokenMemory.remember(farewell);
   void speaker.speak(farewell, { botId: state.botId, messageId });
@@ -313,7 +345,12 @@ async function openMic() {
     });
   } catch (error) {
     micOpen = false;
-    set({ caption: errorText(error, t`Microphone failed`) });
+    const message = errorText(error, t`Microphone failed`);
+    // Only a refused permission gets the hint; other failures say what went wrong.
+    const denied =
+      error instanceof DOMException &&
+      (error.name === "NotAllowedError" || error.name === "SecurityError");
+    set({ caption: denied ? microphoneErrorCaption(message) : message, captionIsError: true });
   }
 }
 
@@ -383,19 +420,24 @@ async function handleTranscript(text: string) {
   } catch (error) {
     if (!state || state.botId !== botId || callId !== turnCallId) return;
     awaitingReply = false;
-    set({ caption: errorText(error, t`Could not send that`) });
+    turnSent = false;
+    runSeen = false;
+    set({ caption: errorText(error, t`Could not send that`), captionIsError: true });
     void listen();
     return;
   } finally {
     releasePendingSend();
   }
   if (!state || state.botId !== botId || callId !== turnCallId) return;
+  turnSent = true;
   try {
     commit(await rpc.threads.get({ botId }, { signal: callFeed?.signal }));
   } catch (error) {
     if (!state || state.botId !== botId || callId !== turnCallId) return;
     awaitingReply = false;
-    set({ caption: errorText(error, t`Could not send that`) });
+    turnSent = false;
+    runSeen = false;
+    set({ caption: errorText(error, t`Could not send that`), captionIsError: true });
     void listen();
   }
 }
@@ -454,6 +496,8 @@ function reactToThread() {
       // Never spoken again, interrupted or not.
       spokenMessageIds.add(lastBot.id);
       awaitingReply = false;
+      turnSent = false;
+      runSeen = false;
       set({ exchanges: [...state.exchanges, { role: "bot", text }], heard: "" });
       spokenMemory.remember(text);
       void speaker.speak(
@@ -469,8 +513,30 @@ function reactToThread() {
     if (!runActive(thread)) {
       spokenMessageIds.add(lastBot.id);
       awaitingReply = false;
+      turnSent = false;
+      runSeen = false;
       void listen();
+      return;
     }
+  }
+  // The run ended with nothing to say (failed or cancelled): the turn is over, so listen again.
+  const status = thread?.run?.status;
+  if (awaitingReply && runActive(thread)) runSeen = true;
+  if (
+    awaitingReply &&
+    turnSent &&
+    (runSeen || status === "failed") &&
+    !runActive(thread) &&
+    status !== "waiting_input" &&
+    status !== "waiting_takeover"
+  ) {
+    awaitingReply = false;
+    turnSent = false;
+    runSeen = false;
+    if (thread?.run?.status === "failed") {
+      set({ caption: runErrorText(thread.run.error ?? ""), captionIsError: true });
+    }
+    void listen();
   }
 }
 

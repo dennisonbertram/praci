@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { ConnectionAccessRow } from "./connection-access.js";
 import {
+  accountAllowedIn,
   appStatus,
   botMayUseConnection,
+  connectionRowsForAudience,
   deniedConnectionIds,
   effectiveAccessByConnection,
+  GOOGLE_BUILTIN_WRITES,
+  nonOwnerMayWrite,
+  sourceAccessFor,
 } from "./connection-access.js";
 
 const row = (
@@ -141,6 +146,27 @@ describe("effectiveAccessByConnection for an external bot", () => {
     );
     expect(result.open?.botIds).toEqual(["chief"]);
     expect(result.granted?.botIds).toEqual(["chief", "support"]);
+  });
+});
+
+describe("effectiveAccessByConnection for a firewalled bot", () => {
+  const bots = [
+    { id: "chief", spawnKey: null, archivedAt: null },
+    { id: "support", spawnKey: null, archivedAt: null, firewall: true },
+  ];
+  it("shared with all agents does not reach it; an explicit grant does", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("open", "connected", true),
+        { ...row("granted", "connected", true), provider: "slack", botAccess: grant("support") },
+      ],
+      bots,
+    );
+    expect(result.open?.botIds).toEqual(["chief"]);
+    expect(result.granted?.botIds).toEqual(["chief", "support"]);
+    expect(connectionRowsForAudience([{ allAgents: true }], "internal", true)).toEqual([
+      { allAgents: false },
+    ]);
   });
 });
 
@@ -316,9 +342,9 @@ describe("appStatus", () => {
     expect(appStatus([conn("error")])).toBe("failed");
     expect(appStatus([conn("revoked")])).toBeNull();
   });
-  it("needs a reconnect when every connected account's sign-in was refused", () => {
+  it("needs a reconnect when any connected account's sign-in was refused, even beside a healthy one", () => {
     expect(appStatus([conn("connected", true)])).toBe("reconnect");
-    expect(appStatus([conn("connected", true), conn("connected")])).toBe("connected");
+    expect(appStatus([conn("connected", true), conn("connected")])).toBe("reconnect");
   });
 });
 
@@ -382,5 +408,133 @@ describe("an email's own agent shares the Inbox agent's Gmail access", () => {
     expect(withInboxAgentStandIn(gmail, { id: "x", spawnKey: null }).agentBotId).toBe("bot-inbox");
     const other = { ...gmail, agentBot: { spawnKey: "integration-agent:c1" } };
     expect(withInboxAgentStandIn(other, thread).agentBotId).toBe("bot-inbox");
+  });
+});
+
+describe("nonOwnerMayWrite", () => {
+  const grant = (canWrite: boolean) => [{ canWrite }];
+  it("needs the write grant and the connection's changes switch", () => {
+    expect(nonOwnerMayWrite({ writesEnabled: true, botAccess: grant(true) }, {})).toBe(true);
+    expect(nonOwnerMayWrite({ writesEnabled: true, botAccess: grant(false) }, {})).toBe(false);
+    expect(nonOwnerMayWrite({ writesEnabled: false, botAccess: grant(true) }, {})).toBe(false);
+    expect(nonOwnerMayWrite({ writesEnabled: true, botAccess: [] }, {})).toBe(false);
+  });
+  it("never lets an external bot change anything", () => {
+    expect(
+      nonOwnerMayWrite({ writesEnabled: true, botAccess: grant(true) }, { audience: "external" }),
+    ).toBe(false);
+  });
+  it("does not depend on the Firewall: a firewalled bot with a write grant is allowed here and still asks", () => {
+    expect(
+      nonOwnerMayWrite({ writesEnabled: true, botAccess: grant(true) }, { audience: "internal" }),
+    ).toBe(true);
+  });
+});
+
+describe("sourceAccessFor", () => {
+  const source = {
+    agentBotId: "owner",
+    allAgents: false,
+    writesEnabled: false,
+    botAccess: [] as { botId: string; canWrite: boolean }[],
+  };
+  const bot = (id: string, extra: { audience?: string; firewall?: boolean } = {}) => ({
+    id,
+    ...extra,
+  });
+
+  it("gives a new source to its own agent alone, read-only until changes are on", () => {
+    expect(sourceAccessFor(source, bot("owner"))).toEqual({ read: true, write: false });
+    expect(sourceAccessFor(source, bot("other"))).toEqual({ read: false, write: false });
+    expect(sourceAccessFor({ ...source, writesEnabled: true }, bot("owner"))).toEqual({
+      read: true,
+      write: true,
+    });
+  });
+
+  it("lets a granted agent read, and change only with its own grant and the source's switch", () => {
+    const granted = { ...source, botAccess: [{ botId: "friend", canWrite: false }] };
+    expect(sourceAccessFor(granted, bot("friend"))).toEqual({ read: true, write: false });
+    const writer = {
+      ...source,
+      writesEnabled: true,
+      botAccess: [
+        { botId: "friend", canWrite: true },
+        { botId: "reader", canWrite: false },
+      ],
+    };
+    expect(sourceAccessFor(writer, bot("friend")).write).toBe(true);
+    expect(sourceAccessFor(writer, bot("reader")).write).toBe(false);
+    expect(sourceAccessFor({ ...writer, writesEnabled: false }, bot("friend"))).toEqual({
+      read: true,
+      write: false,
+    });
+  });
+
+  it("opens an all-agents source to every internal agent and changes follow the switch", () => {
+    const open = { ...source, allAgents: true, writesEnabled: true };
+    expect(sourceAccessFor(open, bot("anyone"))).toEqual({ read: true, write: true });
+    expect(sourceAccessFor({ ...open, writesEnabled: false }, bot("anyone"))).toEqual({
+      read: true,
+      write: false,
+    });
+  });
+
+  it("gives an external or firewalled agent nothing, even its own source", () => {
+    const open = { ...source, allAgents: true, writesEnabled: true };
+    const granted = { ...open, botAccess: [{ botId: "x", canWrite: true }] };
+    for (const flag of [{ audience: "external" }, { firewall: true }]) {
+      expect(sourceAccessFor(granted, bot("x", flag))).toEqual({ read: false, write: false });
+      expect(sourceAccessFor(granted, bot("owner", flag))).toEqual({ read: false, write: false });
+    }
+  });
+});
+
+describe("accountAllowedIn", () => {
+  const bot = { id: "bot-1", audience: "internal" };
+  const linked = (botAccess: { botId: string; canWrite?: boolean }[], writesEnabled = true) => [
+    {
+      ...row("acct-1", "connected", false, {
+        connectorId: "google",
+        agentBotId: "owner-agent",
+        botAccess,
+      }),
+      writesEnabled,
+    },
+  ];
+
+  it("lists mail_reply_batch as a write: without this a read-only agent could write", () => {
+    expect(GOOGLE_BUILTIN_WRITES.has("mail_reply_batch")).toBe(true);
+    const readOnly = linked([{ botId: "bot-1", canWrite: false }]);
+    expect(accountAllowedIn(readOnly, "acct-1", "mail_search", bot)).toBe(true);
+    expect(accountAllowedIn(readOnly, "acct-1", "mail_reply_batch", bot)).toBe(false);
+    expect(accountAllowedIn(readOnly, "acct-1", "mail_send", bot)).toBe(false);
+  });
+
+  it("lets a non-owner write only with its own grant while changes are on", () => {
+    const write = [{ botId: "bot-1", canWrite: true }];
+    expect(accountAllowedIn(linked(write), "acct-1", "mail_reply_batch", bot)).toBe(true);
+    expect(accountAllowedIn(linked(write, false), "acct-1", "mail_reply_batch", bot)).toBe(false);
+    expect(
+      accountAllowedIn(linked(write), "acct-1", "mail_reply_batch", {
+        ...bot,
+        audience: "external",
+      }),
+    ).toBe(false);
+  });
+
+  it("lets the connection's own agent write only while changes are on", () => {
+    const own = { ...bot, id: "owner-agent" };
+    const grants = [{ botId: "owner-agent" }];
+    expect(accountAllowedIn(linked(grants), "acct-1", "mail_reply_batch", own)).toBe(true);
+    expect(accountAllowedIn(linked(grants, false), "acct-1", "mail_reply_batch", own)).toBe(false);
+  });
+
+  it("refuses an account that is gone or not connected", () => {
+    const rows = linked([{ botId: "bot-1", canWrite: true }]);
+    expect(accountAllowedIn(rows, "other", "mail_reply_batch", bot)).toBe(false);
+    expect(
+      accountAllowedIn([{ ...rows[0]!, status: "revoked" }], "acct-1", "mail_reply_batch", bot),
+    ).toBe(false);
   });
 });

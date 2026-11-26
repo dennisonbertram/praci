@@ -140,8 +140,27 @@ export const Loading: Story = {
 };
 
 export const LoadFailed: Story = {
-  beforeEach: () =>
-    mockRpc({ "models.list": () => Promise.reject(new Error("Could not load model settings")) }),
+  beforeEach: () => {
+    let failed = false;
+    mockRpc({
+      "models.list": () => {
+        if (!failed) {
+          failed = true;
+          return Promise.reject(new Error("Could not load model settings"));
+        }
+        return mockModelCatalog;
+      },
+      "models.credentials": mockModelCredentials,
+      me: mockMe,
+      "models.backups": [],
+      "models.embeddingModel": { modelId: "sample/embedding-v1" },
+      "models.setEmbeddingModel": (input: { modelId: string | null }) => input,
+    });
+  },
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    await screen.findByText("DeepSeek Chat");
+  },
 };
 
 export const EmptyCatalog: Story = {

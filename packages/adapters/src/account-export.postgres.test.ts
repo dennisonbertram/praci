@@ -6,7 +6,7 @@ import type { ArtifactStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { strFromU8, unzipSync } from "fflate";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   cleanupAccountExports,
   latestAccountExport,
@@ -14,7 +14,7 @@ import {
   runAccountExport,
 } from "./account-export.js";
 import { RecordingJobs } from "./data-room-test-fakes.js";
-import { createArtifactStore } from "./s3-artifacts.js";
+import { ArtifactNotFoundError, createArtifactStore } from "./s3-artifacts.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -104,6 +104,22 @@ describePostgres("account export (PostgreSQL)", () => {
         data: { spaceId, userId, name: `bot-${tag}`, color: "#111111", webhookSecretId: SECRET },
       });
       const thread = await prisma.thread.create({ data: { spaceId, userId, botId: bot.id } });
+      await prisma.approvalDecision.create({
+        data: {
+          spaceId,
+          userId,
+          botId: bot.id,
+          tool: "page_edit",
+          targetKey: `page_edit:${tag}`,
+          decision: "auto_approved",
+          basis: "precedent",
+          cleanRun: true,
+          tier: "reversible",
+          argsKeys: ["pageId"],
+          argsSize: 1,
+          version: 1,
+        },
+      });
       await prisma.message.create({
         data: { threadId: thread.id, seq: 1, role: "user", blocks: [{ text: `hello-${tag}` }] },
       });
@@ -113,7 +129,7 @@ describePostgres("account export (PostgreSQL)", () => {
       await prisma.agentSkill.create({
         data: { spaceId, userId, name: `skill-${tag}`, description: "d", content: "c" },
       });
-      await prisma.routine.create({
+      const routine = await prisma.routine.create({
         data: {
           spaceId,
           userId,
@@ -121,7 +137,15 @@ describePostgres("account export (PostgreSQL)", () => {
           name: `routine-${tag}`,
           prompt: "p",
           crons: ["0 9 * * *"],
+          quiet: true,
+          watch: { kind: "page", url: "https://example.com", intervalMinutes: 60 },
         },
+      });
+      await prisma.routineWatchState.create({
+        data: { routineId: routine.id, spaceId, snapshot: `page-${tag}`, recentChanges: [0, 1] },
+      });
+      await prisma.scratchpadItem.create({
+        data: { spaceId, userId, botId: bot.id, title: `item-${tag}`, waitingOn: "Acme legal" },
       });
       await prisma.contact.create({ data: { spaceId, userId, name: `contact-${tag}` } });
       await prisma.meeting.create({
@@ -260,7 +284,14 @@ describePostgres("account export (PostgreSQL)", () => {
       ["notes-A-shared", "Ada: transcript-A-shared"],
     ]);
     expect(zip.json("routines.json")[0].crons).toEqual(["0 9 * * *"]);
+    expect(zip.json("routines.json")[0]).toMatchObject({ quiet: true, watch: { kind: "page" } });
+    expect(names("routine-watch-state.json", "snapshot")).toEqual(["page-A-only", "page-A-shared"]);
+    expect(names("scratchpad-items.json", "title")).toEqual(["item-A-only", "item-A-shared"]);
     expect(zip.json("messages.json")).toHaveLength(2);
+    expect(names("approval-decisions.json", "targetKey")).toEqual([
+      "page_edit:A-only",
+      "page_edit:A-shared",
+    ]);
     expect(zip.json("legal-edges.json")).toHaveLength(2);
     expect(zip.json("legal-nodes.json")).toHaveLength(4);
     expect(names("spaces.json", "id")).toEqual([onlyA, shared].sort());
@@ -305,6 +336,75 @@ describePostgres("account export (PostgreSQL)", () => {
     await runAccountExport({ prisma, artifacts }, one.id);
     const again = await requestAccountExport({ prisma, jobs }, { userId: userB, spaceId: shared });
     expect(again.id).not.toBe(one.id);
+  });
+
+  it("records genuinely missing files and includes their IDs in the manifest", async () => {
+    const started = await requestAccountExport(
+      { prisma, jobs },
+      { userId: userA, spaceId: shared },
+    );
+    const item = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { userId: userA, spaceId: shared, storageKey: { not: null } },
+    });
+    const originalGetStream = artifacts.getStream.bind(artifacts);
+    const getStream = vi.spyOn(artifacts, "getStream").mockImplementation(async (key, context) => {
+      if (key === item.storageKey) throw new ArtifactNotFoundError(key);
+      return originalGetStream(key, context);
+    });
+    try {
+      await runAccountExport({ prisma, artifacts }, started.id);
+    } finally {
+      getStream.mockRestore();
+    }
+    const row = await prisma.accountExport.findUniqueOrThrow({ where: { id: started.id } });
+    expect(row.status).toBe("ready");
+    expect(row.missingFiles).toBe(1);
+    const manifest = (await unzipExport(started.id)).json("manifest.json") as any;
+    expect(manifest.files.missing).toContain(item.id);
+  });
+
+  it("retries a failing file read, then counts a file that stays unreadable as missing", async () => {
+    const item = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { userId: userA, spaceId: shared, storageKey: { not: null } },
+    });
+    const originalGetStream = artifacts.getStream.bind(artifacts);
+    const exportWith = async (failuresBeforeSuccess: number) => {
+      const started = await requestAccountExport(
+        { prisma, jobs },
+        { userId: userA, spaceId: shared },
+      );
+      let failures = 0;
+      const getStream = vi
+        .spyOn(artifacts, "getStream")
+        .mockImplementation(async (key, context) => {
+          if (key === item.storageKey && failures < failuresBeforeSuccess) {
+            failures += 1;
+            throw new Error("storage timeout");
+          }
+          return originalGetStream(key, context);
+        });
+      try {
+        await runAccountExport({ prisma, artifacts }, started.id);
+      } finally {
+        getStream.mockRestore();
+      }
+      const row = await prisma.accountExport.findUniqueOrThrow({ where: { id: started.id } });
+      const manifest = (await unzipExport(started.id)).json("manifest.json") as any;
+      return { row, manifest, attempts: failures };
+    };
+
+    // One failure, then the read works: the file is included.
+    const recovered = await exportWith(1);
+    expect(recovered.row.status).toBe("ready");
+    expect(recovered.row.missingFiles).toBe(0);
+    expect(recovered.manifest.files.missing).not.toContain(item.id);
+
+    // Every read fails: three attempts, then the file is counted as missing and the export finishes.
+    const unreadable = await exportWith(Number.POSITIVE_INFINITY);
+    expect(unreadable.attempts).toBe(3);
+    expect(unreadable.row.status).toBe("ready");
+    expect(unreadable.row.missingFiles).toBe(1);
+    expect(unreadable.manifest.files.missing).toContain(item.id);
   });
 
   it("deletes expired exports with their zips and keeps the rest", async () => {

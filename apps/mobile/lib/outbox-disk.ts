@@ -15,6 +15,12 @@ function attachmentFile(nonce: string, index: number) {
 function file() {
   return new File(root(), "sends-v4.json");
 }
+function stagedFile() {
+  return new File(root(), "sends-v4.json.tmp");
+}
+function discardMarker(nonce: string) {
+  return new File(root(), `${encodeURIComponent(nonce)}.discarded`);
+}
 export const OUTBOX_MAX_BYTES = 50 * 1024 * 1024;
 function diskBytes(directory: Directory): number {
   return directory.exists
@@ -70,11 +76,18 @@ export const outboxDisk: UnsentDisk = {
     try {
       root().create({ intermediates: true, idempotent: true });
       const target = file();
+      const staged = stagedFile();
       const text = JSON.stringify(attempts.slice(0, OUTBOX_MAX_ENTRIES).map(storedEntry));
       const bytes = new TextEncoder().encode(text).length;
-      if (diskBytes(root()) - (target.exists ? target.size : 0) + bytes > OUTBOX_MAX_BYTES) return;
-      target.create({ overwrite: true });
-      target.write(text);
+      const replaced = (target.exists ? target.size : 0) + (staged.exists ? staged.size : 0);
+      if (diskBytes(root()) - replaced + bytes > OUTBOX_MAX_BYTES) return;
+      // Stage then swap so a kill mid-write keeps the last committed queue.
+      staged.create({ overwrite: true });
+      staged.write(text);
+      staged.moveSync(target, { overwrite: true });
+      for (const entry of root().list()) {
+        if (entry instanceof File && entry.uri.endsWith(".discarded")) entry.delete();
+      }
     } catch {
       /* Optional persistence; the in-memory outbox remains usable. */
     }
@@ -82,7 +95,12 @@ export const outboxDisk: UnsentDisk = {
   load(session, scope) {
     try {
       const target = file();
-      if (!target.exists || diskBytes(root()) > OUTBOX_MAX_BYTES) {
+      const staged = stagedFile();
+      // A staged file with no committed file is a save interrupted mid-swap; it is complete.
+      if (!target.exists && staged.exists) staged.moveSync(target);
+      // When both exist, the staged copy is a replacement, not additional queued data.
+      const stagedBytes = target.exists && staged.exists ? staged.size : 0;
+      if (!target.exists || diskBytes(root()) - stagedBytes > OUTBOX_MAX_BYTES) {
         outboxDisk.clear();
         return [];
       }
@@ -96,6 +114,7 @@ export const outboxDisk: UnsentDisk = {
           !(entry.spaceId === null || typeof entry.spaceId === "string") ||
           typeof entry.clientNonce !== "string" ||
           !/^[A-Za-z0-9_-]{1,200}$/.test(entry.clientNonce) ||
+          discardMarker(entry.clientNonce).exists ||
           !["queued", "failed", "refused"].includes(entry.state) ||
           typeof entry.payload?.originThreadKey !== "string" ||
           typeof entry.payload.displayText !== "string" ||
@@ -130,7 +149,14 @@ export const outboxDisk: UnsentDisk = {
           },
         ];
       });
-      const keep = new Set([target.uri, ...loaded.map((a) => folder(a.clientNonce).uri)]);
+      const keep = new Set([
+        target.uri,
+        ...loaded.map((a) => folder(a.clientNonce).uri),
+        ...root()
+          .list()
+          .filter((entry) => entry instanceof File && entry.uri.endsWith(".discarded"))
+          .map((entry) => entry.uri),
+      ]);
       for (const entry of root().list()) if (!keep.has(entry.uri)) entry.delete();
       return loaded;
     } catch {
@@ -151,6 +177,16 @@ export const outboxDisk: UnsentDisk = {
       const directory = folder(attempt.clientNonce);
       if (directory.exists) directory.delete();
     } catch {}
+  },
+  markDiscarded(attempt) {
+    try {
+      root().create({ intermediates: true, idempotent: true });
+      const marker = discardMarker(attempt.clientNonce);
+      if (!marker.exists) marker.create({ intermediates: true });
+      return true;
+    } catch {
+      return false;
+    }
   },
   clear() {
     try {

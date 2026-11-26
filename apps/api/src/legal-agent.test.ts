@@ -15,3 +15,8 @@ test("the Legal agent offers the Inbox hand-off as a choice, not a phrase to typ
   expect(LEGAL_AGENT_INSTRUCTIONS).toContain('call ask_user with the question "Send this draft');
   expect(LEGAL_AGENT_INSTRUCTIONS).toContain("never ask the user to type a phrase");
 });
+
+test("the Legal agent answers first and keeps doubt to one closing line", () => {
+  expect(LEGAL_AGENT_INSTRUCTIONS).toContain("Lead your first sentence with the answer");
+  expect(LEGAL_AGENT_INSTRUCTIONS).toContain("never in the opening");
+});

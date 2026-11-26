@@ -23,6 +23,9 @@ export const VERBATIM_TOOL_RESULTS: ReadonlySet<string> = new Set(["skill_read"]
 // History reads are exact evidence and keep their own offset-aware shortening elsewhere. The Inbox
 // overview is already bounded and is what the agent answers from after it shows email cards; cut to
 // 1,024 characters it lost every sender and subject.
+/** Minimum whole-result window, unless the full model budget requires clipping. */
+const RECENT_TOOL_RESULTS_TO_KEEP = 3;
+
 const UNSHORTENED_TOOL_RESULTS = new Set([
   "read_history",
   "search_history",
@@ -352,25 +355,62 @@ export function createRuntimeContextPolicy(
         (message) =>
           message.role === "assistant" && message.content.some((part) => part.type === "toolCall"),
       );
-      messages = messages.map((message, index) => {
+      // Recent results stay whole: at least the last three, then older ones newest-first
+      // while they fit three quarters of the input budget, so fitting evidence is not
+      // discarded. Everything else completed is shortened.
+      const wholeResultAllowance = Math.max(0, (contextWindow - outputReserve - fixed) * 0.75);
+      const recentToolResults = new Set<number>();
+      let wholeResultTokens = 0;
+      const resultIndexes = messages.flatMap((message, index) =>
+        message.role === "toolResult" ? [index] : [],
+      );
+      for (const index of resultIndexes.reverse()) {
+        const tokens = estimateContextTokens(
+          providerContextPrefix("", [], [messages[index]!]).messages[0],
+          options.imageTokens,
+        );
         if (
-          message.role !== "toolResult" ||
-          index >= latestToolCall ||
-          (message.toolName !== undefined && UNSHORTENED_TOOL_RESULTS.has(message.toolName))
+          recentToolResults.size >= RECENT_TOOL_RESULTS_TO_KEEP &&
+          wholeResultTokens + tokens > wholeResultAllowance
         )
-          return message;
-        const source = text(message);
-        if (source.length <= 1024) return message;
-        const shortened = shortenToolResultText(source, 1024, { name: message.toolName });
-        if (shortened.length >= source.length) return message;
-        return {
-          ...message,
-          content: [
-            { type: "text" as const, text: shortened },
-            ...message.content.filter((part) => part.type === "image"),
-          ],
-        };
-      });
+          break;
+        recentToolResults.add(index);
+        wholeResultTokens += tokens;
+      }
+      const shortenOlderResults = (keepRecent: boolean) =>
+        messages.map((message, index) => {
+          if (
+            message.role !== "toolResult" ||
+            index >= latestToolCall ||
+            (keepRecent && recentToolResults.has(index)) ||
+            (message.toolName !== undefined && UNSHORTENED_TOOL_RESULTS.has(message.toolName))
+          )
+            return message;
+          const source = text(message);
+          if (source.length <= 1024) return message;
+          const shortened = shortenToolResultText(source, 1024, { name: message.toolName });
+          if (shortened.length >= source.length) return message;
+          return {
+            ...message,
+            content: [
+              { type: "text" as const, text: shortened },
+              ...message.content.filter((part) => part.type === "image"),
+            ],
+          };
+        });
+      const retained = shortenOlderResults(true);
+      // Fall back before selection can discard older progress to make room for whole results.
+      const retainedTokens = retained.reduce(
+        (total, message) =>
+          total +
+          estimateContextTokens(
+            providerContextPrefix("", [], [message]).messages[0],
+            options.imageTokens,
+          ),
+        fixed,
+      );
+      messages =
+        retainedTokens <= contextWindow - outputReserve ? retained : shortenOlderResults(false);
       const selected = selectContext(messages, {
         budget,
         strategy,

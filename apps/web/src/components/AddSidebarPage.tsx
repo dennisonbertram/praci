@@ -1,28 +1,41 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { SidebarPageTemplate } from "@rakazo/contracts";
 import {
+  BotAvatar,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
 import { sidebarPageCopy } from "../lib/sidebar-page-copy";
 
-/** The "+ Add page" row and its menu. Renders nothing when there is no page left to add. */
+export type AddableBotPages = {
+  bot: { id: string; name: string; color: string };
+  pages: readonly { id: string; title: string }[];
+};
+
+/** The "+ Add page" row and its menu: templates, then each bot's pages. Renders nothing when there is nothing to add. */
 export function AddSidebarPage({
   templates,
+  botPages = [],
   onAdd,
+  onAddPage,
   onOpenMenu,
   defaultOpen,
 }: {
   templates: readonly SidebarPageTemplate[];
+  botPages?: readonly AddableBotPages[];
   onAdd: (templateKey: string) => void;
+  onAddPage?: (pageId: string) => void;
   onOpenMenu?: () => void;
   defaultOpen?: boolean;
 }) {
   const { t } = useLingui();
-  if (templates.length === 0) return null;
+  if (templates.length === 0 && botPages.length === 0) return null;
   return (
     <DropdownMenu defaultOpen={defaultOpen} onOpenChange={(open) => open && onOpenMenu?.()}>
       <DropdownMenuTrigger
@@ -49,6 +62,24 @@ export function AddSidebarPage({
             </DropdownMenuItem>
           );
         })}
+        {botPages.map(({ bot, pages }, index) => (
+          <DropdownMenuGroup key={bot.id}>
+            {index > 0 || templates.length > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel className="flex items-center gap-2">
+              <BotAvatar color={bot.color} identity={bot.id} size={16} />
+              <span className="truncate" dir="auto">
+                {bot.name}
+              </span>
+            </DropdownMenuLabel>
+            {pages.map((page) => (
+              <DropdownMenuItem key={page.id} onClick={() => onAddPage?.(page.id)}>
+                <span className="truncate" dir="auto">
+                  {page.title}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

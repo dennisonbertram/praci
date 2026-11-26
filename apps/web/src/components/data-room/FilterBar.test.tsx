@@ -60,7 +60,10 @@ it("offers a named Clear search button only while there is a query, and it empti
   expect(onQuery).toHaveBeenCalledWith("");
 });
 
-const renderSorted = (sort: { field: "createdAt"; direction: "desc" } | null) =>
+const renderSorted = (
+  sort: { field: "createdAt"; direction: "desc" } | null,
+  previewBeside = false,
+) =>
   act(() =>
     root.render(
       <FilterBar
@@ -85,6 +88,7 @@ const renderSorted = (sort: { field: "createdAt"; direction: "desc" } | null) =>
         folderId="f2"
         onFolder={() => undefined}
         onNewFolder={onNewFolder}
+        previewBeside={previewBeside}
       />,
     ),
   );
@@ -230,4 +234,15 @@ it("keeps the view switch outside the Filters panel and the chips at the left ed
   // No search box and no spacer in Stats: the first thing in the row is the Filters button, at the left edge.
   expect(container.querySelector('input[name="data-room-search"]')).toBeNull();
   expect(first()).not.toContain("@min-[800px]/bd:w-80");
+});
+
+it("keeps the folder picker until 1100px when a preview sits beside the list, and until 800px otherwise", () => {
+  const wrapper = () =>
+    container.querySelector('[data-testid="data-room-folder-picker"]')?.closest("div")?.className ??
+    "";
+  renderSorted(null);
+  expect(wrapper()).toContain("@min-[800px]/bd:hidden");
+  renderSorted(null, true);
+  expect(wrapper()).toContain("@min-[1100px]/bd:hidden");
+  expect(wrapper()).not.toContain("@min-[800px]/bd:hidden");
 });

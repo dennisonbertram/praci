@@ -4,7 +4,6 @@ import { persistPreparedSecret } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma, withTransactionRetry } from "@rakazo/db";
-import { requireSpaceOwner } from "./space-owner.js";
 
 type AgentSecretDeps = {
   prisma: PrismaClient;
@@ -21,7 +20,6 @@ function agentSecretDto(row: { id: string; name: string; createdAt: Date; update
 }
 
 export async function listAgentSecrets(deps: AgentSecretDeps, actor: Actor) {
-  await requireSpaceOwner(deps.prisma, actor);
   const rows = await deps.prisma.agentSecret.findMany({
     where: { spaceId: actor.spaceId },
     orderBy: [{ name: "asc" }],
@@ -36,7 +34,6 @@ export async function putAgentSecret(
   input: { name: string; value: string },
   signal = new AbortController().signal,
 ) {
-  await requireSpaceOwner(deps.prisma, actor);
   const row = await withTransactionRetry(async () => {
     const stored = await deps.secrets.put(input.value, {
       operationId: `agent-secret:${input.name}`,
@@ -93,7 +90,6 @@ export async function deleteAgentSecret(
   actor: Actor,
   id: string,
 ): Promise<{ ok: true }> {
-  await requireSpaceOwner(deps.prisma, actor);
   await withTransactionRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {

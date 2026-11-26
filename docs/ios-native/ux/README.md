@@ -6,10 +6,10 @@ This folder holds UX planning for the native iPhone app (epic #427, phases #412 
 
 - [discovery.md](discovery.md): what the app must cover, from the plan and the Expo app.
 - [catalog.md](catalog.md): the journey stories, coverage matrix, redundancy candidates and design gaps by phase.
-- [flow/journeys/](flow/journeys/) and [flow/redundancy.md](flow/redundancy.md): the latest `/ux-flow` critiques.
+- [flow/report.md](flow/report.md), [flow/journeys/](flow/journeys/) and [flow/redundancy.md](flow/redundancy.md): the latest `/ux-flow` critique of the built app (2026-11-04).
 - [walker/](walker/): the latest `/ux-walker` findings per topic, with each earlier finding marked resolved or open.
 - [visual/problems.md](visual/problems.md), [visual/pages/](visual/pages/), [visual/decisions/](visual/decisions/): the latest `/ux-visual` problem register, page critiques and judged design decisions.
-- [flow/report.md](flow/report.md) and [walker/latest-report.md](walker/latest-report.md): the first run's reports, kept as the baseline.
+- [flow/archive/2026-10-20-plan-era/](flow/archive/2026-10-20-plan-era/) and [walker/latest-report.md](walker/latest-report.md): the first run's reports, kept as the baseline.
 
 ## Rounds
 

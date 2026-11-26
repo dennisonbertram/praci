@@ -1,6 +1,7 @@
 import type { JobPublisher } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { isTicketCompletedStatus, TicketStatusSchema } from "@rakazo/contracts";
+import { newRunUnattended } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
@@ -23,13 +24,29 @@ export async function wakeTicketAssignee(
       select: { id: true, userId: true, thread: { select: { id: true } } },
     });
     if (!bot?.thread) return null;
+    const prompt = `Work on ticket ${ticket.board.ticketPrefix}-${ticket.number}. Read it with ticket_get. Keep progress in ticket comments and update its status with ticket_update. Use ask or approval cards when user input is needed.`;
+    // ponytail: a comment made while a run for this ticket is live (even waiting on a card) queues
+    // no new run, and that run may have read the ticket before the comment. A missed wake costs one
+    // more comment; a duplicate unattended run costs model spend. Upgrade: a pending flag consumed
+    // when the run ends, like steering.
+    const live = await tx.run.findFirst({
+      where: {
+        spaceId: input.spaceId,
+        botId: bot.id,
+        trigger: "tickets",
+        status: { in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"] },
+        task: { prompt },
+      },
+      select: { id: true },
+    });
+    if (live) return null;
     const task = await tx.task.create({
       data: {
         spaceId: input.spaceId,
         botId: bot.id,
         threadId: bot.thread.id,
         userId: bot.userId,
-        prompt: `Work on ticket ${ticket.board.ticketPrefix}-${ticket.number}. Read it with ticket_get. Keep progress in ticket comments and update its status with ticket_update. Use ask or approval cards when user input is needed.`,
+        prompt,
         status: "queued",
       },
     });
@@ -41,6 +58,7 @@ export async function wakeTicketAssignee(
         userId: bot.userId,
         taskId: task.id,
         trigger: "tickets",
+        unattended: newRunUnattended({ trigger: "tickets" }),
         status: "queued",
       },
     });

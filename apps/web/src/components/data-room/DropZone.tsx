@@ -1,12 +1,13 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiImport } from "@rakazo/contracts";
-import { Button } from "@rakazo/ui-web";
+import { Button, OPEN_DIALOG_SELECTOR } from "@rakazo/ui-web";
 import { Upload, X } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { DATA_ROOM_PATH, dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
 import { Shimmer } from "../ai/primitives";
+import { failedText } from "./format";
 import type { UploadFailure } from "./upload-toasts";
 import {
   dismissUploadToast,
@@ -80,7 +81,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
       if (event.defaultPrevented) return;
       setDragging(true);
       // Close any open menu or popover (not a dialog); they would stay open under the overlay.
-      if (depth === 1 && !document.querySelector('[role="dialog"], [role="alertdialog"]'))
+      if (depth === 1 && !document.querySelector(OPEN_DIALOG_SELECTOR))
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     };
     const over = (event: DragEvent) => {
@@ -163,8 +164,18 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   </span>
                 )}
                 {state.kind === "uploading" ? (
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {Math.round(state.fraction * 100)}%
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {Math.round(state.fraction * 100)}%
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={t`Cancel`}
+                      onClick={state.cancel}
+                    >
+                      <X aria-hidden="true" />
+                    </Button>
                   </span>
                 ) : (
                   <Button
@@ -230,16 +241,21 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                 </>
               ) : state.kind === "imported" ? (
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-                  {state.count > 0 ? (
-                    <span className="text-success">
-                      {plural(state.count, { one: "Added # file", other: "Added # files" })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">{duplicateText({})}</span>
-                  )}
+                  <span className="flex min-w-0 flex-wrap gap-x-2">
+                    {state.count > 0 ? (
+                      <span className="text-success">
+                        {plural(state.count, { one: "Added # file", other: "Added # files" })}
+                      </span>
+                    ) : state.failed ? null : (
+                      <span className="text-muted-foreground">{duplicateText({})}</span>
+                    )}
+                    {state.failed ? (
+                      <span className="text-destructive">{failedText(state.failed)}</span>
+                    ) : null}
+                  </span>
                   <Link
                     to={DATA_ROOM_PATH}
-                    className="font-medium underline-offset-2 hover:underline"
+                    className="shrink-0 font-medium underline-offset-2 hover:underline"
                     onClick={() => dismissUploadToast(id)}
                   >
                     <Trans>View</Trans>
@@ -274,10 +290,25 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                 </Button>
               ) : (
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-                  <span className="text-destructive">{failureText(state.reason)}</span>
+                  <span className="min-w-0 text-destructive">{failureText(state.reason)}</span>
                   {state.toTop ? (
-                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.toTop}>
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto shrink-0 p-0"
+                      onClick={state.toTop}
+                    >
                       <Trans>Upload to All items</Trans>
+                    </Button>
+                  ) : null}
+                  {state.retry ? (
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto shrink-0 p-0"
+                      onClick={state.retry}
+                    >
+                      <Trans>Retry</Trans>
                     </Button>
                   ) : null}
                 </div>

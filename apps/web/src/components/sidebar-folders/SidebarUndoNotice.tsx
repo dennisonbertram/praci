@@ -3,25 +3,29 @@ import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const SHOWN_MS = 8000;
+export const SHOWN_MS = 8000;
 
 /** A one-line notice with Undo, in the same style as the mail outbox notice; it goes away by itself. */
 export function SidebarUndoNotice({
   message,
   onUndo,
   onDismiss,
+  hold = false,
 }: {
   message: string;
   onUndo: () => void;
   onDismiss: () => void;
+  /** Keeps the notice up while an Undo is in flight, so its outcome cannot be missed. */
+  hold?: boolean;
 }) {
   // The parent passes a new onDismiss every render; the timer must not restart with it.
   const dismiss = useRef(onDismiss);
   dismiss.current = onDismiss;
   useEffect(() => {
+    if (hold) return;
     const timer = window.setTimeout(() => dismiss.current(), SHOWN_MS);
     return () => window.clearTimeout(timer);
-  }, [message]);
+  }, [message, hold]);
   return createPortal(
     <div
       role="status"

@@ -2,7 +2,9 @@ import { ATTACHMENT_MAX_BASE64_LENGTH } from "@rakazo/contracts";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import {
+  limitRpcBody,
   MAX_AUTH_REQUEST_BYTES,
+  MAX_MCP_REQUEST_BYTES,
   MAX_RPC_REQUEST_BYTES,
   mountApiRequestBodyLimits,
   requestBodyLimit,
@@ -21,12 +23,43 @@ describe("API request body limits", () => {
     expect(MAX_AUTH_REQUEST_BYTES).toBeLessThan(MAX_RPC_REQUEST_BYTES);
   });
 
-  it("mounts the limits on Auth and RPC without intercepting independently bounded routes", async () => {
+  it("discards a signed-out RPC body unread and bounds a signed-in one", async () => {
+    const cancel = vi.fn();
+    const pull = vi.fn();
+    const app = new Hono();
+    app.post("/rpc/*", async (c) => {
+      const signedIn = c.req.header("x-signed-in") === "1";
+      return (await limitRpcBody(c, signedIn)) ?? c.text(await c.req.raw.text());
+    });
+    const signedOut = await app.request(
+      new Request("http://localhost/rpc/me", {
+        method: "POST",
+        headers: { "content-length": "999999999" },
+        body: new ReadableStream({ pull, cancel }),
+        duplex: "half",
+      } as RequestInit & { duplex: "half" }),
+    );
+    expect(signedOut.status).toBe(200);
+    expect(await signedOut.text()).toBe("");
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(pull).not.toHaveBeenCalled();
+
+    const request = (length: number) =>
+      app.request("/rpc/me", {
+        method: "POST",
+        headers: { "x-signed-in": "1", "content-length": String(length) },
+        body: "{}",
+      });
+    expect((await request(2)).status).toBe(200);
+    expect((await request(MAX_RPC_REQUEST_BYTES + 1)).status).toBe(413);
+  });
+
+  it("mounts the limits on Auth and MCP without intercepting independently bounded routes", async () => {
     const parse = vi.fn(async (request: Request) => request.json());
     const app = new Hono();
     mountApiRequestBodyLimits(app);
     app.post("/api/auth/sign-in/email", async (c) => c.json(await parse(c.req.raw)));
-    app.post("/rpc/test", async (c) => c.json(await parse(c.req.raw)));
+    app.post("/mcp", async (c) => c.json(await parse(c.req.raw)));
     app.post("/api/voice/speak", async (c) => c.json(await parse(c.req.raw)));
 
     const request = (path: string, contentLength: number) =>
@@ -39,11 +72,11 @@ describe("API request body limits", () => {
         body: "{}",
       });
     const auth = await request("/api/auth/sign-in/email", MAX_AUTH_REQUEST_BYTES + 1);
-    const rpc = await request("/rpc/test", MAX_RPC_REQUEST_BYTES + 1);
+    const mcp = await request("/mcp", MAX_MCP_REQUEST_BYTES + 1);
     const voice = await request("/api/voice/speak", MAX_RPC_REQUEST_BYTES + 1);
 
     expect(auth.status).toBe(413);
-    expect(rpc.status).toBe(413);
+    expect(mcp.status).toBe(413);
     expect(voice.status).toBe(200);
     expect(parse).toHaveBeenCalledOnce();
   });

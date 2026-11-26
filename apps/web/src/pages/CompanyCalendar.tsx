@@ -3,12 +3,14 @@ import { Trans } from "@lingui/react/macro";
 import type { CompanyCalendarItem, CompanyFact } from "@rakazo/contracts";
 import { companyCalendarMonth, companyHistoryStreams } from "@rakazo/core";
 import { Button, Checkbox, Input, Skeleton } from "@rakazo/ui-web";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
+import { ErrorNotice } from "../components/ErrorNotice";
 import { useFinanceQuery } from "../components/finance/ui";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { todayIso } from "../lib/legal-format";
 import { rpc } from "../lib/rpc";
+import { useOnReturn } from "../lib/use-refetch-while-open";
 import { errorText } from "../lib/user-error";
 
 export function CompanyCalendar({
@@ -33,11 +35,7 @@ export function CompanyCalendar({
     () => rpc.company.calendar({ month, anniversaries }),
     [month, anniversaries, refreshRevision],
   );
-  useEffect(() => {
-    const reload = () => query.reload();
-    window.addEventListener("focus", reload);
-    return () => window.removeEventListener("focus", reload);
-  }, [query.reload]);
+  useOnReturn(true, query.reload);
   const bounds = companyCalendarMonth(month);
   const items = query.data?.filter((item) => streams.has(item.stream)) ?? [];
   const labels = {
@@ -87,7 +85,7 @@ export function CompanyCalendar({
       <Link
         key={item.id}
         to="/app/legal?view=deadlines"
-        className="block truncate py-1 text-start text-xs underline underline-offset-4 sm:text-sm"
+        className="block truncate py-1 text-start text-xs pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center underline underline-offset-4 sm:text-sm"
       >
         {content(item)}
       </Link>
@@ -95,7 +93,7 @@ export function CompanyCalendar({
       <button
         key={item.id}
         type="button"
-        className="block w-full truncate py-1 text-start text-xs underline underline-offset-4 sm:text-sm"
+        className="block w-full truncate py-1 text-start text-xs pointer-coarse:min-h-11 underline underline-offset-4 sm:text-sm"
         onClick={() => void open(item)}
       >
         {content(item)}
@@ -127,16 +125,17 @@ export function CompanyCalendar({
         >
           <Trans>Agenda</Trans>
         </Button>
-        <div className="flex items-center gap-2 text-sm">
+        <label
+          htmlFor={anniversariesId}
+          className="flex items-center gap-2 text-sm pointer-coarse:min-h-11"
+        >
           <Checkbox
             id={anniversariesId}
             checked={anniversaries}
             onCheckedChange={(checked) => setAnniversaries(checked === true)}
           />
-          <label htmlFor={anniversariesId}>
-            <Trans>Anniversaries</Trans>
-          </label>
-        </div>
+          <Trans>Anniversaries</Trans>
+        </label>
       </div>
       <fieldset className="flex flex-wrap gap-1 border-0 p-0">
         <legend className="sr-only">
@@ -161,12 +160,7 @@ export function CompanyCalendar({
         ))}
       </fieldset>
       {(query.error || error) && (
-        <p role="alert" className="text-destructive">
-          {query.error || error}
-          <Button variant="link" onClick={retry}>
-            <Trans>Retry</Trans>
-          </Button>
-        </p>
+        <ErrorNotice message={query.error || error} onRetry={retry} className="" />
       )}
       {!query.data && !query.error && <Skeleton className="h-64 w-full" />}
       {query.data &&

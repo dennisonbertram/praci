@@ -54,8 +54,29 @@ export function usdValueCents(
 }
 
 /**
+ * Unpriced holdings that copy the symbol of a priced holding on the same chain from a different
+ * contract (scam airdrops posing as a real token). They are unpriced like any other, but are never
+ * counted: nothing is wrong with the wallet's pricing because a stranger minted a "USDC".
+ */
+export function impersonators(holdings: readonly CryptoHolding[]): Set<CryptoHolding> {
+  const priced = new Map<string, Set<string>>();
+  for (const h of holdings) {
+    if (h.usdValueCents === null) continue;
+    const key = `${h.chainId}:${h.symbol.toLowerCase()}`;
+    priced.set(key, (priced.get(key) ?? new Set()).add(h.tokenAddress ?? ""));
+  }
+  return new Set(
+    holdings.filter((h) => {
+      if (h.usdValueCents !== null) return false;
+      const real = priced.get(`${h.chainId}:${h.symbol.toLowerCase()}`);
+      return real !== undefined && !real.has(h.tokenAddress ?? "");
+    }),
+  );
+}
+
+/**
  * Priced holdings are totaled; a non-zero holding without a price (often spam) only raises
- * `unpricedTokenCount`. Zero balances are ignored. Cents are exact up to about 90 trillion dollars.
+ * `unpricedTokenCount`. Zero balances and impersonators (see `impersonators`) are ignored. Cents are exact up to about 90 trillion dollars.
  */
 export function summarizeCrypto(holdings: readonly CryptoHolding[]): CryptoSummary {
   const chains = new Map<number, number>();
@@ -64,10 +85,11 @@ export function summarizeCrypto(holdings: readonly CryptoHolding[]): CryptoSumma
   let stable = 0;
   let unpriced = 0;
   let oldest: string | null = null;
+  const fakes = impersonators(holdings);
   for (const h of holdings) {
     if (oldest === null || h.syncedAt < oldest) oldest = h.syncedAt;
     if (h.usdValueCents === null) {
-      if (BigInt(h.rawBalance) > 0n) unpriced++;
+      if (BigInt(h.rawBalance) > 0n && !fakes.has(h)) unpriced++;
       continue;
     }
     total += h.usdValueCents;

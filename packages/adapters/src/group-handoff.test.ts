@@ -16,6 +16,7 @@ function harness(
   sourceBlocks: unknown,
   existing?: { sourceRuns: { id: string; botId: string }[] },
   externalIds: string[] = [],
+  names: Record<string, string> = {},
 ) {
   const runCreate = vi.fn(async () => ({ id: "run-b" }));
   const messageCreate = vi.fn(async () => ({ id: "message-1" }));
@@ -27,7 +28,7 @@ function harness(
         members: ["bot-a", "bot-b", "bot-c"].map((id) => ({
           bot: {
             id,
-            name: id.toUpperCase(),
+            name: names[id] ?? id.toUpperCase(),
             audience: externalIds.includes(id) ? "external" : "internal",
           },
         })),
@@ -68,6 +69,7 @@ function harness(
     },
     messageCreate,
     runCreate,
+    taskCreate: tx.task.create,
   };
 }
 
@@ -160,6 +162,66 @@ describe("group handoff ownership", () => {
       }),
     ).resolves.toEqual({ error: "cannot verify the group handoff chain" });
     expect(runCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("group handoff input", () => {
+  it("refuses a blank message before anything is written", async () => {
+    const h = harness([{ kind: "text", text: "go" }]);
+    await expect(
+      handoffToGroupBot(h.deps as never, run, "group-1", { bot_id: "bot-b", message: "   " }),
+    ).resolves.toEqual({ error: "message is required" });
+    expect(h.deps.prisma.$transaction).not.toHaveBeenCalled();
+    expect(h.messageCreate).not.toHaveBeenCalled();
+    expect(h.runCreate).not.toHaveBeenCalled();
+  });
+
+  it("stores the trimmed message", async () => {
+    const h = harness([{ kind: "text", text: "go" }]);
+    await handoffToGroupBot(h.deps as never, run, "group-1", {
+      bot_id: "bot-b",
+      message: "  Next stage \n",
+    });
+    expect(h.messageCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          blocks: [expect.objectContaining({ text: "Next stage" })],
+        }),
+      }),
+    );
+    expect(h.taskCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ prompt: "Next stage" }),
+    });
+  });
+
+  it("does not guess between members whose names differ only by case", async () => {
+    const names = { "bot-b": "Writer", "bot-c": "writer" };
+    const h = harness([{ kind: "text", text: "go" }], undefined, [], names);
+    await expect(
+      handoffToGroupBot(h.deps as never, run, "group-1", {
+        confirm_name: "WRITER",
+        message: "Draft it",
+      }),
+    ).resolves.toEqual({ error: "several bots have that name; use bot_id" });
+    expect(h.runCreate).not.toHaveBeenCalled();
+
+    const exact = harness([{ kind: "text", text: "go" }], undefined, [], names);
+    await expect(
+      handoffToGroupBot(exact.deps as never, run, "group-1", {
+        confirm_name: "Writer",
+        message: "Draft it",
+      }),
+    ).resolves.toMatchObject({ ok: true, botId: "bot-b" });
+  });
+
+  it("names the real problem when the name matches no member", async () => {
+    const h = harness([{ kind: "text", text: "go" }]);
+    await expect(
+      handoffToGroupBot(h.deps as never, run, "group-1", {
+        confirm_name: "Nobody",
+        message: "Draft it",
+      }),
+    ).resolves.toEqual({ error: "handoff target is not a group member" });
   });
 });
 

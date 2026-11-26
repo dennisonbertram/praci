@@ -12,6 +12,7 @@ import {
   classify,
   detectRecurring,
   earliestDay,
+  excludedNonUsd,
   excludedNonUsdCount,
   monthlyBurn,
   monthlySeries,
@@ -468,6 +469,20 @@ describe("accountBalanceHistory", () => {
     expect(history.map((p) => p.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
     expect(history[0]?.balanceCents).toBe(10_500 + 45_000 - 120_000);
   });
+  it("ends a Treasury history at the available balance, below the previous month, when a withdrawal is pending today", () => {
+    // Available 1,150,000 after a pending 100,000 withdrawal; the posted rows (a dividend) are older.
+    const acct = account({ kind: "treasury", balanceCents: 115_000_000 });
+    const history = accountBalanceHistory(
+      acct,
+      [
+        txn("2026-10-27", -1_000_000, { status: "pending", ...as("internal_transfer") }),
+        txn("2026-10-01", 5_678, as("internal_transfer")),
+      ],
+      NOW,
+    );
+    expect(history.at(-1)?.balanceCents).toBe(115_000_000);
+    expect(history.at(-2)?.balanceCents).toBe(115_000_000 + 100_000_000 - 567_800);
+  });
   it("keeps all 12 months for an account with no transactions", () => {
     expect(accountBalanceHistory(account({ balanceCents: 1 }), [], NOW)).toHaveLength(12);
   });
@@ -536,6 +551,17 @@ describe("non-USD transactions", () => {
     ];
     expect(spendTotals(txns, "month", NOW).currentCents).toBe(1000);
     expect(excludedNonUsdCount(txns)).toBe(1);
+  });
+
+  it("lists the live ones newest first, and never a USD or dead row", () => {
+    const txns = [
+      txn("2026-10-05", -10, { currency: "EUR" }),
+      txn("2026-10-09", -30, { currency: "EUR" }),
+      txn("2026-10-08", -20),
+      txn("2026-10-10", -40, { currency: "GBP", status: "other" }),
+    ];
+    expect(excludedNonUsd(txns).map((t) => t.amountCents)).toEqual([-3000, -1000]);
+    expect(excludedNonUsd(txns)).toHaveLength(excludedNonUsdCount(txns));
   });
 });
 

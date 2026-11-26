@@ -1,0 +1,84 @@
+{
+  "json": {
+    "sources": [
+      {
+        "provider": "mercury",
+        "serverId": "cmvszf15u00008s9kqb28viml",
+        "status": "ok",
+        "lastSyncedAt": "2026-10-29T03:26:43.462Z"
+      },
+      {
+        "provider": "brex",
+        "serverId": "cmvszf17b00018s9kzd6md8de",
+        "status": "ok",
+        "lastSyncedAt": "2026-10-29T03:26:43.474Z"
+      }
+    ],
+    "agent": {
+      "botId": "cmvszf1br000lcr9krv90dx6u",
+      "name": "Finance agent"
+    },
+    "cash": {
+      "cashCents": 153322065,
+      "bankCashCents": 153322065,
+      "stablecoinCents": 0,
+      "otherCryptoCents": 0,
+      "checkingCents": 42322065,
+      "savingsCents": 6000000,
+      "treasuryCents": 105000000,
+      "cardOwedCents": null,
+      "cashAccountCount": 5
+    },
+    "hasCashAccounts": true,
+    "burn": {
+      "monthlyCents": 6762116,
+      "months": [
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ]
+    },
+    "runway": {
+      "months": 22.7,
+      "runOutDate": "2028-09-18"
+    },
+    "bankRunway": {
+      "months": 22.7,
+      "runOutDate": "2028-09-18"
+    },
+    "upcoming": {
+      "items": [
+        {
+          "key": "landlord-placeholder-llc-mock",
+          "kind": "recurring",
+          "name": "Landlord Placeholder LLC (Mock)",
+          "dates": [
+            "2026-11-01"
+          ],
+          "amountCents": 750000
+        },
+        {
+          "key": "penwright-office-supply-mock",
+          "kind": "recurring",
+          "name": "Penwright Office Supply (Mock)",
+          "dates": [
+            "2026-11-02"
+          ],
+          "amountCents": 31400
+        },
+        {
+          "key": "brightsign-ads-mock",
+          "kind": "recurring",
+          "name": "Brightsign Ads (Mock)",
+          "dates": [
+            "2026-11-03"
+          ],
+          "amountCents": 180000
+        }
+      ],
+      "totalCents": 1948783
+    },
+    "excludedNonUsdCount": 1,
+    "lastSyncedAt": "2026-10-29T03:26:43.462Z"
+  }
+}

@@ -18,10 +18,15 @@ import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
 import {
   DEMO_BOUNCE_DOMAIN,
+  DEMO_BREX_ROTATED_TOKEN,
+  DEMO_BREX_TOKEN,
   DEMO_GRANOLA_KEY,
   DEMO_NEW_MAIL_DELAY_MS,
+  DEMO_OMI_CLOUD_KEY,
   DEMO_RATE_LIMIT_SPACE,
   DEMO_RECONNECT_SPACE,
+  demoBrexCards,
+  demoCalendar,
   demoCarta,
   demoCrypto,
   demoFinance,
@@ -34,6 +39,7 @@ import type { ContainerInfo } from "./demo/safety.js";
 import {
   assertDemoContainer,
   assertStateSlot,
+  CHECKOUT_LABEL,
   childEnv,
   DEMO_LABEL,
   demoModelEnv,
@@ -65,7 +71,13 @@ const OUTBOX = path.join(DIR, "outbox.log");
 const STATE = path.join(DIR, "state.json");
 const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
-const DATABASE_URL = `postgres://rakazo_demo:rakazo_demo@127.0.0.1:${PG_PORT}/rakazo_demo`;
+/** The owner login: migrations and seeding. The API runs as the runtime login, so the demo enforces row-level security. */
+const MIGRATION_URL = `postgres://rakazo_demo:rakazo_demo@127.0.0.1:${PG_PORT}/rakazo_demo`;
+const DATABASE_URL = `postgres://rakazo_app:rakazo_demo_app@127.0.0.1:${PG_PORT}/rakazo_demo`;
+/** DEMO_SANDBOX_PROVIDER=docker also starts the sandbox supervisor, on its own port per slot. */
+const USE_DOCKER_SANDBOX = process.env.DEMO_SANDBOX_PROVIDER === "docker";
+const SUPERVISOR_PORT = 7100 + SLOT;
+const SUPERVISOR_URL = `http://127.0.0.1:${SUPERVISOR_PORT}`;
 const MODEL_KEYS = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
 
 interface State {
@@ -111,7 +123,7 @@ function docker(...args: string[]) {
 /** Model-provider keys come from this process's environment or the dev checkout's .env; never written anywhere. */
 function modelEnv(): NodeJS.ProcessEnv {
   // DEMO_NO_MODEL=1 runs the stack as a space with no model set up (the "no model" states).
-  if (process.env.DEMO_NO_MODEL) return { AGENT_RUNTIME: "scripted" };
+  if (process.env.DEMO_NO_MODEL === "1") return demoModelEnv({}, true);
   const found: Record<string, string> = {};
   const devEnv = path.join(homedir(), "develop/rakazo/.env");
   const lines = existsSync(devEnv) ? readFileSync(devEnv, "utf8").split("\n") : [];
@@ -120,7 +132,7 @@ function modelEnv(): NodeJS.ProcessEnv {
     const value = process.env[key] || fromFile?.trim().replace(/^["']|["']$/g, "");
     if (value) found[key] = value;
   }
-  return demoModelEnv(found, process.env.DEMO_NO_MODEL === "1");
+  return demoModelEnv(found, false);
 }
 
 /** The environment the demo API and its seeding run with. Throwaway values for a local stack. */
@@ -129,15 +141,21 @@ function stackEnv(): NodeJS.ProcessEnv {
     NODE_ENV: "development",
     DEMO_SLOT: String(SLOT),
     DATABASE_URL,
+    DATABASE_MIGRATION_URL: MIGRATION_URL,
     REALTIME_DATABASE_URL: DATABASE_URL,
     WAKEUP_DRIVER: "memory",
-    SANDBOX_PROVIDER: "fake",
+    // DEMO_SANDBOX_PROVIDER=docker gives bots a real computer in the demo.
+    SANDBOX_PROVIDER: process.env.DEMO_SANDBOX_PROVIDER || "fake",
+    // DEMO_APP_CONTROL_PROVIDER=fake|agent-desktop turns on apps on this computer (off by default).
+    APP_CONTROL_PROVIDER: process.env.DEMO_APP_CONTROL_PROVIDER || "",
     TICKET_BOARD_ENABLED: "true",
     CLOUD_AGENT_PROVIDER: "emulator",
     COMPOSIO_API_KEY: "",
+    DEMO_REAL_MCP_HOSTS: process.env.DEMO_REAL_MCP_HOSTS ?? "",
     BETTER_AUTH_SECRET: "demo-secret-demo-secret-32chars!!",
     ENCRYPTION_KEY: "demo-encryption-key-demo-encryption-key",
     SANDBOX_SUPERVISOR_TOKEN: "demo-supervisor-token-demo-32chars",
+    SANDBOX_SUPERVISOR_URL: SUPERVISOR_URL,
     SCREEN_PROXY_SECRET: "demo-screen-proxy-secret-demo-32chars",
     BETTER_AUTH_URL: WEB_ORIGIN,
     WEB_ORIGIN,
@@ -151,6 +169,21 @@ function stackEnv(): NodeJS.ProcessEnv {
     VITE_DEFAULT_UI_LOCALE: "en",
     ...modelEnv(),
   });
+}
+
+/** The Docker endpoint of the active docker context (OrbStack, Docker Desktop, Colima). */
+function dockerHost(): string {
+  return docker("context", "inspect", "--format", "{{.Endpoints.docker.Host}}").trim();
+}
+
+/** The supervisor runs on the host, so a computer's control port is published on loopback. */
+function supervisorEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return {
+    ...env,
+    SUPERVISOR_PORT: String(SUPERVISOR_PORT),
+    DOCKER_HOST: dockerHost(),
+    SANDBOX_CONTROL_VIA_LOOPBACK: "true",
+  };
 }
 
 function start(name: string, script: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) {
@@ -176,16 +209,21 @@ function ours(pid: number): boolean {
   }
 }
 
-/** Removes the demo's container; refuses one that lacks the demo label or is not the recorded one. */
-function removeContainer(recordedId?: string) {
-  let info: ContainerInfo | null = null;
+function inspectContainer(): ContainerInfo | null {
   try {
     const [id, labels] = JSON.parse(
       docker("inspect", "-f", "[{{json .Id}},{{json .Config.Labels}}]", CONTAINER),
     );
-    info = { id, labels };
-  } catch {}
-  assertDemoContainer(info, recordedId, SLOT);
+    return { id, labels };
+  } catch {
+    return null;
+  }
+}
+
+/** Removes the demo's container; refuses one this checkout cannot prove it created. */
+function removeContainer(recordedId?: string) {
+  const info = inspectContainer();
+  assertDemoContainer(info, recordedId, SLOT, ROOT);
   if (info) docker("rm", "-f", "-v", info.id);
 }
 
@@ -219,11 +257,12 @@ function printInfo(email: string) {
   console.log(`
 Mock demo stack is running (slot ${SLOT}). Every record in it is invented and labeled MOCK.
   Web:          ${WEB_ORIGIN}
+                http://localhost:${WEB_PORT} (same app; use this one for passkeys, which browsers refuse on an IP address)
   API:          ${API_URL}
   Postgres:     127.0.0.1:${PG_PORT} (${CONTAINER})
   Sign in as:   ${email}
   Login file:   ${CREDENTIALS}
-  Logs:         ${DIR}/api.log, ${DIR}/web.log
+  Logs:         ${DIR}/api.log, ${DIR}/web.log${USE_DOCKER_SANDBOX ? `, ${DIR}/supervisor.log` : ""}
   Mail outbox:  ${OUTBOX}
 Mail states to try:
   New mail:     one email from Priya arrives ${DEMO_NEW_MAIL_DELAY_MS / 60_000} minutes after start
@@ -233,12 +272,23 @@ Mail states to try:
   Between accounts: mail from Sales mail to Founder mail arrives in Founder mail
 Granola:
   API key:      ${DEMO_GRANOLA_KEY} (fake demo key; paste it on the Granola page)
+Omi cloud:
+  API key:      ${DEMO_OMI_CLOUD_KEY} (fake demo key; the Omi cloud emulator accepts only this one)
+Brex cards:
+  API token:    ${DEMO_BREX_TOKEN} (fake demo token; the demo's Brex emulator accepts only this one)
+${USE_DOCKER_SANDBOX ? `Computers:     real Docker computers via the sandbox supervisor on ${SUPERVISOR_URL}` : "Computers:     fake (DEMO_SANDBOX_PROVIDER=docker gives bots a real Docker computer; build the image first with pnpm sandbox:build)"}
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
 async function up() {
   if (existsSync(STATE)) {
+    const state: State = JSON.parse(readFileSync(STATE, "utf8"));
+    assertStateSlot(state, SLOT);
     if ((await healthy(`${API_URL}/health`)) && (await healthy(WEB_ORIGIN))) {
+      // A healthy stack on this slot's ports must also be this checkout's container before we claim it.
+      const container = inspectContainer();
+      if (!container) throw new Error("Cannot verify the running demo container.");
+      assertDemoContainer(container, state.containerId, SLOT, ROOT);
       printInfo(readFileSync(CREDENTIALS, "utf8").match(/^email=(.*)$/m)?.[1] ?? "");
       return;
     }
@@ -262,6 +312,8 @@ async function up() {
       `${DEMO_LABEL}=1`,
       "--label",
       `${SLOT_LABEL}=${SLOT}`,
+      "--label",
+      `${CHECKOUT_LABEL}=${ROOT}`,
       "-p",
       `127.0.0.1:${PG_PORT}:5432`,
       "-e",
@@ -296,9 +348,24 @@ async function up() {
     const run = (command: string, args: string[], cwd = ROOT) =>
       execFileSync(command, args, { cwd, env, stdio: "inherit" });
     run("pnpm", ["--filter", "@rakazo/db", "generate"]);
-    run("pnpm", ["--filter", "@rakazo/db", "exec", "prisma", "migrate", "deploy"]);
+    run("pnpm", ["db:migrate"]);
 
     const require = createRequire(import.meta.url);
+    if (USE_DOCKER_SANDBOX) {
+      // The computer image comes from `pnpm sandbox:build`; the supervisor reports it if missing.
+      const supervisorDir = path.join(ROOT, "infra/sandboxes/supervisor");
+      pids.push(
+        start(
+          "supervisor",
+          require.resolve("tsx/cli"),
+          [path.join(supervisorDir, "src/index.ts")],
+          supervisorDir,
+          supervisorEnv(env),
+        ),
+      );
+      writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
+      await waitFor("the sandbox supervisor", () => healthy(`${SUPERVISOR_URL}/health`));
+    }
     pids.push(
       start(
         "api",
@@ -321,7 +388,7 @@ async function up() {
     const done = await seedDemo({
       apiUrl: API_URL,
       webOrigin: WEB_ORIGIN,
-      databaseUrl: DATABASE_URL,
+      databaseUrl: MIGRATION_URL,
       encryptionKey: env.ENCRYPTION_KEY as string,
       email,
       password,
@@ -364,15 +431,29 @@ async function serve() {
     DEMO_NEW_MAIL_DELAY_MS,
   ).unref();
   // Granola's API runs as an emulator with three invented meetings, so Connect works offline.
-  const { GranolaApiEmulator, createMeetingSourceRegistry } = await import("@rakazo/adapters");
+  const { BrexApiEmulator, GranolaApiEmulator, OmiCloudApiEmulator, createMeetingSourceRegistry } =
+    await import("@rakazo/adapters");
   const granola = new GranolaApiEmulator({
     meetings: demoGranolaMeetings(),
     apiKey: DEMO_GRANOLA_KEY,
   });
   const granolaBaseUrl = await granola.start();
+  const omiCloud = new OmiCloudApiEmulator({ apiKey: DEMO_OMI_CLOUD_KEY });
+  const omiCloudBaseUrl = await omiCloud.start();
+  // The Brex cards server runs inside the API and talks to this emulator instead of api.brex.com.
+  const brex = new BrexApiEmulator(demoBrexCards());
+  const brexBaseUrl = await brex.start();
+  // `kill -USR1 <pid>` revokes the Brex token the demo accepts (and back), so the page's
+  // "Replace token" path can be tried by hand.
+  process.on("SIGUSR1", () => {
+    brex.token = brex.token === DEMO_BREX_TOKEN ? DEMO_BREX_ROTATED_TOKEN : DEMO_BREX_TOKEN;
+    console.log(`Brex emulator now accepts only ${brex.token}`);
+  });
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio,
-    meetingSources: createMeetingSourceRegistry({ granolaBaseUrl }),
+    meetingSources: createMeetingSourceRegistry({ granolaBaseUrl, omiCloudBaseUrl }),
+    brexApi: { baseUrl: brexBaseUrl },
+    calendar: demoCalendar(),
     financeCallToolFor: demoFinance().callToolFor,
     mcpServers: {
       [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN),
@@ -391,6 +472,8 @@ async function serve() {
     void handles
       .stop()
       .then(() => granola.stop())
+      .then(() => omiCloud.stop())
+      .then(() => brex.stop())
       .finally(() => server.close(() => process.exit(0)));
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
@@ -398,5 +481,8 @@ async function serve() {
 
 const command = process.argv[2];
 const main = { up, down, serve }[command as "up" | "down" | "serve"];
-if (!main) throw new Error("Usage: demo.ts up | down");
+if (!main)
+  throw new Error(
+    "Usage: demo.ts up | down (DEMO_SLOT=0-9; DEMO_SANDBOX_PROVIDER=docker starts the sandbox supervisor and gives bots a real computer, after pnpm sandbox:build)",
+  );
 await main();

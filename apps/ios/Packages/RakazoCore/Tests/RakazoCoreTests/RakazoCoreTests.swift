@@ -844,3 +844,12 @@ private func callbackURL(
   components.queryItems = (components.queryItems ?? []) + queryItems
   return try #require(components.url)
 }
+
+@Test
+func launchEndpointUsesSavedThenBuiltInThenAsks() {
+  let builtIn = URL(string: "http://127.0.0.1:3100")!
+  #expect(ServerEndpoint.launchEndpoint(saved: "https://app.example.com", builtIn: builtIn)?.host() == "app.example.com")
+  #expect(ServerEndpoint.launchEndpoint(saved: nil, builtIn: builtIn) == builtIn)
+  #expect(ServerEndpoint.launchEndpoint(saved: "not a url", builtIn: builtIn) == builtIn)
+  #expect(ServerEndpoint.launchEndpoint(saved: nil, builtIn: nil) == nil)
+}

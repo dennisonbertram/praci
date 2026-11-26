@@ -19,7 +19,6 @@ import {
   Chip,
   DetailHead,
   DetailPage,
-  ErrorNotice,
   FinanceChromeProvider,
   Kpi,
   Kv,
@@ -135,21 +134,6 @@ export const DetailHeadSingleCrumb: Story = {
   render: () => <DetailHead crumbs={[{ label: "Finance" }]} />,
 };
 
-export const ErrorNoticeDefault: Story = {
-  name: "Error notice",
-  render: () => <ErrorNotice message="Could not load vendors." onRetry={() => undefined} />,
-};
-
-export const ErrorNoticeWithAction: Story = {
-  name: "Error notice with action",
-  render: () => (
-    <ErrorNotice
-      message="Devin rejected the key. Alerts are paused."
-      action={{ label: "Reconnect", onClick: () => undefined }}
-    />
-  ),
-};
-
 export const DetailPageLoaded: Story = {
   decorators: [(Story) => withAgent(Story)],
   render: () => (
@@ -180,6 +164,42 @@ export const DetailPagePhone: Story = {
     <DetailPage
       crumbs={[{ label: "Finance", to: "/finance" }, { label: "Burn" }]}
       title="Burn"
+      loading={false}
+      error=""
+      onRetry={() => undefined}
+    >
+      <Section title="Summary">Body content</Section>
+    </DetailPage>
+  ),
+};
+
+/** Phone, a long title with Back: Ask stays at the title row's end and the company sits under it. */
+export const DetailPagePhoneLongTitle: Story = {
+  decorators: [
+    (Story) => (
+      <PageNavContext.Provider value={{ open: () => undefined, claim: () => () => undefined }}>
+        <div className="px-4">
+          <FinanceChromeProvider
+            value={{
+              onAskAgent: () => undefined,
+              spaces: [
+                { id: "a", name: "Northwind Robotics" },
+                { id: "b", name: "Sample Cloud Co" },
+              ],
+              spaceId: "a",
+              onSwitchSpace: () => undefined,
+            }}
+          >
+            <Story />
+          </FinanceChromeProvider>
+        </div>
+      </PageNavContext.Provider>
+    ),
+  ],
+  render: () => (
+    <DetailPage
+      crumbs={[{ label: "Finance", to: "/finance" }, { label: "Upcoming · 30 days" }]}
+      title="Upcoming · 30 days"
       loading={false}
       error=""
       onRetry={() => undefined}
@@ -264,6 +284,18 @@ export const TransactionsByVendor: Story = {
 export const TransactionsCard: Story = {
   name: "Transactions card with the view switch",
   render: () => <TransactionsSection title="Transactions" rows={repeatVendor} />,
+};
+
+export const TransactionsFiltered: Story = {
+  name: "Transactions card with search, filters and sort",
+  render: () => <TransactionsSection title="Transactions" rows={repeatVendor} />,
+  parameters: { initialEntries: ["/?q=a&category=Software&sort=amount&dir=asc"] },
+};
+
+export const TransactionsNoMatches: Story = {
+  name: "Transactions card, no matches",
+  render: () => <TransactionsSection title="Transactions" rows={repeatVendor} />,
+  parameters: { initialEntries: ["/?q=nothing-like-this"] },
 };
 
 export const TransactionsEmpty: Story = {

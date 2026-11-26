@@ -1,0 +1,133 @@
+{
+  "json": {
+    "contracts": [
+      {
+        "id": "cmvszf5qq009h8s9kzecc8iej",
+        "dataRoomItemId": "cmvszf47f002gcr9kcdok05bd",
+        "title": "MOCK Insurance Policy - Shieldwell",
+        "contractType": "Insurance",
+        "counterparties": [
+          "Shieldwell Insurance (Mock)"
+        ],
+        "status": "active",
+        "effectiveDate": "2025-12-09",
+        "expirationDate": "2026-12-08",
+        "autoRenews": true,
+        "renewalNoticeDays": 30,
+        "governingLaw": "California",
+        "valueCents": "310000",
+        "currency": "USD",
+        "summary": "Mock demo data: general liability, 1,000,000 dollar limit, 3,100 dollars a year.",
+        "analyzedRevision": 6,
+        "analyzedAt": "2026-10-29T03:26:49.297Z",
+        "nextDeadline": "2026-11-08"
+      },
+      {
+        "id": "cmvszf5pm008x8s9kofdxlick",
+        "dataRoomItemId": "cmvszf45q002dcr9k6djmzaun",
+        "title": "MOCK SaaS Subscription - Cobalt Cloud Hosting",
+        "contractType": "Subscription",
+        "counterparties": [
+          "Cobalt Cloud Hosting (Mock)"
+        ],
+        "status": "active",
+        "effectiveDate": "2025-12-17",
+        "expirationDate": "2026-12-17",
+        "autoRenews": true,
+        "renewalNoticeDays": 30,
+        "governingLaw": "California",
+        "valueCents": "2220000",
+        "currency": "USD",
+        "summary": "Mock demo data: annual cloud hosting; renews unless cancelled 30 days before the end of the term.",
+        "analyzedRevision": 6,
+        "analyzedAt": "2026-10-29T03:26:49.257Z",
+        "nextDeadline": "2026-11-17"
+      },
+      {
+        "id": "cmvszf5mc00818s9ka19ed5ik",
+        "dataRoomItemId": "cmvszf49t002kcr9k48ajar5f",
+        "title": "MOCK Office Lease - 100 Placeholder Street",
+        "contractType": "Lease",
+        "counterparties": [
+          "Placeholder Street Landlord (Mock)"
+        ],
+        "status": "active",
+        "effectiveDate": "2025-09-24",
+        "expirationDate": "2027-02-12",
+        "autoRenews": true,
+        "renewalNoticeDays": 62,
+        "governingLaw": "California",
+        "valueCents": "9000000",
+        "currency": "USD",
+        "summary": "Mock demo data: office lease, 7,500 dollars a month, renews automatically unless notice is given 62 days before it ends.",
+        "analyzedRevision": 6,
+        "analyzedAt": "2026-10-29T03:26:49.137Z",
+        "nextDeadline": "2026-12-12"
+      }
+    ],
+    "deadlines": [
+      {
+        "id": "cmvszf5ud00bd8s9kx1a4puli",
+        "contractId": null,
+        "contractTitle": null,
+        "dataRoomItemId": null,
+        "title": "Q3 board consent signature",
+        "dueDate": "2026-10-24",
+        "kind": "compliance",
+        "status": "open",
+        "sourceQuote": null,
+        "notes": "Mock demo data: added by hand.",
+        "removalProposed": false
+      },
+      {
+        "id": "cmvszf5ui00bh8s9k0kg5t8c0",
+        "contractId": null,
+        "contractTitle": null,
+        "dataRoomItemId": null,
+        "title": "Pay Cascade Robotics onboarding fee",
+        "dueDate": "2026-11-07",
+        "kind": "payment",
+        "status": "open",
+        "sourceQuote": null,
+        "notes": "Mock demo data: added by hand.",
+        "removalProposed": false
+      },
+      {
+        "id": "cmvszf5qs009i8s9ku4vc9rmy",
+        "contractId": "cmvszf5qq009h8s9kzecc8iej",
+        "contractTitle": "MOCK Insurance Policy - Shieldwell",
+        "dataRoomItemId": "cmvszf47f002gcr9kcdok05bd",
+        "title": "Send non-renewal notice",
+        "dueDate": "2026-11-08",
+        "kind": "notice",
+        "status": "open",
+        "sourceQuote": "The policy renews on December 1 unless cancelled 30 days before.",
+        "notes": "Mock demo data: 30 days before it renews automatically.",
+        "removalProposed": false
+      }
+    ],
+    "counts": {
+      "contracts": 10,
+      "activeContracts": 10,
+      "openDeadlines": 9,
+      "overdueDeadlines": 1,
+      "doneDeadlines": 0,
+      "unreviewedDocuments": 0
+    },
+    "agent": {
+      "botId": "cmvszf5kl004mcr9ku9scabtd",
+      "lastScanAt": "2026-10-29T00:26:49.439Z",
+      "dailyScanActive": true,
+      "lastScanRun": {
+        "id": "cmvt4w5cg00c1cr9kjchd3uwm",
+        "status": "running",
+        "error": null
+      }
+    },
+    "model": {
+      "provider": "openrouter",
+      "id": "openai/gpt-6-luna",
+      "isPreferred": false
+    }
+  }
+}

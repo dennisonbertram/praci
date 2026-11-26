@@ -50,9 +50,29 @@ export default function Computer() {
   const navigation = useNavigation();
   const { botId, name: nameParam } = useLocalSearchParams<{ botId?: string; name?: string }>();
   const name = nameParam || t("Bot");
-  const [computer, setComputer] = useState<ComputerStatus | null>(null);
-  const [screenUrl, setScreenUrl] = useState<string | null>(null);
+  const [loadedState, setLoadedState] = useState<{
+    botId: string | null;
+    computer: ComputerStatus | null;
+    screenUrl: string | null;
+  }>({ botId: botId ?? null, computer: null, screenUrl: null });
+  const stateMatchesBot = loadedState.botId === (botId ?? null);
+  const computer = stateMatchesBot ? loadedState.computer : null;
+  const screenUrl = stateMatchesBot ? loadedState.screenUrl : null;
+  const updateComputer = (value: ComputerStatus | null) =>
+    setLoadedState((current) => ({
+      botId: botId ?? null,
+      computer: value,
+      screenUrl: current.botId === (botId ?? null) ? current.screenUrl : null,
+    }));
+  const updateScreenUrl = (value: string | null) =>
+    setLoadedState((current) => ({
+      botId: botId ?? null,
+      computer: current.botId === (botId ?? null) ? current.computer : null,
+      screenUrl: value,
+    }));
   const [screenError, setScreenError] = useState<string | null>(null);
+  const screenRetryPending = useRef(false);
+  const screenRetrySucceeded = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [readyBotId, setReadyBotId] = useState<string | null>(null);
   const [bootingCount, setBootingCount] = useState(0);
@@ -118,14 +138,31 @@ export default function Computer() {
     () =>
       createComputerRefresh({
         readStatus: () => rpc<ComputerStatus>("computer/status", { botId }),
-        readScreen: (attempts) =>
-          readScreenUrl(() => rpc<{ url: string | null }>("computer/screenUrl", { botId }), {
-            attempts,
-          }),
-        onStatus: setComputer,
-        onScreen: setScreenUrl,
+        readScreen: async (attempts) => {
+          try {
+            return await readScreenUrl(
+              () => rpc<{ url: string | null }>("computer/screenUrl", { botId }),
+              { attempts },
+            );
+          } catch (err) {
+            if (screenRetryPending.current) setScreenError(errorText(err));
+            throw err;
+          }
+        },
+        onStatus: updateComputer,
+        onScreen: (url) => {
+          updateScreenUrl(url);
+          if (screenRetryPending.current && url) {
+            screenRetrySucceeded.current = true;
+            setScreenError(null);
+          }
+        },
         onReady: () => setReadyBotId(botId ?? null),
-        onInitialError: (err) => setError(errorText(err)),
+        onInitialError: (err) => {
+          // Unknown state: never force-boot on a failed read; the user can still start it.
+          autoBooted.current = botId ?? null;
+          setError(errorText(err));
+        },
       }),
     [botId],
   );
@@ -135,8 +172,7 @@ export default function Computer() {
   }, [refresh]);
 
   useEffect(() => {
-    setComputer(null);
-    setScreenUrl(null);
+    setLoadedState({ botId: botId ?? null, computer: null, screenUrl: null });
     setScreenError(null);
     setError(null);
     setReadyBotId(null);
@@ -147,6 +183,23 @@ export default function Computer() {
     if (botId) refreshController.start();
     return () => refreshController.dispose();
   }, [botId, refreshController]);
+
+  async function retryScreen() {
+    if (!refreshController.isActive()) return;
+    screenRetryPending.current = true;
+    screenRetrySucceeded.current = false;
+    setScreenError(null);
+    refreshController.invalidateScreen();
+    try {
+      await refreshController.refresh();
+      if (!screenRetrySucceeded.current)
+        setScreenError((current) => current ?? t("Could not continue"));
+    } catch (err) {
+      setScreenError(errorText(err, t("Could not continue")));
+    } finally {
+      screenRetryPending.current = false;
+    }
+  }
 
   async function bootComputer({
     takeControl,
@@ -263,8 +316,7 @@ export default function Computer() {
       if (!action.isActive()) return;
       await rpc("bots/setComputer", { botId, mode }, { timeoutMs: COMPUTER_LIFECYCLE_TIMEOUT_MS });
       if (!action.isActive()) return;
-      setComputer(null);
-      setScreenUrl(null);
+      setLoadedState({ botId: botId ?? null, computer: null, screenUrl: null });
       autoBooted.current = null;
       await action.refresh();
     } catch (err) {
@@ -297,7 +349,14 @@ export default function Computer() {
           backgroundColor: tokens.card,
         }}
       >
-        {computerOpen ? (
+        {screenError ? (
+          <ScreenFailure
+            error={screenError}
+            onRetry={() => void retryScreen()}
+            t={t}
+            color={tokens.mutedForeground}
+          />
+        ) : computerOpen ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ color: tokens.mutedForeground }}>{t("Open in full window")}</Text>
           </View>
@@ -319,12 +378,14 @@ export default function Computer() {
             </Text>
           </View>
         )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("Open computer")}
-          onPress={() => void openComputer({ takeControl: false })}
-          style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
-        />
+        {!screenError ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Open computer")}
+            onPress={() => void openComputer({ takeControl: false })}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+          />
+        ) : null}
       </View>
       <View
         style={{
@@ -500,7 +561,14 @@ export default function Computer() {
                 </View>
               </SafeAreaView>
               <View style={{ flex: 1, backgroundColor: tokens.card }}>
-                {loadedScreenUrl ? (
+                {screenError ? (
+                  <ScreenFailure
+                    error={screenError}
+                    onRetry={() => void retryScreen()}
+                    t={t}
+                    color={tokens.mutedForeground}
+                  />
+                ) : loadedScreenUrl ? (
                   <ScreenWebView
                     url={loadedScreenUrl}
                     interactive={hasControl}
@@ -541,6 +609,25 @@ export default function Computer() {
         </SafeAreaProvider>
       </Modal>
     </ScrollView>
+  );
+}
+
+function ScreenFailure({
+  error,
+  onRetry,
+  t,
+  color,
+}: {
+  error: string;
+  onRetry: () => void;
+  t: (text: string) => string;
+  color: string;
+}) {
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <Text style={{ color, textAlign: "center", marginBottom: 12 }}>{error}</Text>
+      <NativeActionButton label={t("Try again")} onPress={onRetry} prominence="secondary" />
+    </View>
   );
 }
 

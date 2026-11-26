@@ -58,4 +58,12 @@ export const mockModelCredentials: ModelCredential[] = [
     modelId: "sample-large",
     authKind: "api_key",
   },
+  {
+    id: "cred_2",
+    provider: "example-sub",
+    label: "Example Pro",
+    hasKey: true,
+    isDefault: false,
+    authKind: "oauth",
+  },
 ];

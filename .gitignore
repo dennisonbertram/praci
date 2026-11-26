@@ -38,6 +38,8 @@ infra/sandboxes/supervisor/dist
 .vercel
 .cache
 artifacts
+# The iOS app's Artifacts screens are source, not build output.
+!apps/ios/Sources/Praci/Artifacts/
 backups
 test-report
 verify-report
@@ -56,3 +58,5 @@ playwright-report-www
 .demo
 .demo-credentials.local
 .env*
+# SwiftPM resolutions for the iOS packages are local build output.
+apps/ios/Packages/*/Package.resolved

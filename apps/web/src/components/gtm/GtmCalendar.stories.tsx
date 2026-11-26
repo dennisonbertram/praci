@@ -39,3 +39,23 @@ export const NotConnected: StoryObj<typeof meta> = {
   beforeEach: () =>
     mockRpc({ "gtm.queue": { status: "not_connected", complete: true, posts: [] } }),
 };
+export const QueuedPostShownOnce: StoryObj<typeof meta> = {
+  args: {
+    overview: {
+      ...overview,
+      groups: {
+        ...overview.groups,
+        in_progress: [
+          {
+            ...item,
+            id: "queued_local",
+            title: "Introduce the beta",
+            status: "open",
+            proof: `zernio:${post.id}`,
+          },
+        ],
+      },
+    },
+  },
+  beforeEach: () => mockRpc({ "gtm.queue": { status: "ready", complete: true, posts: [post] } }),
+};

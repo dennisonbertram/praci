@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brex page mockup</title>
+<style>
+  :root { --bg:#fafaf9; --fg:#1a1a1a; --mut:#6b6b66; --bd:#dcdcd6; --card:#fff; --on:#1a1a1a; --onfg:#fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161616; --fg:#ececea; --mut:#9a9a94; --bd:#333; --card:#1f1f1f; --on:#ececea; --onfg:#161616; } }
+  :root[data-theme="dark"] { --bg:#161616; --fg:#ececea; --mut:#9a9a94; --bd:#333; --card:#1f1f1f; --on:#ececea; --onfg:#161616; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--bd); padding:10px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  header h1 { font-size:15px; margin:0 12px 0 0; }
+  nav { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+  button { font:inherit; font-size:13px; border:1px solid var(--bd); background:var(--card); color:var(--fg); border-radius:999px; padding:3px 12px; cursor:pointer; }
+  button[aria-pressed="true"] { background:var(--on); color:var(--onfg); border-color:var(--on); }
+  main { max-width:1320px; margin:0 auto; padding:16px; }
+  section { display:none; } section.show { display:block; }
+  .states { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+  figure { margin:0; }
+  img { display:block; max-width:100%; height:auto; border:1px solid var(--bd); border-radius:10px; }
+  img.phone { max-width:390px; }
+  figcaption { margin:8px 0 0; color:var(--mut); font-size:13px; }
+  .tag { display:inline-block; border:1px solid var(--bd); border-radius:999px; padding:0 8px; margin-right:6px; font-size:12px; color:var(--fg); }
+  .note { color:var(--mut); font-size:13px; max-width:900px; margin:14px 0 0; }
+  code { font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Brex page</h1>
+  <nav id="screens" aria-label="Screens"></nav>
+  <button id="theme" type="button">Theme</button>
+</header>
+<main id="root"></main>
+<script>
+const R = "Real app", B = "Real app, extended in the page";
+const S = [
+ { id:"overview", name:"Overview", note:"Built from the real Finance page (KPI cards, breakdown rows, card shell, pill toggle) with the real Company page tab strip as the section navigation. Fields Rakazo already reads (packages/brex-mcp/src/client.ts): cash account current and available balance, card status. Confirmed in the Brex API reference but not read yet: transaction merchant.mcc, expense category, spend limit current_period_balance.amount_spent. Computed by Rakazo, not Brex fields: card spend totals and the 30-day sparkline (settled transactions only; Brex does not expose pending ones), the Sankey (Card spend to category to merchant: category comes from the expense joined by expense_id, falling back to MCC; to verify), and Near limit (card limit versus computed spend, spend limit usage). The Sankey is inline SVG in one ink with the app's foreground token. All names and numbers are invented.",
+   states:[
+  ["Overview","overview",B,"KPI row, Where spend goes Sankey, top vendors, near limit."],
+  ["Phone","overview-phone",B,"390 px, light only. The Sankey drops to two columns (card spend to category); merchants stay on the Spending screen.",1]]},
+ { id:"cards", name:"Cards", note:"Card tiles are the app's card shell with the Finance bar and the Sparkline polyline. Name, last four, status, card_type, limit and period (spend_controls.spend_limit and spend_duration), lock date and owner are fields Rakazo already reads. The vendor line comes from spend_controls.allowed_merchant_details (read today); cards without a merchant lock show no vendor. Spend this period and the 30-day line are computed from card transactions (card_id, amount, posted_at_date, all read today; settled only). Terminated is hidden by default through the Status filter menu, which is the Contacts Kind menu. New card is the app's own dialog; only create_vendor_card inputs that exist today are shown (name, merchant lock, owner, limit, duration, lock date) and the request waits for approval. The detail dialog uses Lock, Edit limit and Cancel as on today's integration page. The tiles show active cards only, so their spend adds up to less than the Overview total; the rest is on locked and terminated cards.",
+   states:[
+  ["Cards","cards",B,"Tile grid, Terminated hidden."],
+  ["Status filter","cards-filter",B,"Menu cloned from the Contacts filter; Terminated unchecked."],
+  ["List","cards-list",B,"Same cards as a table, with today's Lock, Edit limit and Cancel."],
+  ["Card detail","card-detail",B,"Recent transactions come from list_card_transactions. Lock after date is lock_after_date."],
+  ["New card","card-new",B,"Goes to approval, as today. The app copy Every change waits for your approval is reused in spirit; this screen adds one line."],
+  ["Phone","cards-phone",B,"390 px, light only.",1]]},
+ { id:"spending", name:"Spending", note:"Built from the Contacts search and filter pills with a Finance-style table. Date, merchant (merchant.raw_descriptor), card (card_id), amount and person (the card owner) are read today. Category is the expense category joined by expense_id (in the Brex API reference as an enum, not read yet; to verify the join covers every transaction). The duplicate subscriptions callout is a Rakazo heuristic (same merchant on more than one card in a month), not a Brex field.",
+   states:[["Spending","spending",B,"Possible duplicates, transactions, category breakdown."]]},
+ { id:"limits", name:"Limits", note:"Name, status, period (period_recurrence_type), base limit and member_user_ids are read today (list_spend_limits). Usage comes from current_period_balance.amount_spent, which is in the Brex API reference (budgets_api, SpendLimitPeriodBalance) but not read yet: to verify against a real account. Read only in the page; changes go through the Brex agent (update_spend_limit).",
+   states:[["Limits","limits",B,"Usage bar marked to verify."]]},
+ { id:"people", name:"People", note:"People come from list_users (first_name, last_name, email, status). Cards per person use card owner.user_id; limits use member_user_ids; spend is computed. Offboard asks the Brex agent to lock cards and remove the person from spend limits, and says plainly that turning off the Brex user is not available in v1 (there is no such tool in packages/brex-mcp).",
+   states:[["People","people",B,"One row per person."],["Offboard","people-offboard",B,"Lists what the request will do; waits for approval."]]},
+ { id:"expenses", name:"Expenses", note:"Missing receipt or memo: list_expenses already supports missingReceipt (documentation due or overdue). The receipts array and compliance_status are in the Brex API reference (expenses_api) but not read yet; the Missing chips need receipts and memo, to verify. Edit memo is update_expense_memo, which exists. Reimbursements are expenses with expense_type REIMBURSEMENT (in the API reference, not queried yet); read only, with an Approve in Brex link because approval is not an API action in v1.",
+   states:[["Expenses","expenses",B,"Needs a receipt or memo; reimbursements waiting."]]},
+ { id:"accounts", name:"Accounts", note:"Cash accounts (name, status, current_balance, available_balance, primary) and statements (id, period, start and end balance) are read today. Brex gives no statement document, so the row links to Brex (confirmed: no file field in the Statements schema, and the server states it).",
+   states:[["Accounts","accounts",B,"Cash accounts and statements."]]},
+ { id:"travel", name:"Travel", note:"Trips (name, status, booker_user_id, starts_at, ends_at) are read today. Trip cost has no trip field in the Trips API as read; it would be summed from expenses (to verify how expenses link to a trip). Status values shown are friendly labels; to verify the real values. Read only.",
+   states:[["Travel","travel",B,"Upcoming trips and cost."]]},
+ { id:"activity", name:"Activity", note:"Changes the Brex agent made: action and card from the approved tool call, approver and result from the approval record Rakazo already stores. The actions are the existing write tools: lock card, update card, cancel card, create vendor card, update spend limit and update expense memo.",
+   states:[["Activity","activity",B,"Agent changes and who approved them."]]},
+ { id:"empty", name:"Not connected", note:"When no Brex connection exists the page shows one action. Connect Brex cards opens today's dialog (copy unchanged).",
+   states:[["Empty","empty",B,"Brex not connected."],["Connect","empty-connect",B,"Today's Connect Brex cards dialog; permissions list stays collapsed."]]}
+];
+const root = document.getElementById("root"), nav = document.getElementById("screens");
+let theme = (document.documentElement.dataset.theme) || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+const imgs = [];
+S.forEach((s, i) => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = s.name; b.dataset.id = s.id; nav.append(b);
+  const sec = document.createElement("section"); sec.id = s.id;
+  const row = document.createElement("div"); row.className = "states";
+  const fig = document.createElement("figure"); const img = document.createElement("img"); img.alt = s.name; const cap = document.createElement("figcaption");
+  fig.append(img, cap);
+  s.states.forEach((st, j) => {
+    const sb = document.createElement("button"); sb.type = "button"; sb.textContent = st[0]; row.append(sb);
+    sb.onclick = () => { row.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === sb)); img.dataset.base = st[1]; img.className = st[4] ? "phone" : ""; img.alt = s.name + ": " + st[0]; cap.innerHTML = '<span class="tag">' + st[2] + "</span>" + st[3]; img.onerror = () => { if (!img.src.endsWith("-light.png")) img.src = "mockup/" + st[1] + "-light.png"; }; img.src = "mockup/" + st[1] + "-" + theme + ".png"; };
+    if (j === 0) setTimeout(() => sb.click());
+  });
+  const note = document.createElement("p"); note.className = "note"; note.textContent = s.note;
+  sec.append(row, fig, note); root.append(sec); imgs.push(img);
+});
+function show(id) { document.querySelectorAll("section").forEach(x => x.classList.toggle("show", x.id === id)); nav.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.id === id)); history.replaceState(null, "", "#" + id); }
+nav.onclick = e => { if (e.target.dataset.id) show(e.target.dataset.id); };
+document.getElementById("theme").onclick = () => { theme = theme === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = theme; imgs.forEach(i => { if (i.dataset.base) i.src = "mockup/" + i.dataset.base + "-" + theme + ".png"; }); };
+show(location.hash.slice(1) || S[0].id);
+</script>
+</body>
+</html>

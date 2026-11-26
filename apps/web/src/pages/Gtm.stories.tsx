@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { GtmPage } from "./Gtm";
-import { agentPageContent, emptyOverview, item, overview, page } from "./gtm/fixtures";
+import { agentPageContent, emptyOverview, item, overview, page, pageList } from "./gtm/fixtures";
 
 const meta = {
   title: "GTM/Page",
@@ -12,11 +12,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {
-  beforeEach: () => mockRpc({ "gtm.overview": overview, "pages.get": page }),
+  beforeEach: () =>
+    mockRpc({
+      "pages.list": pageList,
+      "gtm.overview": overview,
+      "pages.get": page,
+    }),
 };
 export const AgentArranged: Story = {
   beforeEach: () =>
     mockRpc({
+      "pages.list": pageList,
       "gtm.overview": overview,
       "pages.get": { ...page, content: agentPageContent },
       "pages.save": (input: { content: string; baseRevision: number }) => ({
@@ -28,6 +34,7 @@ export const AgentArranged: Story = {
 export const AgentArrangedUncertain: Story = {
   beforeEach: () =>
     mockRpc({
+      "pages.list": pageList,
       "gtm.overview": {
         ...overview,
         postingCapability: "api_key_required",
@@ -48,11 +55,16 @@ export const AgentArrangedUncertain: Story = {
 };
 export const Empty: Story = {
   beforeEach: () =>
-    mockRpc({ "gtm.overview": emptyOverview, "pages.get": { ...page, content: "" } }),
+    mockRpc({
+      "pages.list": pageList,
+      "gtm.overview": emptyOverview,
+      "pages.get": { ...page, content: "" },
+    }),
 };
 export const OAuthOnly: Story = {
   beforeEach: () =>
     mockRpc({
+      "pages.list": pageList,
       "gtm.overview": { ...overview, postingCapability: "api_key_required" },
       "pages.get": page,
     }),
@@ -60,6 +72,7 @@ export const OAuthOnly: Story = {
 export const Uncertain: Story = {
   beforeEach: () =>
     mockRpc({
+      "pages.list": pageList,
       "gtm.overview": {
         ...overview,
         groups: {
@@ -72,15 +85,23 @@ export const Uncertain: Story = {
     }),
 };
 export const Loading: Story = {
-  beforeEach: () => mockRpc({ "gtm.overview": () => new Promise(() => {}) }),
+  beforeEach: () =>
+    mockRpc({
+      "pages.list": pageList,
+      "gtm.overview": () => new Promise(() => {}),
+    }),
 };
 export const ErrorState: Story = {
   beforeEach: () =>
-    mockRpc({ "gtm.overview": () => Promise.reject(new Error("Could not load the GTM plan.")) }),
+    mockRpc({
+      "pages.list": pageList,
+      "gtm.overview": () => Promise.reject(new Error("Could not load the GTM plan.")),
+    }),
 };
 export const Previews: Story = {
   beforeEach: () =>
     mockRpc({
+      "pages.list": pageList,
       "gtm.overview": {
         ...overview,
         gmailAccounts: [{ connectionId: "gmail_demo", label: "Demo Gmail" }],

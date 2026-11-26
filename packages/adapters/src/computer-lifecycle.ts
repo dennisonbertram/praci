@@ -35,17 +35,17 @@ type ComputerUpdateProgress = (
   stage: Exclude<ComputerUpdate["stage"], "preparing">,
 ) => Promise<void>;
 
-const EXECUTION_LEASE_MS = 5 * 60_000;
+/** Shared with the run lease: a crashed team worker's computer frees up as fast as its run does. */
+export const EXECUTION_LEASE_MS = 90_000;
 const BOOT_WAIT_ATTEMPTS = 40;
 const BOOT_WAIT_MS = 250;
 /**
  * A booting claim newer than an execution-lease TTL is treated as live, not abandoned.
  * Dedicated / lease-less boots never write an execution-lease row, so this stamp age is the
- * lower bound before reclaim/Reset may treat a lease-less claim as abandoned. Align with
- * EXECUTION_LEASE_MS (a crashed team worker's lease would expire then). Slow dedicated boots
+ * lower bound before reclaim/Reset may treat a lease-less claim as abandoned. Slow dedicated boots
  * past this window stay protected while their run worker lease still heartbeats.
  */
-const BOOT_CLAIM_STALE_MS = EXECUTION_LEASE_MS;
+const BOOT_CLAIM_STALE_MS = 5 * 60_000;
 
 /**
  * Booting and suspending claims newer than an execution-lease TTL are live.
@@ -496,7 +496,7 @@ export async function provisionComputer(
   }
 }
 
-async function waitForComputerReady(
+export async function waitForComputerReady(
   prisma: PrismaClient,
   computerId: string,
   context: AdapterContext,

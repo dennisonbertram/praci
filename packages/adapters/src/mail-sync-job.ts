@@ -127,6 +127,50 @@ function plannedDelay(mode: MailSyncRequestMode, state: RequestState): number | 
   return state.claimed ? Math.max(state.backoffMs, CHAIN_DELAY_MS) : state.backoffMs;
 }
 
+/** The sweep syncs a connection that has not synced for this long. */
+const SWEEP_STALE = Prisma.sql`interval '10 minutes'`;
+/** After a failed sync the sweep waits this long before trying again. */
+const SWEEP_RETRY_WAIT = Prisma.sql`interval '2 minutes'`;
+/** A connection flagged as needing a new sign-in is retried this rarely, so a stale flag still clears. */
+const SWEEP_RECONNECT_WAIT = Prisma.sql`interval '1 hour'`;
+/** Connections one sweep requests, oldest attempt first. */
+const SWEEP_BATCH = 200;
+
+/**
+ * Recurring job: asks for a sync of every connected Gmail connection, across all spaces and users,
+ * that has not synced lately or whose last sync failed a while ago. Mail that needs reconnecting
+ * is left alone, and so is one inside a rate-limit backoff. `requestMailSync` in `refresh` mode
+ * still skips a connection that has a sync running or queued. Returns how many were examined.
+ */
+export async function sweepMailSyncs(deps: {
+  prisma: PrismaClient;
+  jobs: JobPublisher;
+}): Promise<number> {
+  // ponytail: one batch per run; with more than SWEEP_BATCH due connections the rest wait for the next run (5 min), page by id if that lags.
+  const rows = await deps.prisma.$queryRaw<
+    Array<{ connectionId: string; spaceId: string; userId: string }>
+  >`
+    SELECT c.id AS "connectionId", c."spaceId", c."userId"
+    FROM connections c LEFT JOIN mail_sync_states s ON s."connectionId" = c.id
+    WHERE c.status = 'connected' AND c."providerRef" IS NOT NULL
+      AND lower(btrim(c.provider)) = 'gmail'
+      AND (COALESCE(s."needsReconnect", false) = false OR s."lastErrorAt" < ${DB_NOW} - ${SWEEP_RECONNECT_WAIT})
+      AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
+      AND (s."lastErrorAt" IS NULL OR s."lastErrorAt" < ${DB_NOW} - ${SWEEP_RETRY_WAIT})
+      AND (s."lastSyncedAt" IS NULL
+        OR s."lastSyncedAt" < ${DB_NOW} - ${SWEEP_STALE}
+        OR s."lastErrorAt" > s."lastSyncedAt")
+    -- Oldest attempt first, so accounts that keep failing cannot hold every slot.
+    ORDER BY GREATEST(s."lastSyncedAt", s."lastErrorAt") ASC NULLS FIRST
+    LIMIT ${SWEEP_BATCH}`;
+  const results = await Promise.allSettled(
+    rows.map((row) => requestMailSync(deps, row, "refresh")),
+  );
+  const failed = results.filter((r) => r.status === "rejected").length;
+  getLogger().info("mail sync sweep", { due: rows.length, failed });
+  return rows.length;
+}
+
 export interface MailSyncStatus {
   connectionId: string;
   syncing: boolean;
@@ -318,4 +362,25 @@ export async function syncAfterSend(
       reason: error instanceof Error ? error.name : "error",
     });
   }
+}
+
+/**
+ * The one place a live Gmail call records whether the sign-in works: `true` after Google refused
+ * the token, `false` after a call it accepted. The connections list and the Inbox both read this
+ * row, so they cannot disagree. A sync clears the same fields when it succeeds.
+ */
+export async function setMailReconnect(
+  prisma: PrismaClient,
+  connectionId: string,
+  needsReconnect: boolean,
+): Promise<void> {
+  await prisma.mailSyncState.upsert({
+    where: { connectionId },
+    create: needsReconnect
+      ? { connectionId, lastErrorAt: new Date(), needsReconnect: true, lastErrorKind: "auth" }
+      : { connectionId },
+    update: needsReconnect
+      ? { lastErrorAt: new Date(), needsReconnect: true, lastErrorKind: "auth" }
+      : { lastErrorAt: null, needsReconnect: false, lastErrorKind: null },
+  });
 }

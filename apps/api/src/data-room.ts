@@ -26,6 +26,7 @@ import {
   dataRoomFileFields,
   dataRoomQueryVector,
   dataRoomVisionKey,
+  deleteOmiRecordingOutputs,
   hasThumbnailType,
   listBoxAccounts,
   listBoxFiles,
@@ -115,6 +116,7 @@ const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
   name: item.name,
   mimeType: item.mimeType,
   size: Number(item.size),
+  sha256: item.sha256,
   folderId: item.folderId,
   source: item.source,
   sourceUrl: item.sourceUrl,
@@ -288,6 +290,19 @@ export function createDataRoomService(deps: DataRoomDeps) {
         .catch((error: unknown) => getLogger().error("data room index enqueue failed", error));
     }
   };
+  /** Sends ready items back to a step. A failed enqueue is logged; reconcileDataRoom re-queues stuck items. */
+  const requeue = async (
+    actor: Actor,
+    step: "ingest" | "classify" | "index",
+    embeddingModel?: string,
+    visionKey?: string,
+  ) => {
+    for (const id of await repo.requeueReady(actor, step, embeddingModel, visionKey)) {
+      await deps.jobs
+        .enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id))
+        .catch((error: unknown) => getLogger().error(`data room ${step} enqueue failed`, error));
+    }
+  };
   // ponytail: runs in the request, one queued job per item in batches; a dedicated fan-out job if folders get huge.
   const reindexFolder = async (actor: Actor, folderId: string) => {
     for (;;) {
@@ -365,21 +380,33 @@ export function createDataRoomService(deps: DataRoomDeps) {
         const { limit, cursor, sort, ...filters } = input;
         const page = await repo.listItemsPage(actor, toFilters(filters), { sort, limit, cursor });
         // Items shown without a thumbnail get one drawn, once; the grid shows it on a later read.
-        // ponytail: an item claimed here whose enqueue fails gets none; a retry flag if that matters.
-        const claimed = await repo.claimThumbnails(
-          actor,
-          page.items.flatMap((i) =>
-            i.storageKey && !i.thumbnailKey && !i.thumbnailTriedAt && hasThumbnailType(i)
-              ? [i.id]
-              : [],
-          ),
-        );
-        for (const id of claimed) {
-          await deps.jobs
-            .enqueue(dataRoomStepJob("dataroom.thumbnail", actor, id))
-            .catch((error: unknown) =>
-              getLogger().error("data room thumbnail enqueue failed", error),
-            );
+        let claimed: string[] = [];
+        try {
+          claimed = await repo.claimThumbnails(
+            actor,
+            page.items.flatMap((i) =>
+              i.storageKey && !i.thumbnailKey && !i.thumbnailTriedAt && hasThumbnailType(i)
+                ? [i.id]
+                : [],
+            ),
+          );
+        } catch (error: unknown) {
+          getLogger().error("data room thumbnail claim failed", error);
+        }
+        for (const [index, id] of claimed.entries()) {
+          try {
+            await deps.jobs.enqueue(dataRoomStepJob("dataroom.thumbnail", actor, id));
+          } catch (error: unknown) {
+            for (const claimedId of claimed.slice(index)) {
+              await repo
+                .releaseThumbnail(actor, claimedId)
+                .catch((releaseError: unknown) =>
+                  getLogger().error("data room thumbnail claim release failed", releaseError),
+                );
+            }
+            getLogger().error("data room thumbnail enqueue failed", error);
+            break;
+          }
         }
         return { items: page.items.map(itemDto), nextCursor: page.nextCursor };
       }),
@@ -399,12 +426,23 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }),
     deleteItem: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
-        const { storageKey, thumbnailKey } = await repo.getItem(actor, id);
+        const { storageKey, thumbnailKey, source } = await repo.getItem(actor, id);
         // Queue the cleanup first: if the row delete fails, the job finds the row and keeps the blob.
-        for (const key of [storageKey, thumbnailKey]) {
-          if (!key) continue;
-          const at = new Date(Date.now() + (deps.blobDeleteDelayMs ?? 60_000));
-          await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, key, at));
+        const enqueueBlobDelete = (key: string) =>
+          deps.jobs.enqueue(
+            dataRoomBlobDeleteJob(
+              actor.spaceId,
+              key,
+              new Date(Date.now() + (deps.blobDeleteDelayMs ?? 60_000)),
+            ),
+          );
+        for (const key of [storageKey, thumbnailKey]) if (key) await enqueueBlobDelete(key);
+        // A deleted recording takes its meetings and notes with it.
+        const noteKeys = source === "omi" ? await deleteOmiRecordingOutputs(deps, actor, id) : [];
+        for (const key of noteKeys) {
+          await enqueueBlobDelete(key).catch((error: unknown) =>
+            getLogger().error("data room blob delete enqueue failed", error),
+          );
         }
         await repo.deleteItem(actor, id);
         return { ok: true as const };
@@ -419,7 +457,10 @@ export function createDataRoomService(deps: DataRoomDeps) {
         if (queued || !(await repo.restartItem(actor, id))) {
           throw new ORPCError("CONFLICT", { message: "This file is already being read." });
         }
-        await deps.jobs.enqueue(dataRoomStepJob("dataroom.ingest", actor, id));
+        // The restart is saved, so a failed enqueue is logged rather than failing the retry.
+        await deps.jobs
+          .enqueue(dataRoomStepJob("dataroom.ingest", actor, id))
+          .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
         return itemDto(await repo.getItem(actor, id));
       }),
     autoSort: {
@@ -542,14 +583,9 @@ export function createDataRoomService(deps: DataRoomDeps) {
         });
       }
       const visionKey = dataRoomVisionKey({ ...ai, allowed: true });
-      const queue = async (step: "ingest" | "classify" | "index", embeddingModel?: string) => {
-        for (const id of await repo.requeueReady(actor, step, embeddingModel, visionKey)) {
-          await deps.jobs.enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id));
-        }
-      };
-      await queue("ingest");
-      await queue("classify");
-      if (ai.embeddingModel) await queue("index", ai.embeddingModel);
+      await requeue(actor, "ingest", undefined, visionKey);
+      await requeue(actor, "classify", undefined, visionKey);
+      if (ai.embeddingModel) await requeue(actor, "index", ai.embeddingModel, visionKey);
       return { ...status, allowed: true };
     },
 
@@ -569,6 +605,16 @@ export function createDataRoomService(deps: DataRoomDeps) {
       });
       if (count === 0) {
         throw new ORPCError("CONFLICT", { message: "Choose a default model first." });
+      }
+      if (modelId) {
+        try {
+          const { ai } = await consentStatus(actor);
+          if (ai?.allowed && ai.embeddingModel) {
+            await requeue(actor, "index", ai.embeddingModel, dataRoomVisionKey(ai));
+          }
+        } catch (error) {
+          getLogger().error("data room re-index after embedding model change failed", error);
+        }
       }
       return { modelId };
     },
@@ -898,6 +944,11 @@ export function mountDataRoomRoutes(
 
     const name = DataRoomApiName.safeParse(c.req.query("name"));
     if (!name.success) return reject("Invalid file name", 400);
+    const source = c.req.query("source") ?? "upload";
+    if (source !== "upload" && source !== "scan") return reject("Invalid source", 400);
+    const expectedUserId = c.req.query("expectedUserId");
+    if (expectedUserId !== undefined && expectedUserId !== actor.userId)
+      return reject("The signed-in user changed", 400);
     const folderId = c.req.query("folderId") || null;
     if (
       folderId &&
@@ -917,7 +968,7 @@ export function mountDataRoomRoutes(
     const body = c.req.raw.body;
     try {
       const filed = await fileItem(actor, {
-        source: "upload",
+        source,
         name: name.data,
         mimeType: type,
         content: { stream: body ? streamChunks(body) : noContent() },

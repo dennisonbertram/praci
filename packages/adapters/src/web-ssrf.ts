@@ -92,7 +92,24 @@ export function isBlockedHostname(hostname: string): boolean {
   return false;
 }
 
-type SafeWebResponse<Body> = { url: string; body: Body; contentType: string | null };
+type SafeWebResponse<Body> = {
+  url: string;
+  body: Body;
+  contentType: string | null;
+  status?: number;
+  headers?: Headers;
+};
+
+/** A non-2xx response. Keeps status, headers and a short body prefix so callers can spot bot walls. */
+export class WebHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly headers: Headers,
+    readonly bodyPrefix: string,
+  ) {
+    super(`Request failed: HTTP ${status}`);
+  }
+}
 
 export async function fetchSafeWebText(
   url: string,
@@ -223,8 +240,10 @@ async function followRedirects(
   }
 
   if (!response.ok) {
-    await cancelResponseBody(response, state.signal);
-    throw new Error(`Request failed: HTTP ${response.status}`);
+    const prefix = await readBodyPrefix(response, 8_192, state.signal).catch(
+      () => new Uint8Array(),
+    );
+    throw new WebHttpError(response.status, response.headers, new TextDecoder().decode(prefix));
   }
 
   const contentLength = response.headers.get("content-length");
@@ -237,7 +256,13 @@ async function followRedirects(
     ? await readBodyPrefix(response, state.maxBytes, state.signal)
     : await readBodyCapped(response, state.maxBytes, state.signal);
 
-  return { url: validated.href, body, contentType: response.headers.get("content-type") };
+  return {
+    url: validated.href,
+    body,
+    contentType: response.headers.get("content-type"),
+    status: response.status,
+    headers: response.headers,
+  };
 }
 
 async function cancelResponseBody(response: Response, signal: AbortSignal): Promise<void> {

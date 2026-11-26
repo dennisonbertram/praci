@@ -25,7 +25,7 @@ const updater = compose.services.updater as ComposeService;
 
 describe("the production computer provider", () => {
   it.each(["api", "worker"])("lets .env select the %s provider with an E2B default", (name) => {
-    expect(compose.services[name]?.env_file).toEqual(["../../.env"]);
+    expect(compose.services[name]?.env_file).toBeUndefined();
     // biome-ignore lint/suspicious/noTemplateCurlyInString: this is the literal Compose expression
     expect(compose.services[name]?.environment?.SANDBOX_PROVIDER).toBe("${SANDBOX_PROVIDER:-e2b}");
   });

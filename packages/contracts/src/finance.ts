@@ -1,12 +1,12 @@
 import * as z from "zod";
 import { StatementReminderSchema } from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
-/** The one place the Finance agent's spawn key is built. */
-export const financeAgentSpawnKey = (userId: string) => `finance-agent:${userId}`;
+export const financeAgentSpawnKey = (userId: string) => pageAgentSpawnKey("finance", userId);
 
 export const isFinanceAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(financeAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "finance";
 
 export const FinanceProviderSchema = z.enum(["mercury", "brex"]);
 export type FinanceProvider = z.infer<typeof FinanceProviderSchema>;
@@ -96,6 +96,11 @@ const Cents = z.number().int();
 const MonthId = z.string().regex(/^\d{4}-\d{2}$/);
 /** YYYY-MM-DD */
 const DayId = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+/** A day typed in by a caller: a real calendar day (2026-02-31 and 2026-13-01 are refused). */
+const InputDayId = DayId.refine((d) => {
+  const at = new Date(`${d}T00:00:00Z`);
+  return !Number.isNaN(at.getTime()) && at.toISOString().startsWith(d);
+}, "Not a date");
 
 // ---- Crypto (separate from the Mercury/Brex cash model) ----
 //
@@ -168,6 +173,8 @@ export const CryptoHoldingSchema = z.object({
   usdPrice: z.string().nullable(),
   /** Whole USD cents, rounded half up; null when unpriced. */
   usdValueCents: Cents.nullable(),
+  /** Daily USD price per whole token over the last 30 days, oldest first; empty without enough history. */
+  priceHistory: z.array(z.number()).optional(),
   syncedAt: IsoDate,
 });
 
@@ -561,6 +568,8 @@ export const FinanceOverviewSchema = z.object({
   lastSyncedAt: IsoDate.nullable(),
   /** Transactions left out of every total because they are not in USD (v1 is USD only). */
   excludedNonUsdCount: z.number().int().nonnegative(),
+  /** The newest of those rows, so the notice can open them; `excludedNonUsdCount` is the true total. */
+  excludedNonUsd: z.array(FinanceTransactionSchema),
   /** Crypto holdings as held; null or absent when no wallet is added. Counted in cash per the saved scope; never in burn. */
   crypto: CryptoSummarySchema.nullable().optional(),
   /** Statement accounts whose newest statement is getting old. Absent from older payloads. */
@@ -660,6 +669,22 @@ export type RunwayCryptoScope = z.infer<typeof RunwayCryptoScopeSchema>;
 export const FinancePreferencesSchema = z.object({ runwayCrypto: RunwayCryptoScopeSchema });
 export type FinancePreferences = z.infer<typeof FinancePreferencesSchema>;
 
+/** A note pinned to a day on the Burn chart. Every member of the Space sees it; only its author can delete it. */
+export const FinanceChartNoteSchema = z.object({
+  id: z.string(),
+  /** YYYY-MM-DD, the start of the bucket it was added to. */
+  day: DayId,
+  text: z.string(),
+  mine: z.boolean(),
+});
+export type FinanceChartNote = z.infer<typeof FinanceChartNoteSchema>;
+export const FinanceChartNotesInputSchema = z.object({ from: DayId, to: DayId });
+export const FINANCE_CHART_NOTE_MAX = 500;
+export const FinanceChartNoteAddInputSchema = z.object({
+  day: InputDayId,
+  text: z.string().trim().min(1).max(FINANCE_CHART_NOTE_MAX),
+});
+
 /** End-of-day crypto value from stored daily snapshots; days before the first snapshot are absent. */
 export const CryptoBalancePointSchema = z.object({
   day: DayId,
@@ -704,8 +729,8 @@ export const FinanceSpendInputSchema = z.object({
   /** A category slug to filter by. */
   category: z.string().min(1).max(200).optional(),
   /** Inclusive days; with both, they replace the period's range (a chart bar's days). */
-  from: DayId.optional(),
-  to: DayId.optional(),
+  from: InputDayId.optional(),
+  to: InputDayId.optional(),
   /** Only this provider's transactions (Brex spend has no account row to open instead). */
   source: FinanceProviderSchema.optional(),
 });

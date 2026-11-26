@@ -21,6 +21,13 @@ export default defineConfig({
           new URL("./packages/testkit/src/lingui-core-macro.ts", import.meta.url),
         ),
       },
+      {
+        // The published macro compiles away in the app build; tests load the source directly.
+        find: /^@lingui\/react\/macro$/,
+        replacement: fileURLToPath(
+          new URL("./apps/web/src/test/lingui-react-macro.tsx", import.meta.url),
+        ),
+      },
       // Native-only transitive deps of the renderer contain uncompiled Flow
       // source; stub them out in tests (they never render anyway).
       ...["react-native-fit-image", "@react-native-vector-icons/material-design-icons"].map(
@@ -42,6 +49,7 @@ export default defineConfig({
     include: [
       ".agents/skills/pr-watch/*.test.ts",
       "scripts/*.test.mjs",
+      "scripts/connect/*.test.mjs",
       "packages/*/src/**/*.test.{ts,tsx}",
       "infra/sandboxes/supervisor/src/**/*.test.ts",
       "infra/updater/src/**/*.test.ts",

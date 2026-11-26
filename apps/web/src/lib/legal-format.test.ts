@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contractValue, daysBetween, todayIso } from "./legal-format";
+import { contractValue, daysBetween, isDueSoon, todayIso } from "./legal-format";
 
 describe("contractValue", () => {
   it("formats cents from a decimal string", () => {
@@ -27,5 +27,14 @@ describe("dates", () => {
   });
   it("reads today from the local calendar", () => {
     expect(todayIso(new Date(2026, 9, 5, 23, 59))).toBe("2026-10-05");
+  });
+});
+
+describe("isDueSoon", () => {
+  // The glance count is dueDate <= today (UTC) + 7 days, over open deadlines.
+  it("matches the sidebar rule at the boundary", () => {
+    expect(isDueSoon("2026-10-01", "2026-10-26")).toBe(true);
+    expect(isDueSoon("2026-11-02", "2026-10-26")).toBe(true);
+    expect(isDueSoon("2026-11-03", "2026-10-26")).toBe(false);
   });
 });

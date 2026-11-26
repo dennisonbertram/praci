@@ -1,0 +1,15 @@
+{
+  "json": {
+    "id": "artifact-placeholder",
+    "botId": "bot-placeholder",
+    "groupId": null,
+    "runId": null,
+    "name": "MOCK Cash Dashboard.html",
+    "description": "Cash, burn and runway at a glance",
+    "mimeType": "text/html",
+    "size": 247,
+    "version": 1,
+    "createdAt": "2026-10-29T03:26:48.946Z",
+    "contentBase64": "PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGJvZHkgc3R5bGU9ImZvbnQtZmFtaWx5OnNhbnMtc2VyaWY7cGFkZGluZzoyNHB4Ij4KPGgxPk1PQ0sgREVNTyBEQVRBOiBDYXNoIGRhc2hib2FyZDwvaDE+CjxwPkNhc2g6ICQxLDYzMywyMjEgwrcgTW9udGhseSBidXJuOiAkNjcsNjIxIMK3IFJ1bndheTogMjQuMiBtb250aHM8L3A+CjxwPk1vY2sgZGVtbyBkYXRhOiBpbnZlbnRlZCBmb3IgVVggdGVzdGluZy48L3A+CjwvYm9keT48L2h0bWw+Cg=="
+  }
+}

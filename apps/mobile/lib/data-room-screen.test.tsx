@@ -43,6 +43,7 @@ vi.mock("./api", () => ({
 }));
 vi.mock("./session", () => ({
   currentSessionGeneration: () => 1,
+  registerSessionDiskCache: vi.fn(),
   subscribeSessionGeneration: (listener: () => void) => {
     state.sessionListener = listener;
     return () => {
@@ -88,7 +89,17 @@ vi.mock("../components/ui-artifact-preview", () => ({
 vi.mock("react-native", () => ({
   ActivityIndicator: () => <div role="status">Loading</div>,
   Alert: { alert: vi.fn() },
-  Image: ({ source }: { source: { uri: string } }) => <div data-testid="image">{source.uri}</div>,
+  Image: ({
+    source,
+    accessibilityLabel,
+  }: {
+    source: { uri: string };
+    accessibilityLabel: string;
+  }) => (
+    <div data-testid="image" role="img" aria-label={accessibilityLabel}>
+      {source.uri}
+    </div>
+  ),
   Platform: { OS: "ios" },
   View: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
@@ -210,6 +221,15 @@ describe("native Data room list", () => {
       params: { itemId: "item-a" },
     });
   });
+  it("shows a generic failure on failed scan items", async () => {
+    state.items.mockResolvedValueOnce({
+      items: [{ ...item, status: "failed", error: "The scan could not read this file" }],
+      nextCursor: null,
+    });
+    await render(<DataRoomScreen />);
+    expect(host.textContent).toContain("Failed");
+    expect(host.textContent).not.toContain("The scan could not read this file");
+  });
   it("uses the native search bar with the selected folder and loads the next search page", async () => {
     vi.useFakeTimers();
     state.params = { folderId: "folder-a" };
@@ -318,5 +338,38 @@ describe("native Data room item", () => {
     await render(<DataRoomItemScreen />);
     expect(host.textContent).toContain("Retry");
     expect(state.setOptions.mock.calls.at(-1)?.[0].headerRight().props.disabled).toBe(false);
+  });
+  it("does not download an image that is too large to preview and offers Share", async () => {
+    state.params = { itemId: "item-a" };
+    state.item.mockResolvedValue({ ...item, mimeType: "image/png", size: 60 * 1024 * 1024 });
+    await render(<DataRoomItemScreen />);
+
+    expect(state.download).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("This file is too large to preview.");
+    expect(host.textContent).toContain("Share");
+    expect(host.textContent).not.toContain("Retry");
+  });
+  it("keeps the image visible while sharing and ignores a second share press", async () => {
+    state.params = { itemId: "item-a" };
+    state.item.mockResolvedValue({ ...item, mimeType: "image/png" });
+    let finishSharing!: () => void;
+    state.share.mockReturnValueOnce(new Promise<void>((resolve) => (finishSharing = resolve)));
+    await render(<DataRoomItemScreen />);
+    const options = state.setOptions.mock.calls.at(-1)?.[0];
+    await render(
+      <>
+        <DataRoomItemScreen />
+        {options.headerRight()}
+      </>,
+    );
+
+    await click("Share");
+    expect(
+      host.querySelector('[data-testid="image"][aria-label="Invented plan.pdf"]'),
+    ).toBeTruthy();
+    await click("Share");
+    expect(state.share).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishSharing());
   });
 });

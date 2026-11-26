@@ -3,6 +3,7 @@ import type {
   CompanyEntityRecord,
   CompanyEventRecord,
   CompanyPartialDate,
+  CompanyRelation,
 } from "@rakazo/contracts";
 import { CompanyPartialDateSchema } from "@rakazo/contracts";
 
@@ -39,17 +40,21 @@ export function companyDateRange(value: CompanyPartialDate): { start: number; en
   return { start, end: end.getTime() / day };
 }
 
-export function companyHistoryItems(data: {
-  entities: Pick<CompanyEntityRecord, "id" | "kind" | "displayName" | "attrs" | "status">[];
-  edges: Pick<
-    CompanyEdgeRecord,
-    "id" | "fromId" | "toId" | "relation" | "role" | "startsOn" | "endsOn" | "status"
-  >[];
-  events: Pick<
-    CompanyEventRecord,
-    "id" | "kind" | "stream" | "title" | "occursOn" | "endsOn" | "entityIds" | "status"
-  >[];
-}): CompanyHistoryItem[] {
+export function companyHistoryItems(
+  data: {
+    entities: Pick<CompanyEntityRecord, "id" | "kind" | "displayName" | "attrs" | "status">[];
+    edges: Pick<
+      CompanyEdgeRecord,
+      "id" | "fromId" | "toId" | "relation" | "role" | "startsOn" | "endsOn" | "status"
+    >[];
+    events: Pick<
+      CompanyEventRecord,
+      "id" | "kind" | "stream" | "title" | "occursOn" | "endsOn" | "entityIds" | "status"
+    >[];
+  },
+  relationLabel: (relation: CompanyRelation) => string = (relation) =>
+    relation.replaceAll("_", " "),
+): CompanyHistoryItem[] {
   const names = new Map(data.entities.map((entity) => [entity.id, entity.displayName]));
   const items: CompanyHistoryItem[] = data.events.flatMap((event) =>
     event.occursOn
@@ -85,7 +90,7 @@ export function companyHistoryItems(data: {
       id: edge.id,
       kind: "edge",
       stream: streams[edge.relation] ?? "company",
-      title: `${names.get(edge.fromId) ?? "—"} · ${edge.role ?? edge.relation.replaceAll("_", " ")} · ${names.get(edge.toId) ?? "—"}`,
+      title: `${names.get(edge.fromId) ?? "—"} · ${edge.role ?? relationLabel(edge.relation)} · ${names.get(edge.toId) ?? "—"}`,
       start: edge.startsOn,
       end: edge.endsOn,
       period: edge.relation !== "founded",

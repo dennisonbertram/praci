@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -38,6 +40,7 @@ vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
 import { FinanceAccountPage, FinanceAccountsPage } from "./FinanceAccounts";
 
+i18n.loadAndActivate({ locale: "en", messages: {} });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const ADDRESS = "0x2222222222222222222222222222222222222222";
@@ -83,6 +86,12 @@ const accounts = {
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
+function createI18nRoot(element: HTMLDivElement) {
+  const i18nRoot = createRoot(element);
+  const render = i18nRoot.render.bind(i18nRoot);
+  i18nRoot.render = (children) => render(<I18nProvider i18n={i18n}>{children}</I18nProvider>);
+  return i18nRoot;
+}
 const flush = () => act(async () => {});
 async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
@@ -120,7 +129,7 @@ beforeEach(async () => {
   rpcMock.spend.mockResolvedValue({ totalCents: 0 });
   container = document.createElement("div");
   document.body.append(container);
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await show();
 });
 afterEach(() => {
@@ -194,18 +203,18 @@ it("leaves Count crypto to the Runway page and keeps the plain subtitle under th
 
 it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await show("stablecoins");
   expect(subtitle()).toBe("1 bank account + stablecoins");
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await show("all");
   expect(subtitle()).toBe("1 bank account + crypto");
 });
 
 it("narrows the cash total to the chosen source and shows no card balance tile when there is none", async () => {
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   rpcMock.accounts.mockResolvedValue({
     ...accounts,
     totalCashCents: 7_530_000,
@@ -240,7 +249,7 @@ it("narrows the cash total to the chosen source and shows no card balance tile w
 
 it("shows an account's last four digits once when its name already ends with them", async () => {
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   rpcMock.accounts.mockResolvedValue({
     ...accounts,
     cash: [{ ...accounts.cash[0], name: "MOCK Checking ••0002" }],
@@ -262,7 +271,7 @@ it("shows an account's last four digits once when its name already ends with the
 
 const renderAccounts = async (data: object, source?: "mercury" | "brex") => {
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   rpcMock.accounts.mockResolvedValue(data);
   await act(async () =>
     root.render(
@@ -274,6 +283,25 @@ const renderAccounts = async (data: object, source?: "mercury" | "brex") => {
   await flush();
 };
 const headings = () => [...container.querySelectorAll("h2")].map((h) => h.textContent);
+
+it("names the cards section Cards while the KPI keeps Card balance owed", async () => {
+  await renderAccounts({
+    ...accounts,
+    cardOwedCents: 120_000,
+    cards: [
+      {
+        id: "c1",
+        name: "Brex Card",
+        lastFour: "4242",
+        balanceCents: 120_000,
+        annualYieldPct: null,
+      },
+    ],
+  });
+  expect(headings()).toContain("Cards");
+  const page = container.textContent ?? "";
+  expect(page.match(/Card balance owed/g)).toHaveLength(1);
+});
 
 it("leaves the Brex card note off a Mercury-only view", async () => {
   await renderAccounts(
@@ -345,7 +373,7 @@ async function showSource(source: "mercury" | "brex" | null) {
   rpcMock.accounts.mockResolvedValue(mixed);
   rpcMock.balanceSeries.mockResolvedValue({ range: "year", points: [] });
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -421,7 +449,7 @@ it("says an account has no transactions yet, without mentioning a period it does
     transactions: [],
   });
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -432,6 +460,64 @@ it("says an account has no transactions yet, without mentioning a period it does
   await flush();
   expect(container.textContent).toContain("No transactions on this account yet");
   expect(container.textContent).not.toContain("in this period");
+});
+
+it("shows the transaction limit notice at 500 rows, but not at 499", async () => {
+  const transaction = {
+    id: "txn-0",
+    provider: "mercury",
+    externalId: "ext-0",
+    accountExternalId: "a9",
+    postedAt: "2026-10-01T00:00:00.000Z",
+    purchasedAt: null,
+    amountCents: -100,
+    currency: "USD",
+    counterparty: "Example vendor",
+    vendorKey: "example-vendor",
+    category: null,
+    status: "posted",
+    kind: "debit",
+    classification: "spend",
+    cardLastFour: null,
+    cardholder: null,
+    memo: null,
+    hasReceipt: false,
+    dashboardUrl: null,
+  };
+  const response = (count: number) => ({
+    account: {
+      id: "a9",
+      provider: "mercury",
+      kind: "savings",
+      name: "Savings",
+      lastFour: "2222",
+      balanceCents: 100_000,
+      annualYieldPct: null,
+    },
+    history: [],
+    treasuryYield: [],
+    transactions: Array.from({ length: count }, (_, i) => ({ ...transaction, id: `txn-${i}` })),
+  });
+
+  for (const [count, visible, search] of [
+    [500, true, ""],
+    [499, false, ""],
+    [500, true, "?q=no-such-transaction"],
+  ] as const) {
+    rpcMock.account.mockResolvedValue(response(count));
+    await act(async () => root.unmount());
+    root = createI18nRoot(container);
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={[`/app/finance/accounts/a9${search}`]}>
+          <FinanceAccountPage id="a9" />
+        </MemoryRouter>,
+      ),
+    );
+    await flush();
+    expect(container.textContent?.includes("Showing the latest 500")).toBe(visible);
+    if (search) expect(container.textContent).toContain("No matches");
+  }
 });
 
 it("renames a statement account and shows the new name, and offers no rename on a synced bank", async () => {
@@ -454,7 +540,7 @@ it("renames a statement account and shows the new name, and offers no rename on 
   rpcMock.statementAccountRename.mockResolvedValue({ ok: true });
   rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
   await act(async () => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot(container);
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -509,4 +595,44 @@ it("renames a statement account and shows the new name, and offers no rename on 
   expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Rename")).toBe(
     false,
   );
+});
+
+it("shows 3 cash accounts on a phone and expands the rest in place", async () => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  try {
+    const many = Array.from({ length: 5 }, (_, i) => ({
+      id: `m${i}`,
+      name: `Account ${i}`,
+      lastFour: null,
+      balanceCents: 1_000_000 - i * 1_000,
+      annualYieldPct: null,
+    }));
+    act(() => root.unmount());
+    root = createI18nRoot(container);
+    await show();
+    rpcMock.accounts.mockResolvedValue({ ...accounts, cash: many });
+    act(() => root.unmount());
+    root = createI18nRoot(container);
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <FinanceAccountsPage />
+        </MemoryRouter>,
+      ),
+    );
+    await flush();
+    const rows = () => container.querySelectorAll('a[href^="/app/finance/account/m"]').length;
+    expect(rows()).toBe(3);
+    const seeAll = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "See all (5)",
+    );
+    await act(async () => seeAll?.click());
+    expect(rows()).toBe(5);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

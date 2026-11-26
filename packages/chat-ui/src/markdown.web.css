@@ -204,9 +204,34 @@
   opacity: 1;
 }
 
+/* No hover on touch, so the button stays visible. */
+@media (hover: none) {
+  .rk-chat-markdown-copy {
+    opacity: 1;
+  }
+}
+
 .rk-chat-markdown-copy:hover {
   background: var(--accent);
   color: var(--foreground);
+}
+
+/* The button sits over the quote's right end, so the text stops short of it. */
+.rk-chat-markdown-pre-wrap > blockquote {
+  padding-right: 2.25em;
+}
+
+/* No hover on touch, so the button stays visible; this grows its hit area to 44px without moving it. */
+@media (pointer: coarse) {
+  .rk-chat-markdown-copy::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
+  /* The larger hit area reaches 8px further left, so the quote's text stops short of it too. */
+  .rk-chat-markdown-pre-wrap > blockquote {
+    padding-right: calc(2.25em + 8px);
+  }
 }
 
 .rk-chat-markdown blockquote {

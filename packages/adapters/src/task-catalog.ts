@@ -21,11 +21,10 @@ type TaskCatalogInput = {
  * records returned by task_catalog are the source of truth for names and ids.
  */
 export const TASK_CATALOG_GUIDANCE = [
-  "Task execution: task_catalog is the source of truth for this bot's open work, routines, skills, and exposed tools; conversation or memory text is not proof that a task exists.",
-  "When a request refers to an existing task, routine, skill, or capability, call task_catalog first and use the exact returned id/name.",
-  "For an open task, perform the work with the exposed tools, verify the result, then use scratchpad_update or scratchpad_complete. Never mark work done before verification.",
-  "For a schedule, provide exactly one timing mode to schedule_create (cron, every+unit, runAt, delayMinutes, or delaySeconds), then call schedule_list and only report success when the routine is present.",
-  "If a tool returns an error, do not repeat the same tool call with the same arguments. Correct the specific field once as a separate attempt; if that attempt fails, stop and explain the blocker instead of narrating more retries. A different command is not a retry.",
+  "Task execution: task_catalog lists this bot's open work, routines, skills, and exposed tools. An empty list does not cancel what the user asked for in this conversation.",
+  "When a request refers to an existing routine, skill, capability or saved to-do you cannot see in these instructions, call task_catalog once and use the exact returned id/name. Do not call it before every step.",
+  "For an open task, perform the work with the exposed tools, then use scratchpad_update or scratchpad_complete.",
+  "For a schedule, provide exactly one timing mode to schedule_create (cron, every+unit, runAt, delayMinutes, or delaySeconds). Change an existing routine with schedule_update, not cancel and recreate.",
 ].join("\n");
 
 export async function taskCatalogFromTool(deps: TaskCatalogToolDeps, input: TaskCatalogInput) {
@@ -57,6 +56,35 @@ export async function taskCatalogFromTool(deps: TaskCatalogToolDeps, input: Task
     }),
   ]);
 
+  // Approved tools the bot can call with tool_run, with the input each one takes.
+  const toolRows = await deps.prisma.agentSkill.findMany({
+    where: {
+      spaceId: input.spaceId,
+      userId: input.userId,
+      status: "active",
+      toolSource: { not: null },
+      toolSourceHash: { not: null },
+    },
+    select: { id: true, name: true, description: true, toolInputSchema: true },
+    orderBy: { name: "asc" },
+  });
+  const enabledIds = new Set(
+    (
+      await listAgentSkillRecords(deps.prisma, {
+        spaceId: input.spaceId,
+        userId: input.userId,
+        botId: input.botId,
+      })
+    ).map((skill) => skill.id),
+  );
+  const savedTools = toolRows
+    .filter((row) => enabledIds.has(row.id))
+    .map((row) => ({
+      name: row.name,
+      description: row.description,
+      inputSchema: row.toolInputSchema,
+    }));
+
   const seenTools = new Set<string>();
   const exposedTools = input.tools.flatMap((tool) => {
     if (seenTools.has(tool.name)) return [];
@@ -80,6 +108,7 @@ export async function taskCatalogFromTool(deps: TaskCatalogToolDeps, input: Task
       source: "scratchpad",
     })),
     routines: schedules.routines,
+    savedTools,
     taughtSkills: taughtSkills.map((skill) => ({
       id: skill.id,
       name: skill.name,

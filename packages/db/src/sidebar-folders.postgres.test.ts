@@ -199,11 +199,10 @@ describePostgres("sidebar folders (PostgreSQL)", () => {
     expect(await names()).toEqual({
       Apps: ["Filed", "Mercury"],
       Workspace: ["Inbox"],
-      Agents: ["Chief"],
       Groups: ["Ops group"],
     });
     expect((await prisma.bot.findUniqueOrThrow({ where: { id: pinned } })).sectionId).toBeNull();
-    expect(snapshot.createdFolderIds).toHaveLength(3);
+    expect(snapshot.createdFolderIds).toHaveLength(2);
     // Running it again changes nothing.
     expect((await autoGroupSidebar(prisma, alice)).placements).toEqual([]);
 

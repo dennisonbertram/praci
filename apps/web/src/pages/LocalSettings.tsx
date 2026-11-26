@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
 import { rpc } from "../lib/rpc";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
@@ -9,11 +9,24 @@ export function LocalSettingsPage() {
   const [section, setSection] = useState<"models" | "integrations" | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  const mounted = useRef(false);
+
+  async function loadSettings() {
+    setError(false);
+    try {
+      await rpc.integrationSetup.get();
+      if (mounted.current) setReady(true);
+    } catch {
+      if (mounted.current) setError(true);
+    }
+  }
+
   useEffect(() => {
-    void rpc.integrationSetup
-      .get()
-      .then(() => setReady(true))
-      .catch(() => setError(true));
+    mounted.current = true;
+    void loadSettings();
+    return () => {
+      mounted.current = false;
+    };
   }, []);
   return (
     <main className="h-full overflow-auto bg-background px-6 py-12">
@@ -22,12 +35,17 @@ export function LocalSettingsPage() {
           <Trans>Local Server Settings</Trans>
         </h1>
         {error ? (
-          <p role="alert">
-            <Trans>
-              Could not open local settings. Start the local server and create its owner account,
-              then try again.
-            </Trans>
-          </p>
+          <div role="alert" className="space-y-2">
+            <p>
+              <Trans>
+                Could not open local settings. Start the local server and create its owner account,
+                then try again.
+              </Trans>
+            </p>
+            <Button variant="outline" onClick={() => void loadSettings()}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
         ) : null}
         {ready ? (
           <>

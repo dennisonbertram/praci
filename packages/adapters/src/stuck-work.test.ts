@@ -320,6 +320,7 @@ describe("reconcileStuckWork", () => {
       name: "run.continue",
       payload: { runId: "run-next" },
       replaceKey: "run:run-next",
+      priority: -1,
     });
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(
@@ -518,6 +519,9 @@ function noticePrisma(run: ReturnType<typeof candidate>, stamps: NoticeStamp[]) 
 
 function expireClient(run: ReturnType<typeof candidate>, options?: { cancelled?: number }) {
   const client = {
+    externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     run: {
       findMany: vi.fn(async () => [run]),
       updateMany: vi.fn(async () => ({ count: options?.cancelled ?? 1 })),
@@ -534,19 +538,24 @@ function expireClient(run: ReturnType<typeof candidate>, options?: { cancelled?:
       findFirst: vi.fn(async () => null),
       create: vi.fn(async () => ({ id: "run-next" })),
     },
+    secret: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
     task: {
       updateMany: vi.fn(async () => ({ count: 1 })),
       create: vi.fn(async () => ({ id: "task-next" })),
     },
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 2, nextEventSeq: 9 })) },
-    message: { create: vi.fn(async () => ({ id: "message-expired", seq: 1 })) },
+    message: {
+      create: vi.fn(async () => ({ id: "message-expired", seq: 1 })),
+      findFirst: vi.fn(async () => null),
+    },
     event: {
       findMany: vi.fn(async () => []),
       create: vi.fn(async () => ({ seq: 8 })),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     computerExecutionLease: { updateMany: vi.fn(async () => ({ count: 1 })) },
+    threadGoal: { findFirst: vi.fn(async () => null) },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     steeringMessage: {
       updateMany: vi.fn(async () => ({ count: 1 })),

@@ -16,6 +16,12 @@ describePostgres("memory commits (PostgreSQL)", () => {
     userId: "memory-commit-user",
     signal: new AbortController().signal,
   };
+  // A second tenant, used by the fading tests.
+  const otherContext: AdapterContext = {
+    ...context,
+    spaceId: "memory-fade-other-space",
+    userId: "memory-fade-other-user",
+  };
   let prisma: PrismaClient;
   let store: MarkdownMemoryStore;
   let close: () => Promise<void>;
@@ -52,10 +58,24 @@ describePostgres("memory commits (PostgreSQL)", () => {
     });
   });
 
+  beforeAll(async () => {
+    await prisma.organization.create({
+      data: {
+        id: otherContext.spaceId,
+        name: "Memory Fade Other Organization",
+        slug: otherContext.spaceId,
+        createdAt: new Date(),
+        spaces: { create: { id: otherContext.spaceId, name: "Memory Fade Other Space" } },
+      },
+    });
+  });
+
   afterAll(async () => {
     if (!prisma) return;
     try {
-      await prisma.organization.deleteMany({ where: { id: context.spaceId } });
+      await prisma.organization.deleteMany({
+        where: { id: { in: [context.spaceId, otherContext.spaceId] } },
+      });
     } finally {
       await close();
     }
@@ -235,5 +255,143 @@ describePostgres("memory commits (PostgreSQL)", () => {
     expect(afterRetry).toMatchObject({ revision: 5, content: "rejected" });
     expect(afterRetry.revisions).toHaveLength(5);
     expect(afterRetry.revisions.at(-1)).toMatchObject({ revision: 5, content: "rejected" });
+  });
+
+  async function save(c: AdapterContext, path: string, kind?: "task" | "preference") {
+    return store.commit({ scope: "user", path, content: `note about ${path}`, kind }, c);
+  }
+
+  it("stores the kind, reads it back, and updates it only when given", async () => {
+    await save(context, "kind.md", "task");
+    await store.commit({ scope: "user", path: "kind.md", content: "again" }, context);
+    const snap = await store.read({ scope: "user", path: "kind.md" }, context);
+    expect(snap.documents[0]).toMatchObject({ kind: "task", useCount: 0, pinned: false });
+  });
+
+  it("finds a weak memory by explicit search, ranked below a strong one", async () => {
+    const weak = await save(context, "search-weak.md", "task");
+    await save(context, "search-strong.md", "preference");
+    await prisma.memoryDocument.update({
+      where: { id: weak.id },
+      data: { updatedAt: new Date(Date.now() - 400 * 86_400_000) },
+    });
+    const found = await store.search({ query: "note about search-", scope: "user" }, context);
+    expect(found.map((r) => r.path)).toEqual(["search-strong.md", "search-weak.md"]);
+    expect(found[0]!.score).toBeGreaterThan(found[1]!.score);
+  });
+
+  it("records use only inside the caller's space and user", async () => {
+    const a = await save(context, "use.md");
+    const b = await save(otherContext, "use.md");
+    await store.recordUse([a.id, b.id], context);
+    const rowA = await prisma.memoryDocument.findUniqueOrThrow({ where: { id: a.id } });
+    const rowB = await prisma.memoryDocument.findUniqueOrThrow({ where: { id: b.id } });
+    expect(rowA.useCount).toBe(1);
+    expect(rowA.lastUsedAt).not.toBeNull();
+    expect(rowB.useCount).toBe(0);
+    expect(rowB.lastUsedAt).toBeNull();
+  });
+
+  it("pins a memory the owner edited by hand", async () => {
+    await save(context, "owner.md", "task");
+    await store.commit(
+      { scope: "user", path: "owner.md", content: "context", byOwner: true },
+      context,
+    );
+    const snap = await store.read({ scope: "user", path: "owner.md" }, context);
+    expect(snap.documents[0]!.pinned).toBe(true);
+  });
+
+  it("exports bot and user memory for scope all and imports it back into each scope", async () => {
+    await store.commit(
+      {
+        scope: "bot",
+        botId: "memory-commit-bot",
+        path: "roundtrip-bot.md",
+        content: "bot only",
+      },
+      context,
+    );
+    await store.commit({ scope: "user", path: "roundtrip-user.md", content: "shared" }, context);
+
+    const files = [];
+    for await (const file of store.exportMarkdown({ scope: "all" }, context)) files.push(file);
+    const roundtrip = files.filter((file) => file.path.includes("roundtrip-"));
+    expect(roundtrip.map((file) => file.path).sort()).toEqual([
+      "bot/memory-commit-bot/roundtrip-bot.md",
+      "user/roundtrip-user.md",
+    ]);
+
+    await prisma.memoryDocument.deleteMany({
+      where: { spaceId: context.spaceId, path: { startsWith: "roundtrip-" } },
+    });
+    await store.importMarkdown(
+      (async function* () {
+        for (const file of roundtrip) yield file;
+      })(),
+      context,
+    );
+
+    const restoredBot = await prisma.memoryDocument.findFirstOrThrow({
+      where: { spaceId: context.spaceId, userId: context.userId, path: "roundtrip-bot.md" },
+    });
+    expect(restoredBot).toMatchObject({
+      scope: "bot",
+      botId: "memory-commit-bot",
+      content: "bot only",
+    });
+    const restoredUser = await prisma.memoryDocument.findFirstOrThrow({
+      where: { spaceId: context.spaceId, userId: context.userId, path: "roundtrip-user.md" },
+    });
+    expect(restoredUser).toMatchObject({ scope: "user", botId: null, content: "shared" });
+  });
+
+  it("imports legacy files verbatim as user memory, even paths that look scoped", async () => {
+    await store.importMarkdown(
+      (async function* () {
+        yield {
+          path: "bot/memory-commit-bot/legacy.md",
+          content: new TextEncoder().encode("looks scoped"),
+        };
+        yield {
+          path: "user/legacy.md",
+          content: new TextEncoder().encode("looks prefixed"),
+        };
+      })(),
+      context,
+    );
+
+    const rows = await prisma.memoryDocument.findMany({
+      where: {
+        spaceId: context.spaceId,
+        userId: context.userId,
+        path: { in: ["bot/memory-commit-bot/legacy.md", "user/legacy.md"] },
+      },
+    });
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(row).toMatchObject({ scope: "user", botId: null });
+    expect(rows.find((row) => row.path === "bot/memory-commit-bot/legacy.md")!.content).toBe(
+      "looks scoped",
+    );
+  });
+
+  it("refuses to import scoped bot memory for a bot the caller does not own", async () => {
+    await expect(
+      store.importMarkdown(
+        (async function* () {
+          yield {
+            path: "bot/memory-commit-bot/foreign.md",
+            memory: { version: 1, scope: "bot", botId: "memory-commit-bot" } as const,
+            content: new TextEncoder().encode("foreign"),
+          };
+        })(),
+        otherContext,
+      ),
+    ).rejects.toThrow("memory-commit-bot");
+    expect(
+      await prisma.memoryDocument.count({
+        where: { spaceId: otherContext.spaceId, path: "foreign.md" },
+      }),
+    ).toBe(0);
   });
 });

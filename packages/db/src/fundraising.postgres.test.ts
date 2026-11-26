@@ -158,4 +158,36 @@ describePostgres("fundraising (PostgreSQL)", () => {
       safes: [],
     });
   });
+
+  it("returns prospects in the list's own order, nulls last, then by name", async () => {
+    const scope = { spaceId: otherSpace.spaceId, userId: mine.userId };
+    const record = (name: string, listOrder: number | null) =>
+      prisma.pipelineRecord.create({
+        data: {
+          ...scope,
+          name,
+          normalizedName: name.toLowerCase().replace(/[^a-z0-9]+/g, ""),
+          listOrder,
+        },
+      });
+    await record("Example Second", 1);
+    await record("Example Third", 2);
+    // A record tied for first still falls behind on name; personless and person rows order alike.
+    await record("Example Also First", 0);
+    const person = await saveContact(prisma, scope, { name: "Example First", kind: "prospect" });
+    await prisma.pipelineRecord.update({
+      where: { id: person.pipelineRecord!.id },
+      data: { listOrder: 0 },
+    });
+    await record("Example Unordered B", null);
+    await record("Example Unordered A", null);
+    expect((await getFundraisingOverview(prisma, scope)).prospects.map((p) => p.name)).toEqual([
+      "Example Also First",
+      "Example First",
+      "Example Second",
+      "Example Third",
+      "Example Unordered A",
+      "Example Unordered B",
+    ]);
+  });
 });

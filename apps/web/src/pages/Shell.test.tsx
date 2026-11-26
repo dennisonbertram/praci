@@ -6,7 +6,8 @@ import type { ComponentProps, ReactNode } from "react";
 import { act, createRef } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({
   msg: (parts: TemplateStringsArray) => parts[0],
@@ -17,12 +18,132 @@ vi.mock("@lingui/core/macro", () => ({
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
-  return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
+  return {
+    useLingui: () => ({ t, i18n: { locale: "en", _: (message: unknown) => String(message) } }),
+    Trans: ({ children }: { children: ReactNode }) => children,
+  };
 });
 
-vi.mock("../lib/rpc", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../lib/rpc")>()),
-  rpc: {
+const menuToast = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/ui-web")>()),
+  enqueueNotificationToast: menuToast,
+}));
+
+const routineLinkRpc = vi.hoisted(() => ({
+  computerBoot: vi.fn(async () => ({})),
+  botsList: vi.fn(async () => [
+    {
+      id: "b1",
+      name: "Bot",
+      spawnKey: null,
+      description: "",
+      preview: "",
+      title: "",
+      color: "#000",
+      status: "idle",
+    },
+  ]),
+  routinesList: vi.fn(async (_input: { botId: string }): Promise<unknown[]> => []),
+  skillsList: vi.fn(async () => []),
+  threadsGet: vi.fn(async ({ botId }: { botId: string }, _options?: unknown) => ({
+    botId,
+    threadId: `t-${botId}`,
+    messages: [],
+    computer: null,
+    olderCursor: null,
+  })),
+}));
+vi.mock("../lib/auth", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: "u1" } } }) },
+}));
+vi.mock("../lib/hex/useHexSync", () => ({ useHexSync: () => {} }));
+vi.mock("../components/SidebarPages", () => ({ SidebarPages: () => null }));
+vi.mock("./shell/bot-pins", () => ({
+  PinsList: () => null,
+  PinsStrip: () => null,
+  useBotPins: () => [null, () => {}],
+}));
+
+const searchHits = vi.hoisted(() => ({ current: [] as Record<string, unknown>[] }));
+const paletteRpc = vi.hoisted(() => ({
+  folders: 0,
+  contacts: 0,
+  foldersFail: false,
+  contactsFail: false,
+  listSpace: [] as { q?: string; limit?: number }[],
+}));
+
+vi.mock("../lib/rpc", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/rpc")>();
+  const defaults = new Proxy({}, { get: () => async () => ({}) });
+  const rpcOverrides = {
+    ...actual.rpc,
+    bootstrap: async () => ({
+      me: { ticketBoardEnabled: false, userId: "u1", hideAmounts: false },
+      bots: [
+        {
+          id: "b1",
+          name: "Bot",
+          spawnKey: null,
+          description: "",
+          preview: "",
+          title: "",
+          color: "#000",
+          status: "idle",
+        },
+      ],
+      botSections: [],
+      archivedBots: [],
+      archivedGroups: [],
+      groups: [],
+      spaces: [],
+      routines: [],
+    }),
+    bots: { ...actual.rpc.bots, list: routineLinkRpc.botsList },
+    routines: { ...actual.rpc.routines, list: routineLinkRpc.routinesList },
+    skills: { ...actual.rpc.skills, list: routineLinkRpc.skillsList },
+    taughtSkills: { list: async () => [] },
+    threads: {
+      ...actual.rpc.threads,
+      get: routineLinkRpc.threadsGet,
+    },
+    computer: { ...actual.rpc.computer, boot: routineLinkRpc.computerBoot },
+    spaces: {
+      ...actual.rpc.spaces,
+      list: async () => ({
+        current: {
+          bots: [
+            {
+              id: "b1",
+              name: "Bot",
+              spawnKey: null,
+              description: "",
+              preview: "",
+              title: "",
+              color: "#000",
+              status: "idle",
+            },
+          ],
+          botSections: [],
+          groups: [],
+        },
+        spaces: [],
+      }),
+    },
+    inbox: { unreadCount: async () => ({ count: 0 }) },
+    notifications: {
+      unseenCounts: async () => ({ counts: {} }),
+      glance: async () => ({ botKinds: {} }),
+    },
+    search: { query: async () => ({ hits: searchHits.current }) },
+    contacts: {
+      list: async () => {
+        paletteRpc.contacts += 1;
+        if (paletteRpc.contactsFail) throw new Error("contacts down");
+        return [{ id: "c1", name: "Halcyon Capital", email: "a@halcyon.test", organization: null }];
+      },
+    },
     dataRoom: {
       search: async () => ({
         results: [
@@ -33,18 +154,40 @@ vi.mock("../lib/rpc", async (importOriginal) => ({
           },
         ],
       }),
-      folders: async () => [],
+      folders: async () => {
+        paletteRpc.folders += 1;
+        if (paletteRpc.foldersFail) throw new Error("folders down");
+        return [];
+      },
     },
     artifacts: {
-      listSpace: async () => ({
-        items: [{ id: "a1", name: "Report", description: "Costs $9,900 total" }],
-      }),
+      listSpace: async (input: { q?: string; limit?: number }) => {
+        paletteRpc.listSpace.push(input);
+        return { items: [{ id: "a1", name: "Report", description: "Costs $9,900 total" }] };
+      },
     },
-  },
-}));
+  };
+  const methodFallback = (key: PropertyKey) => async () =>
+    ["list", "listArchived", "messages"].includes(String(key)) ? [] : {};
+  return {
+    ...actual,
+    rpc: new Proxy(rpcOverrides, {
+      get: (target, key: string) => {
+        const value = Reflect.get(target, key);
+        if (value === undefined) return defaults;
+        if (typeof value !== "object" || value === null) return value;
+        return new Proxy(value, {
+          get: (namespace, method: PropertyKey) =>
+            Reflect.get(namespace, method) ?? methodFallback(method),
+        });
+      },
+    }),
+  };
+});
 
 import { findGtmAgent } from "../lib/gtm-agent";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
+import { ShellPage } from "./Shell";
 
 it("selects only the signed-in founder's GTM panel agent", () => {
   const bots = [
@@ -56,18 +199,47 @@ it("selects only the signed-in founder's GTM panel agent", () => {
 });
 
 import {
+  answerThenRefresh,
   BOTS_POLL_MS,
   Composer,
+  catchBotMenuRequest,
   chatIsOpening,
+  createPaletteLookupCache,
+  findChats,
+  findContacts,
   findDocumentsAndArtifacts,
   firstThreadRoute,
   isRoutinesOnlyPanel,
+  reopensAfterUndo,
   retryAfterStop,
   settingsSectionFromParam,
   showsComputerCaption,
   Transcript,
   uniqueBotName,
+  useScratchpadFocus,
 } from "./Shell";
+
+describe("bot menu request failures", () => {
+  beforeEach(() => menuToast.mockClear());
+
+  it("shows a rejected pin request in a toast", async () => {
+    const error = new Error("pin update rejected");
+    await catchBotMenuRequest(Promise.reject(error), "bot-1");
+    expect(menuToast).toHaveBeenCalledWith({
+      id: "chat-menu-bot-1",
+      title: "pin update rejected",
+    });
+  });
+
+  it("shows a rejected mark unread request in a toast", async () => {
+    const error = new Error("read update rejected");
+    await catchBotMenuRequest(Promise.reject(error), "bot-1");
+    expect(menuToast).toHaveBeenCalledWith({
+      id: "chat-menu-bot-1",
+      title: "read update rejected",
+    });
+  });
+});
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -81,20 +253,193 @@ afterEach(() => {
   container = null;
 });
 
+it("reopens an archived chat only where the archive landed, at click and at resolve", () => {
+  const open = { wasOpen: true, landedPath: "/app/botA" };
+  // The archive redirected to botA and nothing has opened since, so Undo returns.
+  expect(reopensAfterUndo(open, "/app/botA", "/app/botA")).toBe(true);
+  // An unrelated route after a group archive is not the landing, so Undo stays put.
+  expect(reopensAfterUndo(open, "/app/botA", "/app/botB")).toBe(false);
+  expect(reopensAfterUndo(open, "/app/botA", "/app/integrations")).toBe(false);
+  expect(reopensAfterUndo(open, "/app/botA", "/app/g/groupA")).toBe(false);
+  // It was never the open chat, so Undo only puts it back in the sidebar.
+  expect(
+    reopensAfterUndo({ wasOpen: false, landedPath: "/app/botA" }, "/app/botA", "/app/botA"),
+  ).toBe(false);
+  // Undo was clicked somewhere else, or the view moved while the restore was pending.
+  expect(reopensAfterUndo(open, "/app/botB", "/app/botB")).toBe(false);
+  expect(reopensAfterUndo(open, "/app/botA", "/app/integrations")).toBe(false);
+});
+
 it("maps ?settings= to a settings section", () => {
   expect(settingsSectionFromParam(null)).toBeNull();
   expect(settingsSectionFromParam("privacy")).toBe("privacy");
   expect(settingsSectionFromParam("general")).toBe("general");
   expect(settingsSectionFromParam("models")).toBe("models");
   expect(settingsSectionFromParam("voice")).toBe("voice");
+  expect(settingsSectionFromParam("connections")).toBe("connections");
   expect(settingsSectionFromParam("nope")).toBe("general");
 });
 
 it("carries a pending ?settings= link through the first-chat redirect", () => {
   const bots = [{ id: "b1", spawnKey: null }];
   expect(firstThreadRoute(bots, [], "?settings=privacy")).toBe("/app/b1?settings=privacy");
+  expect(firstThreadRoute(bots, [], "?settings=connections")).toBe("/app/b1?settings=connections");
   expect(firstThreadRoute(bots, [], "?m=1")).toBe("/app/b1");
   expect(firstThreadRoute([], [], "?settings=general")).toBe("/app?settings=general");
+});
+
+it("strips an unknown routine link without opening the computer panel", async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  routineLinkRpc.computerBoot.mockClear();
+  window.matchMedia ??= (query: string) =>
+    ({
+      matches: !query.includes("pointer"),
+      addEventListener() {},
+      removeEventListener() {},
+    }) as unknown as MediaQueryList;
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+  Element.prototype.scrollTo ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+  const Location = () => <span data-testid="location">{useLocation().search}</span>;
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => {
+    root?.render(
+      <MemoryRouter initialEntries={["/app/b1?routine=missing"]}>
+        <Location />
+        <Routes>
+          <Route path="/app/:botId" element={<ShellPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  expect(container.querySelector('[data-testid="location"]')?.textContent).not.toContain(
+    "routine=",
+  );
+  const computerPanelButton = container.querySelector('[aria-label="Routines"]');
+  expect(computerPanelButton?.hasAttribute("data-active")).toBe(false);
+  expect(routineLinkRpc.computerBoot).not.toHaveBeenCalled();
+});
+
+it("starts side refreshes in parallel and ignores routines after the active bot changes", async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  window.localStorage.clear();
+  const bot = (id: string) => ({
+    id,
+    name: `Bot ${id}`,
+    spawnKey: null,
+    description: "",
+    preview: "",
+    title: "",
+    color: "#000",
+    status: "idle",
+  });
+  routineLinkRpc.botsList.mockResolvedValue([bot("b1"), bot("b2")]);
+  let resolveThread!: (snapshot: Awaited<ReturnType<typeof routineLinkRpc.threadsGet>>) => void;
+  let holdFirstThread = true;
+  const startOrder: string[] = [];
+  routineLinkRpc.threadsGet.mockClear();
+  routineLinkRpc.threadsGet.mockImplementation((input) => {
+    startOrder.push(`thread:${input.botId}`);
+    const snapshot = {
+      botId: input.botId,
+      threadId: `t-${input.botId}`,
+      messages: [],
+      computer: null,
+      olderCursor: null,
+    };
+    if (holdFirstThread && input.botId === "b1") {
+      holdFirstThread = false;
+      return new Promise((resolve) => (resolveThread = resolve));
+    }
+    return Promise.resolve(snapshot);
+  });
+  routineLinkRpc.routinesList.mockClear();
+  routineLinkRpc.routinesList.mockImplementation(async ({ botId }: { botId: string }) => {
+    startOrder.push(`routines:${botId}`);
+    return botId === "b1"
+      ? [
+          {
+            id: "old-routine",
+            botId,
+            name: "Old routine",
+            managedKind: null,
+            crons: [],
+            timezone: "UTC",
+            active: true,
+            webhookEnabled: false,
+            githubEnabled: false,
+            messageProvider: null,
+            watch: null,
+            status: {
+              lastRunAt: null,
+              nextRunAt: null,
+              lastCheckedAt: null,
+              lastChangedAt: null,
+              pausedReason: null,
+            },
+          },
+        ]
+      : [];
+  });
+  window.matchMedia ??= (query: string) =>
+    ({
+      matches: !query.includes("pointer"),
+      addEventListener() {},
+      removeEventListener() {},
+    }) as unknown as MediaQueryList;
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+  Element.prototype.scrollTo ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  function SwitchBot() {
+    const navigate = useNavigate();
+    return (
+      <button type="button" data-testid="switch-bot" onClick={() => navigate("/app/b2")}>
+        Switch bot
+      </button>
+    );
+  }
+  await act(async () => {
+    root?.render(
+      <MemoryRouter initialEntries={["/app/b1"]}>
+        <SwitchBot />
+        <Routes>
+          <Route path="/app/:botId" element={<ShellPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  expect(startOrder.indexOf("routines:b1")).toBeGreaterThanOrEqual(0);
+  expect(startOrder.indexOf("routines:b1")).toBeLessThan(startOrder.indexOf("thread:b1"));
+
+  await act(async () => {
+    container?.querySelector<HTMLButtonElement>("[data-testid='switch-bot']")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  await act(async () => {
+    resolveThread({
+      botId: "b1",
+      threadId: "t-b1",
+      messages: [],
+      computer: null,
+      olderCursor: null,
+    });
+  });
+  expect(container?.textContent).not.toContain("Old routine");
 });
 
 it("does not land on a page's auto-created agent, so a space holding only that stays empty", () => {
@@ -129,9 +474,9 @@ function renderComposer(
     disconnect() {}
   };
   // Reduced motion skips the chip-row resize animation, which jsdom cannot run.
-  window.matchMedia ??= () =>
+  window.matchMedia ??= (query: string) =>
     ({
-      matches: true,
+      matches: !query.includes("pointer"),
       addEventListener() {},
       removeEventListener() {},
     }) as unknown as MediaQueryList;
@@ -311,7 +656,7 @@ describe("Composer", () => {
       rerenderComposer({ mentionTargets: [researcher, writer] });
       expect(selected()).toContain("Research Writer");
       pressKey(textarea, "Enter");
-      expect(chips()).toEqual(["Research Writer"]);
+      expect(chips()).toEqual(["@Research Writer"]);
     });
 
     it("follows the highlighted option when an option is inserted before it", () => {
@@ -319,7 +664,7 @@ describe("Composer", () => {
       rerenderComposer({ mentionTargets: [routine, researcher, writer] });
       expect(selected()).toContain("Research Writer");
       pressKey(textarea, "Enter");
-      expect(chips()).toEqual(["Research Writer"]);
+      expect(chips()).toEqual(["@Research Writer"]);
     });
 
     it("keeps the default highlight on the first option when an option is inserted before it", () => {
@@ -329,7 +674,7 @@ describe("Composer", () => {
       rerenderComposer({ mentionTargets: [routine, researcher, writer] });
       expect(selected()).toContain("Researcher");
       pressKey(textarea, "Enter");
-      expect(chips()).toEqual(["Researcher"]);
+      expect(chips()).toEqual(["@Researcher"]);
     });
 
     it("falls back to the first option when the highlighted option disappears", () => {
@@ -337,7 +682,7 @@ describe("Composer", () => {
       rerenderComposer({ mentionTargets: [researcher] });
       expect(selected()).toContain("Researcher");
       pressKey(textarea, "Enter");
-      expect(chips()).toEqual(["Researcher"]);
+      expect(chips()).toEqual(["@Researcher"]);
     });
   });
 
@@ -423,7 +768,7 @@ describe("Composer", () => {
     act(() => {
       textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
-    expect(chips()).toEqual(["Legal"]);
+    expect(chips()).toEqual(["@Legal"]);
     act(() => root?.unmount());
     container?.remove();
     renderComposer(vi.fn(), { draftKey: "bot:carta", mentionTargets: [legal] });
@@ -431,7 +776,7 @@ describe("Composer", () => {
     act(() => root?.unmount());
     container?.remove();
     renderComposer(vi.fn(), { draftKey: "group:g1", mentionTargets: [legal] });
-    expect(chips()).toEqual(["Legal"]);
+    expect(chips()).toEqual(["@Legal"]);
     sessionStorage.clear();
   });
 
@@ -456,6 +801,22 @@ describe("Composer", () => {
     pressEnter(textarea);
     expect(onSlashAction).toHaveBeenCalledWith("chat-settings");
     expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("offers Goal in the / menu and inserts the command into the draft", () => {
+    const onSend = vi.fn();
+    const onSlashAction = vi.fn();
+    const textarea = renderComposer(onSend, { onSlashAction });
+    type(textarea, "/goa");
+    const option = container?.querySelector<HTMLButtonElement>(
+      "[data-testid='slash-picker'] [role='option']",
+    );
+    expect(option?.textContent).toBe("Goal");
+    act(() => option?.click());
+    expect(textarea.value).toBe("/goal ");
+    expect(onSend).not.toHaveBeenCalled();
+    expect(onSlashAction).not.toHaveBeenCalled();
+    expect(container?.querySelector("[data-testid='slash-picker']")).toBeNull();
   });
 
   it("clears the draft once the message is sent", async () => {
@@ -502,14 +863,109 @@ describe("Composer", () => {
       );
     type(textarea, "@Bo");
     pressEnter(textarea);
-    type(textarea, "hello");
+    expect(textarea.value).toBe("@Bob ");
+    type(textarea, "@Bob hello");
     pressEnter(textarea);
     expect(onSend).toHaveBeenCalledWith("@Bob hello", [bob], expect.any(String));
     expect(textarea.value).toBe("");
     expect(mentionChips()).toEqual([]);
     await act(async () => finishSend(false));
-    expect(textarea.value).toBe("hello");
-    expect(mentionChips()).toEqual(["Bob"]);
+    expect(textarea.value).toBe("@Bob hello");
+    expect(mentionChips()).toEqual(["@Bob"]);
+  });
+
+  it("puts a mention at the caret mid-sentence and sends the sentence as written", () => {
+    const onSend = vi.fn();
+    const textarea = renderComposer(onSend);
+    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const typed = "share with @Bo and put it away";
+    act(() => {
+      setValue?.call(textarea, typed);
+      textarea.setSelectionRange(14, 14);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    pressEnter(textarea);
+    expect(textarea.value).toBe("share with @Bob and put it away");
+    const chips = [...(container?.querySelectorAll("[data-testid='mention-chip']") ?? [])];
+    expect(chips.map((chip) => chip.textContent)).toEqual(["@Bob"]);
+    // The picked name sits between the surrounding words, and nothing leads the text.
+    pressEnter(textarea);
+    expect(onSend).toHaveBeenCalledWith(
+      "share with @Bob and put it away",
+      [bob],
+      expect.any(String),
+    );
+  });
+
+  it("drops a mention when its text is edited, and Backspace removes it whole", () => {
+    const textarea = renderComposer(vi.fn());
+    const chips = () =>
+      [...(container?.querySelectorAll("[data-testid='mention-chip']") ?? [])].length;
+    type(textarea, "@Bo");
+    pressEnter(textarea);
+    expect(chips()).toBe(1);
+    type(textarea, "@Bo hello");
+    expect(chips()).toBe(0);
+    type(textarea, "@Bo");
+    pressEnter(textarea);
+    expect(textarea.value).toBe("@Bob ");
+    act(() => {
+      textarea.setSelectionRange(4, 4);
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Backspace", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(textarea.value).toBe(" ");
+    expect(chips()).toBe(0);
+  });
+
+  it("keeps two same-name mentions apart and sends each one's own id", () => {
+    const first: ComposerMention = { kind: "routine", id: "r1", name: "Weekly report" };
+    const second: ComposerMention = { kind: "routine", id: "r2", name: "Weekly report" };
+    const onSend = vi.fn();
+    const textarea = renderComposer(onSend, { mentionTargets: [first, second] });
+    type(textarea, "@Weekly");
+    pressEnter(textarea);
+    type(textarea, `${textarea.value}and @Weekly`);
+    act(() => {
+      container
+        ?.querySelector<HTMLButtonElement>("[role=option]:last-child")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(textarea.value).toBe("@Weekly report and @Weekly report ");
+    // Deleting the first leaves the second with its own id.
+    act(() => {
+      textarea.setSelectionRange(14, 14);
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Backspace", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(container?.querySelectorAll("[data-testid='mention-chip']").length).toBe(1);
+    type(textarea, `${textarea.value}go`);
+    pressEnter(textarea);
+    expect(onSend).toHaveBeenCalledWith("and @Weekly report go", [second], expect.any(String));
+  });
+
+  it("does not remove a mention on Backspace while composing", () => {
+    const textarea = renderComposer(vi.fn());
+    type(textarea, "@Bo");
+    pressEnter(textarea);
+    act(() => {
+      textarea.setSelectionRange(4, 4);
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Backspace", keyCode: 229, bubbles: true }),
+      );
+    });
+    expect(textarea.value).toBe("@Bob ");
+  });
+
+  it("names the status of a routine mention under the field", () => {
+    const routine: ComposerMention = { kind: "routine", id: "r1", name: "Digest" };
+    const textarea = renderComposer(vi.fn(), { mentionTargets: [routine] });
+    type(textarea, "@Dig");
+    pressEnter(textarea);
+    const status = document.getElementById(textarea.getAttribute("aria-describedby") ?? "");
+    expect(status?.textContent).toBe("Digest · Runs on send");
   });
 
   it("restores the chosen skill when the send fails", async () => {
@@ -747,9 +1203,9 @@ describe("Transcript jump to a search result", () => {
 
   it("does not snap to the end when older messages mount for the jump", () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    window.matchMedia ??= () =>
+    window.matchMedia ??= (query: string) =>
       ({
-        matches: true,
+        matches: !query.includes("pointer"),
         addEventListener() {},
         removeEventListener() {},
       }) as unknown as MediaQueryList;
@@ -802,9 +1258,9 @@ describe("Transcript jump to a search result", () => {
   });
   it("keeps the newest message in view when the layout grows while following", () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    window.matchMedia ??= () =>
+    window.matchMedia ??= (query: string) =>
       ({
-        matches: true,
+        matches: !query.includes("pointer"),
         addEventListener() {},
         removeEventListener() {},
       }) as unknown as MediaQueryList;
@@ -952,9 +1408,9 @@ describe("Transcript unread divider and new-message pill", () => {
 
   function mount() {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    window.matchMedia ??= () =>
+    window.matchMedia ??= (query: string) =>
       ({
-        matches: true,
+        matches: !query.includes("pointer"),
         addEventListener() {},
         removeEventListener() {},
       }) as unknown as MediaQueryList;
@@ -1264,6 +1720,43 @@ describe("search result details", () => {
   });
 });
 
+describe("palette lookups", () => {
+  beforeEach(() => {
+    paletteRpc.folders = 0;
+    paletteRpc.contacts = 0;
+    paletteRpc.foldersFail = false;
+    paletteRpc.contactsFail = false;
+    paletteRpc.listSpace = [];
+  });
+
+  it("Cmd+K fetches contacts and Data room folders once while typing several queries", async () => {
+    // Opening the palette keeps what it loads next to the open state, for the searches that follow.
+    const lookups = createPaletteLookupCache();
+    for (const query of ["de", "dea", "deal"]) await findDocumentsAndArtifacts(query, lookups);
+    for (const query of ["ha", "hal", "halcyon"]) await findContacts(query, lookups);
+    expect(paletteRpc.folders).toBe(1);
+    expect(paletteRpc.contacts).toBe(1);
+    // Opening it again starts a fresh load, so a contact added since shows up.
+    expect((await findContacts("halcyon", createPaletteLookupCache())).length).toBe(1);
+    expect(paletteRpc.contacts).toBe(2);
+  });
+
+  it("lets the server find artifacts by the query, one more than it lists", async () => {
+    const { artifacts } = await findDocumentsAndArtifacts("report", createPaletteLookupCache());
+    expect(paletteRpc.listSpace).toEqual([{ q: "report", limit: 6 }]);
+    expect(artifacts.map((item) => item.label)).toEqual(["Report"]);
+  });
+
+  it("retries a failed lookup on the next open", async () => {
+    const lookups = createPaletteLookupCache();
+    paletteRpc.contactsFail = true;
+    expect(await findContacts("hal", lookups)).toEqual([]);
+    paletteRpc.contactsFail = false;
+    expect((await findContacts("hal", lookups)).length).toBe(1);
+    expect(paletteRpc.contacts).toBe(2);
+  });
+});
+
 describe("isRoutinesOnlyPanel", () => {
   it("hides the computer block without a screen, whatever the computer state", () => {
     const base = { hasScreen: false, hasError: false, open: false, showRecoveryHint: false };
@@ -1292,5 +1785,105 @@ describe("showsComputerCaption", () => {
     expect(showsComputerCaption({ ...live, open: true })).toBe(false);
     expect(showsComputerCaption({ ...live, hasError: true })).toBe(false);
     expect(showsComputerCaption({ ...live, kind: "desktop" })).toBe(false);
+  });
+});
+
+describe("findChats", () => {
+  const hit = (extra: Record<string, unknown>) => ({
+    kind: "message",
+    snippet: "",
+    title: "",
+    createdAt: null,
+    ...extra,
+  });
+
+  it("lists a routine apart from chats, so it does not hide that bot's message hit", async () => {
+    searchHits.current = [
+      hit({
+        kind: "routine",
+        botId: "b1",
+        botName: "Finance agent",
+        routineId: "r1",
+        title: "Monday receipt chase",
+      }),
+      hit({ botId: "b1", botName: "Finance agent", messageId: "m1", snippet: "receipt sent" }),
+    ];
+    const { chats, routines } = await findChats("receipt");
+    expect(routines).toEqual([
+      { id: "/app/b1?routine=r1", label: "Monday receipt chase", detail: "Finance agent" },
+    ]);
+    expect(chats.map((c) => c.id)).toContain("/app/b1?m=m1");
+  });
+
+  it("drops groups and bots matched only by description, and keeps bots matched by name", async () => {
+    searchHits.current = [
+      hit({ kind: "conversation", botId: "b2", botName: "Inbox agent", snippet: "tracks finance" }),
+      hit({ kind: "conversation", groupId: "g1", groupName: "Fin team", snippet: "" }),
+      hit({ kind: "conversation", botId: "b3", botName: "Fin thread", snippet: "" }),
+    ];
+    const { chats } = await findChats("fin");
+    expect(chats.map((c) => c.label)).toEqual(["Fin thread"]);
+  });
+});
+
+describe("answerThenRefresh", () => {
+  it("does not fail a committed answer when the refresh fails", async () => {
+    const refresh = vi.fn().mockRejectedValue(new Error("offline"));
+    await expect(answerThenRefresh({ answer: async () => undefined, refresh })).resolves.toBe(
+      undefined,
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes once in the background and rethrows when the answer fails", async () => {
+    const refresh = vi.fn().mockRejectedValue(new Error("offline"));
+    const failure = new Error("CONFLICT");
+    await expect(
+      answerThenRefresh({
+        answer: async () => {
+          throw failure;
+        },
+        refresh,
+      }),
+    ).rejects.toBe(failure);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useScratchpadFocus", () => {
+  function Harness({ events }: { events: unknown[] }) {
+    const focus = useScratchpadFocus();
+    events.push(focus.focus);
+    return (
+      <>
+        <button type="button" onClick={() => focus.request("bot-1", "s2")}>
+          request
+        </button>
+        <button type="button" onClick={() => focus.consume()}>
+          consume
+        </button>
+      </>
+    );
+  }
+
+  it("clears a request once it is consumed, so a later open does not replay it", async () => {
+    const events: unknown[] = [];
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(<Harness events={events} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>("button")?.click();
+      });
+      expect(events.at(-1)).toMatchObject({ botId: "bot-1", itemId: "s2" });
+      await act(async () => {
+        container.querySelectorAll<HTMLButtonElement>("button")[1]?.click();
+      });
+      expect(events.at(-1)).toBeNull();
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
   });
 });

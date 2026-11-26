@@ -52,7 +52,7 @@ export async function completeNativeOAuth(options: {
   } catch (error) {
     throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
   }
-  const { connectionRef, secretId, scope } = completed;
+  const { connectionRef, secretId, scope, account } = completed;
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
@@ -106,6 +106,7 @@ export async function completeNativeOAuth(options: {
           await tx.mailActionLog.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
+          await tx.mailReplyItem.updateMany({ where: { connectionId: taken.id }, data: next });
           // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the
           // Inbox agent keeps its per-user key.
           await tx.bot.updateMany({
@@ -122,6 +123,7 @@ export async function completeNativeOAuth(options: {
             agentBotId: old.agentBotId,
             writesEnabled: old.writesEnabled,
             allAgents: old.allAgents,
+            agentShared: old.agentShared,
             privateByDefault: old.privateByDefault,
           };
           await tx.connection.delete({ where: { id: taken.id } });
@@ -136,7 +138,11 @@ export async function completeNativeOAuth(options: {
             providerRef: connectionRef,
             secretId,
             // The granted scopes tell the mail provider whether it may manage Gmail filters.
-            metadata: scope ? { scope } : {},
+            metadata: {
+              ...(scope ? { scope } : {}),
+              // What tells two accounts of one app apart in the list.
+              ...(account ? { accountAddress: account } : {}),
+            },
             ...carried,
           },
         });

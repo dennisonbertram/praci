@@ -26,6 +26,12 @@ const SHINGLE_WORDS = 8;
 /** Private text beyond this is not read: the check stays cheap and bounded. */
 const MAX_TEXT_CHARS = 200_000;
 const MAX_FRAGMENTS = 50_000;
+/**
+ * A name is matched as a run of 1..32 outbound words so it can be looked up by hash.
+ * ponytail: a longer name is kept as its first 32 words, so text repeating those 32 words is held
+ * even if the rest differs. Raise the cap if such names appear.
+ */
+const MAX_NAME_WORDS = 32;
 
 type Fragments = {
   emails: Set<string>;
@@ -46,7 +52,7 @@ function words(text: string): string[] {
 }
 
 function normalizeName(name: string): string | undefined {
-  const joined = words(name).join(" ");
+  const joined = words(name).slice(0, MAX_NAME_WORDS).join(" ");
   // One short word ("Sam", "Acme") would match half of English; a name needs two words or length.
   return joined.includes(" ") || joined.length >= 8 ? joined : undefined;
 }
@@ -134,18 +140,49 @@ function extract(rawText: string): Fragments {
 
 export type OutboundKind = "email" | "number" | "name" | "passage";
 
+const KEYS = ["emails", "numbers", "names", "passages"] as const;
+
+/** One stored fragment: `tag` is (public ? 4 : 0) | index of the kind in KEYS; `hash` is the keyed hash. */
+export type FragmentEntry = { tag: number; hash: string };
+/** What was added since the last `takeDelta()`: entries, and the public words appended in order. */
+export type FragmentDelta = {
+  entries: FragmentEntry[];
+  publicWords: string | null;
+};
+
+/**
+ * `hash` maps a tagged value to a stable string. The default keeps text as is; a run that must
+ * survive a restart passes a keyed hash, so the stored record holds no readable private text.
+ */
 export class PrivateFragments {
   private readonly privateSet = empty();
   private readonly publicSet = empty();
   private publicSpaced = " ";
+  private pending: FragmentEntry[] = [];
+  private pendingWords = "";
+
+  constructor(private readonly hash: (taggedValue: string) => string = (value) => value) {}
 
   get size(): number {
     return Object.values(this.privateSet).reduce((total, set) => total + set.size, 0);
   }
 
+  private hashed(key: keyof Fragments, value: string): string {
+    return this.hash(`${KEYS.indexOf(key)}\0${value}`);
+  }
+
+  private put(isPublic: boolean, key: keyof Fragments, value: string): void {
+    const set = (isPublic ? this.publicSet : this.privateSet)[key];
+    if (set.size >= MAX_FRAGMENTS) return;
+    const hash = this.hashed(key, value);
+    if (set.has(hash)) return;
+    set.add(hash);
+    this.pending.push({ tag: (isPublic ? 4 : 0) | KEYS.indexOf(key), hash });
+  }
+
   /** Text a private source returned (mail, finance, a connector, another internal bot's answer). */
   addPrivate(text: string): void {
-    this.merge(this.privateSet, extract(text));
+    this.merge(false, extract(text));
   }
 
   /**
@@ -160,7 +197,7 @@ export class PrivateFragments {
       for (let from = 0; from < spanWords.length - 1; from += 1) {
         for (let to = from + 2; to <= spanWords.length; to += 1) {
           const name = normalizeName(spanWords.slice(from, to).join(" "));
-          if (name && this.privateSet.names.size < MAX_FRAGMENTS) this.privateSet.names.add(name);
+          if (name) this.put(false, "names", name);
         }
       }
     }
@@ -168,18 +205,38 @@ export class PrivateFragments {
 
   /** Text that is already public to the recipient: what they wrote, a web page. */
   addPublic(text: string): void {
-    this.merge(this.publicSet, extract(text));
+    this.merge(true, extract(text));
     if (this.publicSpaced.length < MAX_TEXT_CHARS) {
-      this.publicSpaced += `${words(text.slice(0, MAX_TEXT_CHARS)).join(" ")} `;
+      const added = `${words(text.slice(0, MAX_TEXT_CHARS)).join(" ")} `;
+      this.publicSpaced += added;
+      this.pendingWords += added;
     }
   }
 
-  private merge(into: Fragments, from: Fragments): void {
-    for (const key of Object.keys(into) as (keyof Fragments)[]) {
-      for (const value of from[key]) {
-        if (into[key].size >= MAX_FRAGMENTS) break;
-        into[key].add(value);
+  private merge(isPublic: boolean, from: Fragments): void {
+    for (const key of KEYS) for (const value of from[key]) this.put(isPublic, key, value);
+  }
+
+  /** Everything added since the last call, for storing. */
+  takeDelta(): FragmentDelta | undefined {
+    if (this.pending.length === 0 && this.pendingWords === "") return undefined;
+    const delta = {
+      entries: this.pending,
+      publicWords: this.pendingWords || null,
+    };
+    this.pending = [];
+    this.pendingWords = "";
+    return delta;
+  }
+
+  /** Refill from stored deltas, in the order they were taken. Nothing restored is returned again. */
+  restore(deltas: readonly FragmentDelta[]): void {
+    for (const delta of deltas) {
+      for (const { tag, hash } of delta.entries) {
+        const key = KEYS[tag & 3];
+        if (key) (tag & 4 ? this.publicSet : this.privateSet)[key].add(hash);
       }
+      if (delta.publicWords) this.publicSpaced += delta.publicWords;
     }
   }
 
@@ -187,23 +244,35 @@ export class PrivateFragments {
   matches(text: string): OutboundKind[] {
     const found = extract(text);
     const hit = (key: keyof Fragments) =>
-      [...found[key]].some(
-        (value) => this.privateSet[key].has(value) && !this.publicSet[key].has(value),
-      );
+      [...found[key]].some((value) => {
+        const hash = this.hashed(key, value);
+        return this.privateSet[key].has(hash) && !this.publicSet[key].has(hash);
+      });
     const kinds: OutboundKind[] = [];
     if (hit("emails")) kinds.push("email");
     if (hit("numbers")) kinds.push("number");
-    // A name is read from the spaced-out outbound words, so case and spacing do not matter.
-    const spaced = ` ${words(text).join(" ")} `;
-    if (
-      [...this.privateSet.names].some(
-        (name) => !this.publicSpaced.includes(` ${name} `) && spaced.includes(` ${name} `),
-      )
-    ) {
-      kinds.push("name");
-    }
+    // A name is read from the spaced-out outbound words, so case and spacing do not matter: it
+    // matches when it equals a run of 1..32 of them.
+    if (this.privateSet.names.size > 0 && this.hasName(words(text))) kinds.push("name");
     if (hit("passages")) kinds.push("passage");
     return kinds;
+  }
+
+  private hasName(list: string[]): boolean {
+    for (let from = 0; from < list.length; from += 1) {
+      for (let to = from + 1; to <= Math.min(list.length, from + MAX_NAME_WORDS); to += 1) {
+        const name = list.slice(from, to).join(" ");
+        // A name is two words or eight characters (see normalizeName).
+        if (to === from + 1 && name.length < 8) continue;
+        if (
+          this.privateSet.names.has(this.hashed("names", name)) &&
+          !this.publicSpaced.includes(` ${name} `)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }
 

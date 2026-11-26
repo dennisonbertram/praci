@@ -478,15 +478,14 @@ export async function syncMailbox(
           await markPriorContactFromSent(
             tx,
             scope,
-            [
-              ...new Set(
-                entries
-                  .filter((entry) => entry.fromSelf)
-                  .flatMap(({ message }) =>
-                    [...message.to, ...message.cc].map((a) => a.address.toLowerCase()),
-                  ),
+            entries
+              .filter((entry) => entry.fromSelf)
+              .flatMap(({ message }) =>
+                [...message.to, ...message.cc].map((a) => ({
+                  address: a.address.toLowerCase(),
+                  at: new Date(message.date),
+                })),
               ),
-            ],
             now,
           );
           await storePriorContact(tx, scope, priorContactResults, now);

@@ -10,7 +10,6 @@ const baseUrl = "http://127.0.0.1:8090/v1";
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
 });
 
 it("keeps the existing keyless connection format", () => {
@@ -74,7 +73,6 @@ describe("OpenAI-compatible standard thinking transport", () => {
       payload = JSON.parse(String(init?.body)) as Payload;
       return fixtureResponse();
     });
-    vi.stubGlobal("fetch", mockFetch);
     const models = registerOpenAiCompatibleRuntime(builtinModels(), {
       modelId,
       baseUrl,

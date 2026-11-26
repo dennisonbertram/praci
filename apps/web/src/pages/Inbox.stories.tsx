@@ -1,5 +1,6 @@
 import type { InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { InboxPage } from "./Inbox";
 
@@ -70,12 +71,20 @@ const todos: InboxTodo[] = [
   },
 ];
 
+const mockInbox = (responses: Record<string, unknown>) =>
+  mockRpc({
+    "inbox.todos.list": { enabled: false, todos: [] },
+    "connections.list": [],
+    "scratchpad.waitingOnYou": [],
+    ...responses,
+  });
+
 const meta = {
   title: "Inbox/InboxPage",
   component: InboxPage,
   parameters: { layout: "fullscreen" },
   args: { onConnectMail: () => undefined, onRefreshed: () => undefined, paused: false },
-  beforeEach: () => mockRpc({ "inbox.todos.list": { enabled: false, todos: [] } }),
+  beforeEach: () => mockInbox({}),
   decorators: [
     (Story) => (
       <div className="flex h-[760px] flex-col">
@@ -89,13 +98,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  beforeEach: () => mockRpc({ "inbox.list": list }),
+  beforeEach: () => mockInbox({ "inbox.list": list }),
 };
 
 export const WithTriage: Story = {
   args: { onShowAgent: () => undefined },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": { ...list, enabled: true, triageBlocked: null },
       "inbox.todos.list": { enabled: true, todos },
     }),
@@ -106,7 +115,7 @@ export const CrowdedHeaderPhone375: Story = {
   args: { onShowAgent: () => undefined },
   parameters: { initialEntries: ["/?filter=unread"] },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": { ...list, enabled: true, triageBlocked: null },
       "inbox.todos.list": { enabled: true, todos },
     }),
@@ -123,7 +132,7 @@ export const CrowdedHeaderPhone375: Story = {
 export const LongListPhone: Story = {
   args: { onShowAgent: () => undefined },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         enabled: true,
@@ -141,7 +150,7 @@ export const LongListPhone: Story = {
 
 export const NeedsConsent: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         enabled: false,
@@ -156,7 +165,7 @@ export const NeedsConsent: Story = {
 /** Consent is asked before the first sync finishes: the card shows alone, with no blank bars beside it. */
 export const NeedsConsentSyncing: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         rows: [],
@@ -174,7 +183,7 @@ export const NeedsConsentSyncing: Story = {
 /** The first sort after Allow: grey bars for 15 s, then the unsorted rows dimmed until it lands. */
 export const SortingFirstTime: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         enabled: true,
@@ -193,7 +202,7 @@ export const SortingFirstTime: Story = {
 
 export const TwoAccounts: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         accounts: [
@@ -207,7 +216,7 @@ export const TwoAccounts: Story = {
 /** The busiest first screen: two accounts and several to-dos. */
 export const TwoAccountsTodos: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         accounts: [
@@ -226,35 +235,54 @@ export const TwoAccountsTodos: Story = {
     }),
 };
 
+/** Two rows checked, one of them unread: the bar offers to mark the unread one read. */
+export const RowsSelected: Story = {
+  beforeEach: () =>
+    mockInbox({
+      "inbox.list": list,
+      "inbox.markReadMany": (input: unknown) => ({
+        done: (input as { messageIds: string[] }).messageIds,
+        failed: [],
+      }),
+    }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("checkbox", { name: "Select Sample Sender" }),
+    );
+    await userEvent.click(await canvas.findByRole("checkbox", { name: "Select Demo Store" }));
+  },
+};
+
 export const Loading: Story = {
-  beforeEach: () => mockRpc({ "inbox.list": () => new Promise(() => undefined) }),
+  beforeEach: () => mockInbox({ "inbox.list": () => new Promise(() => undefined) }),
 };
 
 export const Empty: Story = {
-  beforeEach: () => mockRpc({ "inbox.list": { ...list, rows: [] } }),
+  beforeEach: () => mockInbox({ "inbox.list": { ...list, rows: [] } }),
 };
 
 /** No Gmail connection: Connect mail shows while the slow list is still loading. */
 export const NoMailBeforeListLoads: Story = {
   beforeEach: () =>
-    mockRpc({ "connections.list": [], "inbox.list": () => new Promise(() => undefined) }),
+    mockInbox({ "connections.list": [], "inbox.list": () => new Promise(() => undefined) }),
 };
 
 export const NoMailAccount: Story = {
   args: { spaceName: "Empty space" },
-  beforeEach: () => mockRpc({ "inbox.list": { ...list, accounts: [], rows: [] } }),
+  beforeEach: () => mockInbox({ "inbox.list": { ...list, accounts: [], rows: [] } }),
 };
 
 export const SyncFailed: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": { ...list, failedAccounts: ["conn_1"], reconnectAccounts: ["conn_1"] },
     }),
 };
 
 export const LoadError: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": () => {
         throw new Error("Could not load mail");
       },
@@ -263,7 +291,7 @@ export const LoadError: Story = {
 
 export const NeedsReconnectNoMail: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         rows: [],
@@ -275,7 +303,7 @@ export const NeedsReconnectNoMail: Story = {
 
 export const RateLimitedNoMail: Story = {
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": {
         ...list,
         rows: [],
@@ -453,24 +481,24 @@ const bulkMocks = {
 /** Updates: one row per sender with the count and the newest summary; the sender with one message is a plain row. */
 export const UpdatesGrouped: Story = {
   parameters: { initialEntries: ["/?pile=updates"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 export const NewslettersGrouped: Story = {
   parameters: { initialEntries: ["/?pile=newsletters"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 export const NewslettersDigest: Story = {
   parameters: { initialEntries: ["/?pile=newsletters&digest=1"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 /** The pile has mail, but all of it is older than the digest's 7 days. */
 export const NewslettersDigestOlderThanAWeek: Story = {
   parameters: { initialEntries: ["/?pile=newsletters&digest=1"] },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": (input: unknown) => {
         const out = byPile(input);
         return {
@@ -485,26 +513,26 @@ export const NewslettersDigestOlderThanAWeek: Story = {
 /** A filter: the Filter button keeps its width (Cleanup does not move); the filter's name is in the results bar. */
 export const FilteredUnread: Story = {
   parameters: { initialEntries: ["/?filter=unread"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 /** Search results: no pile tabs, one Clear (the X in the box). */
 export const SearchResults: Story = {
   parameters: { initialEntries: ["/?q=invoice"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 /** Spam is a flat list behind a count; Gmail's own spam is not in the inbox, so it has no Archived badge. */
 export const SpamView: Story = {
   parameters: { initialEntries: ["/?pile=spam"] },
-  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+  beforeEach: () => mockInbox({ "inbox.list": byPile, ...bulkMocks }),
 };
 
 /** No model or consent: the piles still sort mail with the free rules, and rows show the preview. */
 export const PilesWithoutTriage: Story = {
   parameters: { initialEntries: ["/?pile=updates"] },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": (input: unknown) => ({
         ...byPile(input),
         enabled: false,
@@ -517,18 +545,18 @@ export const PilesWithoutTriage: Story = {
 export const PileEmpty: Story = {
   parameters: { initialEntries: ["/?pile=newsletters"] },
   beforeEach: () =>
-    mockRpc({ "inbox.list": () => ({ ...byPile({ pile: "important" }), rows: [] }) }),
+    mockInbox({ "inbox.list": () => ({ ...byPile({ pile: "important" }), rows: [] }) }),
 };
 
 export const PileLoading: Story = {
   parameters: { initialEntries: ["/?pile=updates"] },
-  beforeEach: () => mockRpc({ "inbox.list": () => new Promise(() => undefined) }),
+  beforeEach: () => mockInbox({ "inbox.list": () => new Promise(() => undefined) }),
 };
 
 export const PileLoadError: Story = {
   parameters: { initialEntries: ["/?pile=updates"] },
   beforeEach: () =>
-    mockRpc({
+    mockInbox({
       "inbox.list": () => {
         throw new Error("Could not load mail");
       },

@@ -4,7 +4,7 @@ import { Button } from "@rakazo/ui-web";
 import { ArrowLeft, Download, File, Folder, Upload } from "lucide-react";
 import type { DragEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { decodeArtifactBase64, downloadArtifactBytes } from "../../lib/artifact-open";
+import { decodeArtifactBase64, openArtifactBytes } from "../../lib/artifact-open";
 import type { ComputerFileEntry } from "../../lib/computer-workspace";
 import {
   basename,
@@ -128,11 +128,11 @@ export function FilesApp({
   async function download(target: string) {
     setError(null);
     try {
-      const file = await rpc.computer.downloadFile({ botId, path: target });
-      downloadArtifactBytes(
+      await openArtifactBytes(
         basename(target),
         IMAGE_TYPES[extension(target)] ?? "application/octet-stream",
-        decodeArtifactBase64(file.contentBase64),
+        async () =>
+          decodeArtifactBase64((await rpc.computer.downloadFile({ botId, path: target })).contentBase64),
       );
     } catch (cause) {
       setError(errorText(cause, t`Could not download file`));

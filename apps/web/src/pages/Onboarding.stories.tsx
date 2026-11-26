@@ -51,6 +51,18 @@ type Story = StoryObj<typeof meta>;
 
 export const Loading: Story = { beforeEach: () => mockRpc({ me: pending }) };
 
+export const StartupLoadFailed: Story = {
+  beforeEach: () => mockRpc({ me: () => Promise.reject(new Error("Unavailable")) }),
+};
+
+export const ModelCatalogLoadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      me: { ...mockMe, needsModel: true },
+      "models.list": () => Promise.reject(new Error("Unavailable")),
+    }),
+};
+
 export const ModelStep: Story = {
   beforeEach: () => mockRpc({ me: { ...mockMe, needsModel: true } }),
 };

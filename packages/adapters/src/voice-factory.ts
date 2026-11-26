@@ -10,6 +10,10 @@ import { capTranscriptionContext } from "@rakazo/adapter-kit";
 import { CartesiaVoiceProvider } from "./cartesia-voice.js";
 import { ElevenLabsVoiceProvider } from "./elevenlabs-voice.js";
 import { FishAudioVoiceProvider } from "./fish-audio-voice.js";
+import {
+  OPENAI_COMPATIBLE_TRANSCRIPTION_ID,
+  OpenAiCompatibleTranscriptionProvider,
+} from "./openai-compatible-transcription.js";
 import { OpenAIVoiceProvider } from "./openai-voice.js";
 import { ScriptedTranscriptionProvider } from "./scripted-transcription.js";
 import { SCRIPTED_VOICE_CATALOG_ENTRY, ScriptedVoiceProvider } from "./scripted-voice.js";
@@ -42,6 +46,13 @@ export const VOICE_CATALOG = [
     description: "Voice models, cloning, and expressive speech with optional transcription.",
     transcribe: true,
     speech: true,
+  },
+  {
+    id: OPENAI_COMPATIBLE_TRANSCRIPTION_ID,
+    name: "OpenAI-compatible",
+    description: "Any server with /v1/audio/transcriptions, such as a self-hosted Whisper.",
+    transcribe: true,
+    speech: false,
   },
 ] as const;
 
@@ -88,7 +99,7 @@ export function voiceCatalogEntry(id: string) {
 
 export function isVoiceProviderId(value: string): value is VoiceProviderId {
   if (value === "scripted") return scriptedVoiceEnabled();
-  return VOICE_CATALOG.some((entry) => entry.id === value);
+  return VOICE_CATALOG.some((entry) => entry.id === value && entry.speech);
 }
 
 /** Construct the provider adapter selected by a persisted voice credential. */
@@ -176,6 +187,9 @@ export function transcriptionFromVoice(voice: VoiceProvider): TranscriptionProvi
 export function createTranscriptionProvider(providerId: string): TranscriptionProvider | null {
   if (providerId === SCRIPTED_TRANSCRIBE_CATALOG_ENTRY.id && scriptedVoiceEnabled()) {
     return guardTranscription(new ScriptedTranscriptionProvider());
+  }
+  if (providerId === OPENAI_COMPATIBLE_TRANSCRIPTION_ID) {
+    return guardTranscription(new OpenAiCompatibleTranscriptionProvider());
   }
   return transcriptionFromVoice(createVoiceProvider(providerId));
 }

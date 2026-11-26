@@ -56,6 +56,56 @@ export function extractNarrationText(
   return { text: parts.join(""), remaining };
 }
 
+/** Longer than this, a mid-turn line is a finding rather than a status, and stays. */
+const SHORT_NARRATION_MAX = 200;
+const LOOKUP_TOOL_NAME = /(^|_)(get|list|search|find|read|grep|catalog|overview|agenda)(_|$)/i;
+/** These change nothing the owner would see, so a line before them is status too. */
+const BOOKKEEPING_TOOLS = new Set([
+  "shell",
+  "scratchpad_add",
+  "scratchpad_update",
+  "scratchpad_complete",
+  "scratchpad_remove",
+]);
+
+/** True for tools a run calls while finding its place: lookups and its own bookkeeping. */
+export function toolIsQuietForNarration(name: string, readOnly?: boolean): boolean {
+  return readOnly === true || BOOKKEEPING_TOOLS.has(name) || LOOKUP_TOOL_NAME.test(name);
+}
+
+function narrationKey(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Decides which mid-turn lines become chat messages: one before a group of lookups, the line that
+ * goes with an action, and any long line. The live status line still shows the ones left out.
+ * ponytail: repeats are exact after normalizing; near-repeats are held back only before lookups.
+ */
+export function createNarrationGate(earlierLines: readonly string[] = []) {
+  const said = new Set(earlierLines.map(narrationKey));
+  let groupHasLine = false;
+  return {
+    admit(text: string, nextToolIsQuiet: boolean): boolean {
+      const key = narrationKey(text);
+      if (said.has(key)) return false;
+      if (groupHasLine && nextToolIsQuiet && text.length <= SHORT_NARRATION_MAX) return false;
+      said.add(key);
+      groupHasLine = true;
+      return true;
+    },
+    /** A line posted another way, such as message_user. */
+    notePosted(text: string) {
+      said.add(narrationKey(text));
+      groupHasLine = true;
+    },
+    /** After an action, the next line reports something new. */
+    noteTool(quiet: boolean) {
+      if (!quiet) groupHasLine = false;
+    },
+  };
+}
+
 /**
  * After mid-turn progress messages were already posted, skip a hollow final
  * message that would only carry hidden tool-activity blocks (or nothing).

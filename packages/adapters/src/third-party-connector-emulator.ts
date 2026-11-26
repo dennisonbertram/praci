@@ -47,6 +47,8 @@ export class ThirdPartyConnectorEmulator {
 
   readonly fetch: typeof globalThis.fetch = async (input, init) => {
     const url = urlFromPinnedFetch(input, init);
+    // Demo-only: DEMO_REAL_MCP_HOSTS (comma-separated host:port) reaches a real MCP server instead of the emulator.
+    if (process.env.DEMO_REAL_MCP_HOSTS?.split(",").includes(url.host)) return globalThis.fetch(url, init);
     if (url.hostname === "api.pipedream.com") return this.pipedream(url, init);
     if (url.hostname === "remote.mcp.pipedream.net" || url.hostname === "treg.to") {
       return this.mcp(url, init);

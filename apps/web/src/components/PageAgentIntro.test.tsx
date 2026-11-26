@@ -12,7 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { PageAgentIntro, pageAgentKind } from "./PageAgentIntro";
+import { PageAgentIntro, pageAgentIntroKind, pageAgentKind } from "./PageAgentIntro";
 
 i18n.loadAndActivate({ locale: "en", messages: {} });
 
@@ -23,6 +23,11 @@ it("recognises page agents by their spawn key and leaves other bots alone", () =
   expect(pageAgentKind("data-room-agent:user1")).toBe("data-room");
   expect(pageAgentKind("legal-agent:user1")).toBe("legal");
   expect(pageAgentKind("investors-agent:user1")).toBe("investors");
+  expect(pageAgentKind("gtm-agent:user1")).toBe("gtm");
+  expect(pageAgentKind("company-agent:user1")).toBe("company");
+  expect(pageAgentKind("voice-agent:user1")).toBeNull();
+  expect(pageAgentIntroKind("gtm-agent:user1")).toBeNull();
+  expect(pageAgentIntroKind("finance-agent:user1")).toBe("finance");
   expect(pageAgentKind("onboarding:first")).toBeNull();
   expect(pageAgentKind(null)).toBeNull();
 });

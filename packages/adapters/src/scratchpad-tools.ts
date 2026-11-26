@@ -1,6 +1,14 @@
 import type { ScratchpadCategory, ScratchpadChannel } from "@rakazo/contracts";
 import {
+  cartaAgentSpawnKey,
+  companyAgentSpawnKey,
+  dataRoomAgentSpawnKey,
   emailCompliance,
+  financeAgentSpawnKey,
+  gtmAgentSpawnKey,
+  investorsAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
+  legalAgentSpawnKey,
   ScratchpadCategorySchema,
   ScratchpadChannelSchema,
   ScratchpadDateTimeSchema,
@@ -12,7 +20,7 @@ type ScratchpadStatus = (typeof SCRATCHPAD_STATUSES)[number];
 type Scope = { spaceId: string; userId: string; botId: string };
 type ScratchpadClient = PrismaClient | Prisma.TransactionClient;
 
-const OPEN_SCRATCHPAD_STATUSES: ScratchpadStatus[] = ["open", "parked"];
+export const OPEN_SCRATCHPAD_STATUSES: ScratchpadStatus[] = ["open", "parked"];
 export const APPROVALS_BEFORE_AUTO = 3;
 export const AUTO_DAILY_CAP = 5;
 const GATED_CATEGORIES = new Set<ScratchpadCategory>([
@@ -26,7 +34,13 @@ export const EMAIL_COMPLIANCE_ERROR =
 const TITLE_MAX = 200;
 const NOTES_MAX = 4_000;
 const TARGET_MAX = 200;
-const PROOF_MAX = 2_000;
+export const PROOF_MAX = 2_000;
+const WAITING_ON_MAX = 200;
+const REASON_MAX = 500;
+/** Rows one scratchpad_add or scratchpad_update call may touch. */
+const SCRATCHPAD_BATCH_MAX = 50;
+/** The completion tool keeps its reasons shorter than the user-facing edit API. */
+const TOOL_REASON_MAX = 200;
 const EFFECT_KEY = /^[^:\s]{1,200}:[^:\s]{1,200}:[a-f0-9]{64}(?::[1-9]\d*)?$/;
 const CONSUME_APPROVED_POST_INPUT_KEYS = new Set([
   "spaceId",
@@ -38,6 +52,28 @@ const CONSUME_APPROVED_POST_INPUT_KEYS = new Set([
   "effectKey",
   "now",
 ]);
+
+/**
+ * The agents an email chat may hand a to-do to. A fixed set of the owner's own agents, keyed by
+ * area, so a model (or text in an email) can never name an arbitrary bot id.
+ */
+export const SCRATCHPAD_HANDOFF_AGENTS = {
+  carta: cartaAgentSpawnKey,
+  finance: financeAgentSpawnKey,
+  legal: legalAgentSpawnKey,
+  data_room: dataRoomAgentSpawnKey,
+  investors: investorsAgentSpawnKey,
+  company: companyAgentSpawnKey,
+  gtm: gtmAgentSpawnKey,
+} as const;
+
+/** `mail-thread:<connectionId>:<threadId>`; connection ids hold no colon. */
+function mailThreadOf(spawnKey: string | null | undefined) {
+  if (!isMailThreadAgentSpawnKey(spawnKey)) return null;
+  const rest = (spawnKey as string).slice("mail-thread:".length);
+  const i = rest.indexOf(":");
+  return i > 0 ? { connectionId: rest.slice(0, i), threadId: rest.slice(i + 1) } : null;
+}
 
 export type ScratchpadToolDeps = {
   prisma: PrismaClient;
@@ -58,6 +94,10 @@ type ScratchpadRow = {
   proof?: string | null;
   approvedAt?: Date | null;
   approvedBy?: string | null;
+  dueAt?: Date | null;
+  waitingOn?: string | null;
+  resolvedReason?: string | null;
+  mailMessageId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -92,6 +132,10 @@ export function mapScratchpadItem(row: ScratchpadRow) {
     proof: row.proof ?? null,
     approvedAt: row.approvedAt?.toISOString() ?? null,
     approvedBy: approvedByValue(row.approvedBy),
+    dueAt: row.dueAt?.toISOString() ?? null,
+    waitingOn: row.waitingOn ?? null,
+    resolvedReason: row.resolvedReason ?? null,
+    mailMessageId: row.mailMessageId ?? null,
   };
 }
 
@@ -103,6 +147,11 @@ function coerceScratchpadStatus(value: unknown): ScratchpadStatus {
   return isScratchpadStatus(value) ? value : "open";
 }
 
+/** For the approval gate, which sees a stored category as text. */
+export function isGatedScratchpadCategory(category: string | null): boolean {
+  return isGated(categoryValue(category));
+}
+
 function isGated(
   category: ScratchpadCategory | null,
 ): category is "public_post" | "create_account" | "outbound_email" {
@@ -112,6 +161,46 @@ function isGated(
 function parseAbsoluteDateTime(value: unknown): Date | null {
   const parsed = ScratchpadDateTimeSchema.safeParse(value);
   return parsed.success ? new Date(parsed.data) : null;
+}
+
+/** A due date is an ISO datetime with offset, or a plain date (end of that day, UTC). */
+function parseDueAt(value: unknown): Date | null {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}T23:59:59.000Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return parseAbsoluteDateTime(value);
+}
+
+/** Validates the open-item fields shared by add and update; null clears (update only). */
+function openItemFields(input: {
+  dueAt?: string | null;
+  waitingOn?: string | null;
+  resolvedReason?: string | null;
+}): { error: string } | { data: Record<string, Date | string | null> } {
+  const data: Record<string, Date | string | null> = {};
+  if (input.dueAt !== undefined) {
+    const dueAt = input.dueAt === null ? null : parseDueAt(input.dueAt);
+    if (input.dueAt !== null && !dueAt) {
+      return { error: "dueAt must be an ISO date or datetime with timezone." };
+    }
+    data.dueAt = dueAt;
+  }
+  if (input.waitingOn !== undefined) {
+    const waitingOn = input.waitingOn === null ? null : input.waitingOn.trim() || null;
+    if (waitingOn && waitingOn.length > WAITING_ON_MAX) {
+      return { error: `waitingOn must be at most ${WAITING_ON_MAX} characters.` };
+    }
+    data.waitingOn = waitingOn;
+  }
+  if (input.resolvedReason !== undefined) {
+    const reason = input.resolvedReason === null ? null : input.resolvedReason.trim() || null;
+    if (reason && reason.length > REASON_MAX) {
+      return { error: `reason must be at most ${REASON_MAX} characters.` };
+    }
+    data.resolvedReason = reason;
+  }
+  return { data };
 }
 
 function emailIsCompliant(body: string): boolean {
@@ -223,6 +312,12 @@ export async function addScratchpadItemFromTool(
     channel?: string;
     target?: string;
     scheduledFor?: string;
+    dueAt?: string;
+    waitingOn?: string;
+    /** The calling bot's spawn key. An email chat's items are linked to its thread. */
+    callerSpawnKey?: string | null;
+    /** An area (see SCRATCHPAD_HANDOFF_AGENTS) whose agent should own the item. Email chats only. */
+    forAgent?: string;
   },
 ) {
   if ((input as typeof input & { proof?: unknown }).proof !== undefined) {
@@ -253,6 +348,8 @@ export async function addScratchpadItemFromTool(
   if (input.scheduledFor !== undefined && !scheduledFor) {
     return { error: "scheduledFor must be an absolute ISO datetime." };
   }
+  const open = openItemFields({ dueAt: input.dueAt, waitingOn: input.waitingOn });
+  if ("error" in open) return open;
   if (isGated(category) && channel && DRAFT_ONLY_CHANNELS.has(channel)) {
     return { error: "This channel is draft-only for gated items." };
   }
@@ -268,8 +365,46 @@ export async function addScratchpadItemFromTool(
     status = input.status;
   }
 
+  // Email chat: link the item to its thread, and optionally hand it to the agent that owns the work.
+  const mail = mailThreadOf(input.callerSpawnKey);
+  let botId = input.botId;
+  let addedTo: string | undefined;
+  if (input.forAgent !== undefined) {
+    const key = Object.hasOwn(SCRATCHPAD_HANDOFF_AGENTS, input.forAgent)
+      ? SCRATCHPAD_HANDOFF_AGENTS[input.forAgent as keyof typeof SCRATCHPAD_HANDOFF_AGENTS]
+      : undefined;
+    if (!key) return { error: "forAgent is not a known agent." };
+    if (!mail) return { error: "forAgent can only be used from an email chat." };
+    const owner = await deps.prisma.bot.findFirst({
+      where: {
+        spaceId: input.spaceId,
+        userId: input.userId,
+        spawnKey: key(input.userId),
+        archivedAt: null,
+      },
+      select: { id: true, name: true },
+    });
+    // No such agent in this space: keep the item on the email chat's own bot.
+    if (owner) {
+      botId = owner.id;
+      addedTo = owner.name;
+    }
+  }
+  const message = mail
+    ? await deps.prisma.cachedMailMessage.findFirst({
+        where: {
+          spaceId: input.spaceId,
+          userId: input.userId,
+          connectionId: mail.connectionId,
+          threadId: mail.threadId,
+        },
+        orderBy: { receivedAt: "desc" },
+        select: { providerMessageId: true },
+      })
+    : null;
   const data = {
     ...scopeOf(input),
+    botId,
     title,
     status,
     notes,
@@ -277,21 +412,111 @@ export async function addScratchpadItemFromTool(
     ...(channel ? { channel } : {}),
     ...(target !== undefined ? { target } : {}),
     ...(scheduledFor ? { scheduledFor } : {}),
+    ...open.data,
+    // A to-do handed to another agent is for the person to act on, so it shows in "Waiting on you".
+    ...(addedTo && !open.data.waitingOn ? { waitingOn: "you" } : {}),
+    ...(mail && message
+      ? {
+          mailConnectionId: mail.connectionId,
+          mailThreadId: mail.threadId,
+          mailMessageId: message.providerMessageId,
+        }
+      : {}),
   };
   const create = (client: ScratchpadClient) =>
     client.scratchpadItem.create({ data }) as Promise<ScratchpadRow>;
+  const result = (item: ScratchpadRow) => ({
+    item: mapScratchpadItem(item),
+    ...(addedTo ? { addedTo } : {}),
+  });
 
   if (category === "goal" && status !== "done") {
     return deps.prisma.$transaction(async (tx) => {
-      await lockScope(tx, `scratchpad:goal:${input.spaceId}:${input.userId}:${input.botId}`);
+      await lockScope(tx, `scratchpad:goal:${input.spaceId}:${input.userId}:${botId}`);
       const existing = await tx.scratchpadItem.findFirst({
-        where: { ...scopeOf(input), category: "goal", status: { not: "done" } },
+        where: { ...scopeOf(input), botId, category: "goal", status: { not: "done" } },
       });
       if (existing) return { error: "A non-done goal already exists for this bot." };
-      return { item: mapScratchpadItem(await create(tx)) };
+      return result(await create(tx));
     });
   }
-  return { item: mapScratchpadItem(await create(deps.prisma)) };
+  try {
+    return result(await create(deps.prisma));
+  } catch (error) {
+    // One open item per bot and mail thread (a partial unique index).
+    if ((error as { code?: string }).code === "P2002" && "mailThreadId" in data) {
+      return {
+        error:
+          "That agent already has an open to-do for this email. Update it with scratchpad_update instead.",
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * A work list: many plain open rows in one call. Rows carry no category, channel or hand-off, so
+ * none is a gated item. A row whose title is already open is left alone, so adding a list twice
+ * does not double it.
+ */
+export async function addScratchpadItemsFromTool(
+  deps: ScratchpadToolDeps,
+  input: Scope & { items: unknown; callerSpawnKey?: string | null },
+) {
+  if (mailThreadOf(input.callerSpawnKey)) {
+    return { error: "An email chat keeps one to-do per email. Add one item, without items." };
+  }
+  if (!Array.isArray(input.items) || input.items.length === 0) {
+    return { error: "items must be a list of rows, each with a title." };
+  }
+  if (input.items.length > SCRATCHPAD_BATCH_MAX) {
+    return { error: `items can hold at most ${SCRATCHPAD_BATCH_MAX} rows; add the rest next.` };
+  }
+  const rows: { title: string; notes: string; open: Record<string, Date | string | null> }[] = [];
+  for (const raw of input.items as Record<string, unknown>[]) {
+    const title = typeof raw?.title === "string" ? raw.title.trim() : "";
+    if (!title) return { error: "Every row needs a title." };
+    if (title.length > TITLE_MAX) {
+      return { error: `title must be at most ${TITLE_MAX} characters.` };
+    }
+    const notes = typeof raw.notes === "string" ? raw.notes.trim() : "";
+    if (notes.length > NOTES_MAX) {
+      return { error: `notes must be at most ${NOTES_MAX} characters.` };
+    }
+    const open = openItemFields({
+      ...(raw.dueAt != null ? { dueAt: String(raw.dueAt) } : {}),
+      ...(raw.waitingOn != null ? { waitingOn: String(raw.waitingOn) } : {}),
+    });
+    if ("error" in open) return open;
+    rows.push({ title, notes, open: open.data });
+  }
+  return deps.prisma.$transaction(async (tx) => {
+    const existing = await tx.scratchpadItem.findMany({
+      where: {
+        ...scopeOf(input),
+        status: { in: OPEN_SCRATCHPAD_STATUSES },
+        title: { in: rows.map((row) => row.title) },
+      },
+      select: { title: true },
+    });
+    const taken = new Set(existing.map((row) => row.title));
+    const items: { id: string; title: string }[] = [];
+    for (const row of rows) {
+      if (taken.has(row.title)) continue;
+      taken.add(row.title);
+      const created = await tx.scratchpadItem.create({
+        data: {
+          ...scopeOf(input),
+          title: row.title,
+          notes: row.notes,
+          status: "open",
+          ...row.open,
+        },
+      });
+      items.push({ id: created.id, title: created.title });
+    }
+    return { added: items.length, alreadyOpen: existing.length, items };
+  });
 }
 
 type ScratchpadUpdateInput = Scope & {
@@ -301,6 +526,10 @@ type ScratchpadUpdateInput = Scope & {
   notes?: string;
   target?: string;
   scheduledFor?: string;
+  /** ISO date or datetime; null clears. */
+  dueAt?: string | null;
+  waitingOn?: string | null;
+  resolvedReason?: string | null;
   proof?: string;
 };
 
@@ -406,6 +635,9 @@ async function updateScratchpadItem(
     if (!scheduledFor) return { error: "scheduledFor must be an absolute ISO datetime." };
     data.scheduledFor = scheduledFor;
   }
+  const open = openItemFields(input);
+  if ("error" in open) return open;
+  Object.assign(data, open.data);
   if (input.proof !== undefined) {
     if (typeof input.proof !== "string" || input.proof.length > PROOF_MAX) {
       return { error: `proof must be at most ${PROOF_MAX} characters.` };
@@ -422,6 +654,14 @@ async function updateScratchpadItem(
     }
   }
   if (input.status !== undefined) data.status = input.status;
+  // Reopening drops the old reason unless a new one is given.
+  if (
+    (input.status === "open" || input.status === "parked") &&
+    input.resolvedReason === undefined &&
+    existing.status === "done"
+  ) {
+    data.resolvedReason = null;
+  }
 
   const contentWasEdited = contentEdit(data);
   if (founder && gated && (input.reapprove || (input.status === "open" && !contentWasEdited))) {
@@ -584,7 +824,10 @@ async function updateScratchpadItem(
     return { error: "Completed gated items cannot be reopened by an agent." };
   }
   if (Object.keys(data).length === 0) {
-    return { error: "Provide title, status, notes, target, scheduledFor, and/or proof to update." };
+    return {
+      error:
+        "Provide title, status, notes, target, scheduledFor, dueAt, waitingOn, and/or proof to update.",
+    };
   }
 
   const reopenGoal =
@@ -690,6 +933,35 @@ export function updateScratchpadItemFromTool(
   return updateScratchpadItem(deps, input, false);
 }
 
+/** The same change on many rows, each through the normal update and its gates. */
+export async function updateScratchpadItemsFromTool(
+  deps: ScratchpadToolDeps & { now?: () => Date },
+  input: Scope & {
+    itemIds: unknown;
+    status?: string;
+    notes?: string;
+    dueAt?: string | null;
+    waitingOn?: string | null;
+  },
+) {
+  const { itemIds, ...change } = input;
+  if (!Array.isArray(itemIds) || itemIds.length === 0) {
+    return { error: "itemIds must be a list of ids." };
+  }
+  if (itemIds.length > SCRATCHPAD_BATCH_MAX) {
+    return { error: `itemIds can hold at most ${SCRATCHPAD_BATCH_MAX} ids; update the rest next.` };
+  }
+  let updated = 0;
+  const failed: { itemId: string; error: string }[] = [];
+  for (const itemId of new Set(itemIds.map(String))) {
+    const result = await updateScratchpadItemFromTool(deps, { ...change, itemId });
+    if ("item" in result) updated += 1;
+    else
+      failed.push({ itemId, error: ("error" in result && result.error) || "Item changed; retry." });
+  }
+  return { updated, failed };
+}
+
 export function updateScratchpadItemFromUser(
   deps: ScratchpadToolDeps & { now?: () => Date },
   input: FounderScratchpadUpdateInput,
@@ -699,13 +971,21 @@ export function updateScratchpadItemFromUser(
 
 export async function completeScratchpadItemFromTool(
   deps: ScratchpadToolDeps & { now?: () => Date },
-  input: Scope & { itemId: string; proof?: string },
+  input: Scope & { itemId: string; proof?: string; reason?: string },
 ) {
-  return updateScratchpadItemFromTool(deps, { ...input, status: "done" });
+  const { reason, ...rest } = input;
+  if (reason !== undefined && reason.trim().length > TOOL_REASON_MAX) {
+    return { error: `reason must be at most ${TOOL_REASON_MAX} characters.` };
+  }
+  return updateScratchpadItemFromTool(deps, {
+    ...rest,
+    status: "done",
+    ...(reason !== undefined ? { resolvedReason: reason } : {}),
+  });
 }
 
 async function removeScratchpadItem(
-  deps: ScratchpadToolDeps,
+  deps: ScratchpadToolDeps & { now?: () => Date },
   input: Scope & { itemId: string },
   founder: boolean,
 ) {
@@ -714,6 +994,9 @@ async function removeScratchpadItem(
   const category = categoryValue(existing.category);
   if (!founder && isGated(category)) {
     return { error: "Only the founder can remove gated items." };
+  }
+  if (isQueuedZernioPost(existing, deps.now?.() ?? new Date())) {
+    return { error: "This post is queued in Zernio. You can discard it after its scheduled time." };
   }
   const result = await deps.prisma.scratchpadItem.deleteMany({
     where: {
@@ -728,14 +1011,14 @@ async function removeScratchpadItem(
 }
 
 export function removeScratchpadItemFromTool(
-  deps: ScratchpadToolDeps,
+  deps: ScratchpadToolDeps & { now?: () => Date },
   input: Scope & { itemId: string },
 ) {
   return removeScratchpadItem(deps, input, false);
 }
 
 export function removeScratchpadItemFromUser(
-  deps: ScratchpadToolDeps,
+  deps: ScratchpadToolDeps & { now?: () => Date },
   input: Scope & { itemId: string },
 ) {
   return removeScratchpadItem(deps, input, true);
@@ -779,6 +1062,26 @@ export async function hasApprovedOpenPost(deps: ScratchpadToolDeps, scope: Scope
   );
 }
 
+/** A post Zernio already has queued: it still publishes, so the local copy is not ours to drop. */
+export function isQueuedZernioPost(
+  row: {
+    category?: unknown;
+    status?: unknown;
+    proof?: unknown;
+    scheduledFor?: Date | null;
+  },
+  now: Date,
+) {
+  return (
+    row.category === "public_post" &&
+    row.status === "open" &&
+    typeof row.proof === "string" &&
+    row.proof.startsWith("zernio:") &&
+    row.scheduledFor != null &&
+    row.scheduledFor.getTime() > now.getTime()
+  );
+}
+
 export async function findWorkableOpenItem(
   deps: ScratchpadToolDeps,
   scope: Scope,
@@ -788,19 +1091,7 @@ export async function findWorkableOpenItem(
     where: { ...scopeOf(scope), status: "open" },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  return (
-    rows.find(
-      (row) =>
-        row.category !== "goal" &&
-        !(
-          row.category === "public_post" &&
-          typeof row.proof === "string" &&
-          row.proof.startsWith("zernio:") &&
-          row.scheduledFor &&
-          row.scheduledFor.getTime() > now().getTime()
-        ),
-    ) ?? null
-  );
+  return rows.find((row) => row.category !== "goal" && !isQueuedZernioPost(row, now())) ?? null;
 }
 
 type ConsumeApprovedPostInput = Scope & {

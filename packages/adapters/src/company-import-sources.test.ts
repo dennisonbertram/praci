@@ -542,6 +542,7 @@ describe("company source worker", () => {
             {
               spaceId: actor.spaceId,
               userId: actor.userId,
+              source: { not: "meeting" },
               sourceConnectionId: "connection-1",
               sourceConnection: {
                 spaceId: actor.spaceId,

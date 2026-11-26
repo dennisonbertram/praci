@@ -1,5 +1,12 @@
 import Foundation
 
+/// Request body for `/rpc/<procedure>`: the input wrapped as `{"json": input}`.
+public struct RPCRequest<Input: Encodable>: Encodable {
+  public let json: Input
+
+  public init(json: Input) { self.json = json }
+}
+
 public struct RPCEnvelope<Payload: Decodable>: Decodable {
   public let json: Payload
 

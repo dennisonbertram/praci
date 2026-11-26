@@ -6,7 +6,7 @@ import { CreateGroupForm, GroupSettings } from "./GroupPanel";
 
 const noop = async () => undefined;
 const bots = [
-  ...teamBots,
+  ...teamBots.map((bot) => (bot.id === "bot_ada" ? { ...bot, firewall: true } : bot)),
   makeBot({
     id: "bot_old",
     name: "Archived bot",
@@ -56,7 +56,7 @@ export const CreateEmpty: Story = {
 async function fillCreate(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await userEvent.type(canvas.getByPlaceholderText("Name this group"), "Sample team");
-  await userEvent.click(canvas.getByRole("button", { name: "Ada" }));
+  await userEvent.click(canvas.getByRole("button", { name: /^Ada/ }));
   await userEvent.click(canvas.getByRole("button", { name: "Bram" }));
 }
 

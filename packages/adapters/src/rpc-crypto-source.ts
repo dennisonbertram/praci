@@ -476,4 +476,31 @@ export async function fetchPrices(rpc: RpcClient, keys: string[]): Promise<Map<s
   return prices;
 }
 
+/** Daily USD prices over the last 30 days (oldest first) per key, for keys DefiLlama knows with enough confidence. */
+export async function fetchPriceHistory(
+  rpc: RpcClient,
+  keys: string[],
+): Promise<Map<string, Array<{ day: string; price: string }>>> {
+  const history = new Map<string, Array<{ day: string; price: string }>>();
+  if (keys.length === 0) return history;
+  const body = (await rpc.getJson(
+    `https://coins.llama.fi/chart/${[...new Set(keys)].join(",")}?span=30&period=1d`,
+  )) as {
+    coins?: Record<
+      string,
+      { confidence?: number; prices?: Array<{ timestamp?: number; price?: number }> }
+    >;
+  };
+  for (const [key, coin] of Object.entries(body.coins ?? {})) {
+    if ((coin.confidence ?? 0) < MIN_CONFIDENCE) continue;
+    const days = (coin.prices ?? []).flatMap((p) =>
+      typeof p.timestamp === "number" && typeof p.price === "number" && p.price > 0
+        ? [{ day: new Date(p.timestamp * 1000).toISOString().slice(0, 10), price: String(p.price) }]
+        : [],
+    );
+    history.set(key.toLowerCase(), days);
+  }
+  return history;
+}
+
 export const CRYPTO_CHAIN_IDS: number[] = CRYPTO_CHAINS.map((c) => c.id);

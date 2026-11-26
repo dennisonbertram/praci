@@ -89,3 +89,15 @@ export function summarizeRecipients(
   const ordered = [...all.filter((r) => !r.valid), ...all.filter((r) => r.valid)];
   return { recipients: ordered.slice(0, shown), more: Math.max(0, ordered.length - shown) };
 }
+
+/** The distinct valid addresses of these entries, lower-cased, with the name each was written with. */
+export function recipientPeople(entries: string[]): Array<{ email: string; name?: string }> {
+  const seen = new Set<string>();
+  return entries.flatMap((entry) => {
+    const { name, address, valid } = parseRecipient(entry);
+    const email = address.toLowerCase();
+    if (!valid || seen.has(email)) return [];
+    seen.add(email);
+    return [{ email, ...(name ? { name } : {}) }];
+  });
+}

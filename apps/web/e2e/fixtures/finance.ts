@@ -191,6 +191,7 @@ export const connectedOverview: FinanceOverview = {
   treasuryYieldLastMonth: { month: "2026-09", netCents: 31_200 },
   lastSyncedAt: new Date().toISOString(),
   excludedNonUsdCount: 0,
+  excludedNonUsd: [],
 };
 
 export const emptyOverview: FinanceOverview = {

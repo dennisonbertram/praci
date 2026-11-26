@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 function LinkRow({ link, named }: { link: PortalLink; named: boolean }) {
@@ -38,22 +39,37 @@ function LinkRow({ link, named }: { link: PortalLink; named: boolean }) {
   );
 }
 
-/** A portal link shown once, because only its hash is stored: the founder pastes it to the investor. */
-export function CopyLinkDialog({ links, onClose }: { links: PortalLink[]; onClose: () => void }) {
+/**
+ * A link shown once, because only its hash is stored: the founder pastes it to the investor. A
+ * caller with another kind of link passes its own title, a note under the links and extra actions.
+ */
+export function CopyLinkDialog({
+  links,
+  onClose,
+  title,
+  note,
+  actions,
+}: {
+  links: PortalLink[];
+  onClose: () => void;
+  title?: string;
+  note?: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            <Trans>Portal link</Trans>
-          </DialogTitle>
+          <DialogTitle>{title ?? <Trans>Portal link</Trans>}</DialogTitle>
         </DialogHeader>
         <DialogBody className="flex flex-col gap-3">
           {links.map((link) => (
             <LinkRow key={link.contactId} link={link} named={links.length > 1} />
           ))}
+          {note ? <div className="text-[13.5px] text-muted-foreground">{note}</div> : null}
         </DialogBody>
         <DialogFooter>
+          {actions}
           <Button type="button" onClick={onClose}>
             <Trans>Done</Trans>
           </Button>

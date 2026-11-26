@@ -19,6 +19,9 @@ function matches(row: Row, where: Row): boolean {
   return Object.entries(where).every(([key, want]) => {
     if (want && typeof want === "object" && "in" in want)
       return (want as { in: unknown[] }).in.includes(row[key]);
+    // connections.list hides the Granola, Omi and Hex keys with notIn (192fc490a).
+    if (want && typeof want === "object" && "notIn" in want)
+      return !(want as { notIn: unknown[] }).notIn.includes(row[key]);
     if (want && typeof want === "object" && "not" in want)
       return row[key] !== (want as { not: unknown }).not;
     return row[key] === want;
@@ -87,6 +90,9 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
       })),
     },
     botConnectionAccess: {
+      findMany: vi.fn(async ({ where }: { where: { connectionId: { in: string[] } } }) =>
+        access.filter((r) => where.connectionId.in.includes(String(r.connectionId))),
+      ),
       deleteMany: vi.fn(async ({ where }: { where: Row }) => {
         for (let i = access.length - 1; i >= 0; i--)
           if (matches(access[i] as Row, where)) access.splice(i, 1);
@@ -133,7 +139,12 @@ const bot = (id: string, userId = "u1", extra: Row = {}): Row => ({
 describe("connections.list", () => {
   it("returns connected, pending and error rows with a reason, never revoked", async () => {
     const h = harness(
-      [conn("a", "connected"), conn("b", "pending"), conn("c", "error"), conn("d", "revoked")],
+      [
+        conn("a", "connected"),
+        conn("b", "pending", { createdAt: new Date() }),
+        conn("c", "error"),
+        conn("d", "revoked"),
+      ],
       [],
     );
     const { json } = await h.call("connections/list", undefined);
@@ -166,6 +177,60 @@ describe("connections.list", () => {
     const h = harness([conn("a", "connected")], []);
     expect((await h.call("connections/list", undefined, stranger)).json).toEqual([]);
   });
+
+  it("shows the account address stored at connect time or by the mail sync", async () => {
+    const h = harness(
+      [
+        conn("a", "connected", { metadata: { accountAddress: "one@example.test" } }),
+        conn("b", "connected", { metadata: { mailAddress: "two@example.test" } }),
+        conn("c", "connected", { metadata: {} }),
+      ],
+      [],
+    );
+    const { json } = await h.call("connections/list", undefined);
+    expect(json.map((r: Row) => [r.id, r.account])).toEqual([
+      ["a", "one@example.test"],
+      ["b", "two@example.test"],
+      ["c", undefined],
+    ]);
+  });
+
+  it("keeps an old pending sign-in listed: begin reuses it, and hiding it would hide a fresh retry", async () => {
+    const old = new Date(Date.now() - 2 * 3_600_000);
+    const h = harness([conn("old", "pending", { createdAt: old })], []);
+    const { json } = await h.call("connections/list", undefined);
+    expect(json.map((r: Row) => r.id)).toEqual(["old"]);
+  });
+});
+
+describe("connections.rename", () => {
+  it("renames the caller's own connection", async () => {
+    const h = harness([conn("a", "connected")], []);
+    const { json } = await h.call("connections/rename", {
+      connectionId: "a",
+      displayName: "  Work Gmail ",
+    });
+    expect(json.displayName).toBe("Work Gmail");
+    expect(h.connections[0]?.displayName).toBe("Work Gmail");
+  });
+
+  it("rejects another user's connection and leaves its name alone", async () => {
+    const h = harness([conn("a", "connected")], []);
+    const { status } = await h.call(
+      "connections/rename",
+      { connectionId: "a", displayName: "Mine now" },
+      stranger,
+    );
+    expect(status).not.toBe(200);
+    expect(h.connections[0]?.displayName).toBe("a");
+  });
+
+  it.each(["", "   ", "x".repeat(61)])("rejects the name %j", async (displayName) => {
+    const h = harness([conn("a", "connected")], []);
+    const { status } = await h.call("connections/rename", { connectionId: "a", displayName });
+    expect(status).not.toBe(200);
+    expect(h.connections[0]?.displayName).toBe("a");
+  });
 });
 
 describe("connections.access and setAccess", () => {
@@ -174,6 +239,9 @@ describe("connections.access and setAccess", () => {
     expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual({
       allAgents: true,
       botIds: [],
+      writeBotIds: [],
+      agentShared: true,
+      supportLabels: {},
     });
   });
 
@@ -228,14 +296,26 @@ describe("connections.access and setAccess", () => {
       allAgents: false,
       botIds: ["b1", "b2", "b1"],
     });
-    expect(set.json).toEqual({ allAgents: false, botIds: ["b1", "b2"] });
+    expect(set.json).toEqual({
+      allAgents: false,
+      botIds: ["b1", "b2"],
+      writeBotIds: [],
+      agentShared: true,
+      supportLabels: {},
+    });
     expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual(set.json);
     const reset = await h.call("connections/setAccess", {
       connectionId: "a",
       allAgents: true,
       botIds: [],
     });
-    expect(reset.json).toEqual({ allAgents: true, botIds: [] });
+    expect(reset.json).toEqual({
+      allAgents: true,
+      botIds: [],
+      writeBotIds: [],
+      agentShared: true,
+      supportLabels: {},
+    });
   });
 
   it("rejects another user's connection and another user's bot", async () => {
@@ -308,15 +388,15 @@ describe("connections.access and setAccess", () => {
     expect(h.access.map((row) => row.botId).sort()).toEqual(["agent", "other"]);
   });
 
-  it("rejects a selection that leaves out the owning agent", async () => {
+  it("keeps the owning agent when a selection leaves it out", async () => {
     const h = agentHarness();
     const result = await h.call("connections/setAccess", {
       connectionId: "a",
       allAgents: false,
       botIds: ["other"],
     });
-    expect(result.status).toBeGreaterThanOrEqual(400);
-    expect(h.access).toEqual([{ connectionId: "a", botId: "agent", userId: "u1", spaceId: "s1" }]);
+    expect(result.status).toBeLessThan(400);
+    expect(h.access.map((row) => row.botId).sort()).toEqual(["agent", "other"]);
   });
 
   it("starts a new account private and copies no sibling's access", async () => {

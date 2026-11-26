@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   latestAnswerableAskMessageId,
+  ownerOnlyCredentialAskMessageIds,
   resolveAskChoice,
   selectedAskActionLabel,
 } from "./answerable-ask.js";
@@ -69,5 +70,44 @@ describe("resolveAskChoice", () => {
 
   it("leaves unmatched free-text as a custom answer", () => {
     expect(resolveAskChoice("Toronto", actions)).toBeUndefined();
+  });
+});
+
+describe("ownerOnlyCredentialAskMessageIds", () => {
+  const snapshot = {
+    activeRuns: [
+      { id: "run-mine", status: "waiting_input", userId: "user-1" },
+      { id: "run-theirs", status: "waiting_input", userId: "user-2" },
+      { id: "run-unknown", status: "waiting_input" },
+    ],
+    messages: ["run-mine", "run-theirs", "run-unknown"].map((runId) => ({
+      id: `ask-${runId}`,
+      runId,
+      blocks: [{ kind: "ask", input: "secret", credential: {}, status: "pending" }],
+    })),
+  };
+
+  it("hides another user's, or an unknown user's, credential request from the viewer", () => {
+    expect([...ownerOnlyCredentialAskMessageIds(snapshot, "user-1")].sort()).toEqual([
+      "ask-run-theirs",
+      "ask-run-unknown",
+    ]);
+    expect(ownerOnlyCredentialAskMessageIds(snapshot, undefined).size).toBe(3);
+  });
+
+  it("leaves connector codes, questions and answered requests alone", () => {
+    const others = {
+      activeRuns: [{ id: "run-theirs", status: "waiting_input", userId: "user-2" }],
+      messages: [
+        { id: "code", runId: "run-theirs", blocks: [{ kind: "ask", input: "secret" }] },
+        { id: "question", runId: "run-theirs", blocks: [{ kind: "ask", input: "text" }] },
+        {
+          id: "done",
+          runId: "run-theirs",
+          blocks: [{ kind: "ask", input: "secret", credential: {}, status: "answered" }],
+        },
+      ],
+    };
+    expect(ownerOnlyCredentialAskMessageIds(others, "user-1").size).toBe(0);
   });
 });

@@ -1,0 +1,57 @@
+{
+  "command": "snapshot",
+  "data": {
+    "app": "Calculator",
+    "complete": true,
+    "ref_count": 6,
+    "snapshot_id": "s3fnfj8f9g9m2q",
+    "tree": {
+      "role": "window",
+      "name": "Calculator",
+      "children": [
+        {
+          "role": "group",
+          "children": [
+            {
+              "available_actions": ["Scroll"],
+              "name": "Input",
+              "native_id": { "kind": "ax_identifier", "value": "StandardInputView" },
+              "ref_id": "@s3fnfj8f9g9m2q:e1",
+              "role": "scrollarea"
+            },
+            {
+              "available_actions": ["Click", "SetFocus"],
+              "name": "Delete",
+              "native_id": { "kind": "ax_identifier", "value": "Delete" },
+              "ref_id": "@s3fnfj8f9g9m2q:e2",
+              "role": "button"
+            },
+            {
+              "available_actions": ["Click", "SetFocus"],
+              "name": "Change Sign",
+              "native_id": { "kind": "ax_identifier", "value": "Negate" },
+              "ref_id": "@s3fnfj8f9g9m2q:e3",
+              "role": "button"
+            },
+            {
+              "available_actions": ["Click", "SetFocus"],
+              "name": "7",
+              "native_id": { "kind": "ax_identifier", "value": "Seven" },
+              "ref_id": "@s3fnfj8f9g9m2q:e6",
+              "role": "button"
+            },
+            {
+              "available_actions": ["Click", "SetFocus"],
+              "name": "8",
+              "native_id": { "kind": "ax_identifier", "value": "Eight" },
+              "ref_id": "@s3fnfj8f9g9m2q:e7",
+              "role": "button"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "ok": true,
+  "version": "2.5"
+}

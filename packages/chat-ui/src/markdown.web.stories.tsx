@@ -62,6 +62,17 @@ export const WithCodeBlock: Story = {
   args: { children: "```ts\nexport const total = (a: number, b: number) => a + b;\n```" },
 };
 
+export const WithCopyablePaste: Story = {
+  args: {
+    children:
+      "Here is the prompt:\n\n> You are helping me plan a launch.\n>\n> Ask me about:\n>\n> - the audience\n> - the date\n\n```\nSubject: Launch plan\n\nHi team, a draft is attached.\n```",
+  },
+  play: async ({ canvasElement }) => {
+    const buttons = within(canvasElement).getAllByRole("button", { name: "Copy" });
+    await expect(buttons).toHaveLength(2);
+  },
+};
+
 export const WithLinks: Story = {
   decorators: [
     (Story) => (

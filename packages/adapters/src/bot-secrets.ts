@@ -13,7 +13,8 @@ import {
 } from "@rakazo/contracts";
 import { isRecord } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
-import { withTransactionRetry } from "@rakazo/db";
+import { createNotification, withTransactionRetry } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import { combineSignals, redactConnectorPayload } from "./connector-safety.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
 import { createPrivateNetworkFetch, createSafeRemoteFetch } from "./remote-mcp.js";
@@ -196,6 +197,51 @@ export async function findCommandVariableConflict(
   return rows.find(
     (row) => isCommandCredential(row.auth) && commandVariableName(row.name) === variable,
   )?.name;
+}
+
+type SecretRow = { id: string; name: string; ciphertext: string };
+
+/**
+ * Record a successful use. A failed write must never fail the request, so errors are dropped.
+ * A 401/403 from the saved site marks the credential as needing attention instead and, at most
+ * once a day, tells the owner (createNotification dedupes on the key for 24 hours).
+ */
+async function recordSecretUse(
+  prisma: PrismaClient,
+  scope: BotSecretScope,
+  row: SecretRow,
+  outcome: "ok" | "rejected",
+) {
+  try {
+    // Match the ciphertext this request used, so a late result cannot touch a replacement that
+    // kept the row id.
+    const where = { id: row.id, ciphertext: row.ciphertext, ...scopeFields(scope) };
+    if (outcome === "ok") {
+      await prisma.botSecret.updateMany({
+        where,
+        data: { lastUsedAt: new Date(), needsAttentionAt: null },
+      });
+      return;
+    }
+    const marked = await prisma.botSecret.updateMany({
+      where,
+      data: { needsAttentionAt: new Date() },
+    });
+    if (marked.count === 0) return;
+    await createNotification(prisma, {
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+      botId: scope.botId,
+      surface: "thread",
+      title: `${row.name} needs attention`,
+      body: "The site rejected this credential. Replace it in the bot's settings.",
+      importance: "attention",
+      kind: "urgent",
+      dedupeKey: `credential-rejected:${row.id}`,
+    });
+  } catch {
+    /* Bookkeeping only. */
+  }
 }
 
 export type RequestSecretDestinationResult = {
@@ -423,7 +469,10 @@ export async function prepareBotSecret(input: {
       if (current?.id !== existing?.id)
         throw Object.assign(new Error("Credential changed while saving; retry"), { code: "P2034" });
       if (current)
-        await tx.botSecret.update({ where: { id }, data: { ciphertext: stored.ciphertext } });
+        await tx.botSecret.update({
+          where: { id },
+          data: { ciphertext: stored.ciphertext, needsAttentionAt: null, lastUsedAt: null },
+        });
       else
         await tx.botSecret.create({
           data: { id, ...scopeFields(scope), ...destination, ciphertext: stored.ciphertext },
@@ -455,7 +504,13 @@ export async function listBotSecrets(prisma: PrismaClient, scope: BotSecretScope
 }
 
 // Owner-facing view: destination and timestamps only, never the row id or ciphertext.
-const ownerMetadata = { ...metadata, createdAt: true, updatedAt: true } as const;
+const ownerMetadata = {
+  ...metadata,
+  createdAt: true,
+  updatedAt: true,
+  lastUsedAt: true,
+  needsAttentionAt: true,
+} as const;
 
 export function listBotSecretMetadata(prisma: PrismaClient, scope: BotSecretScope) {
   return prisma.botSecret.findMany({
@@ -478,11 +533,11 @@ export function getBotSecretMetadata(
 }
 
 export async function forgetBotSecret(prisma: PrismaClient, scope: BotSecretScope, name: string) {
-  await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM bots WHERE id = ${scope.botId} FOR UPDATE`;
-    await tx.botSecret.deleteMany({ where: { ...scopeFields(scope), name } });
+    return tx.botSecret.deleteMany({ where: { ...scopeFields(scope), name } });
   });
-  return { removed: true };
+  return { removed: result.count > 0 };
 }
 
 /** Credentials are resolved only inside this destination-bound HTTP boundary. */
@@ -494,6 +549,10 @@ export async function requestWithBotSecret(input: {
   signal: AbortSignal;
   remote?: RemoteTransportDependencies;
   registerRedactions?: (values: string[]) => void;
+  /** Awaited right before the request is sent; throwing cancels it. */
+  beforeSend?: () => Promise<void>;
+  /** Longest result body returned, in characters. Default 20,000. */
+  maxOutputChars?: number;
 }): Promise<unknown> {
   const request = SecretHttpRequest.parse(input.request);
   const row = await input.prisma.botSecret.findFirst({
@@ -546,6 +605,7 @@ export async function requestWithBotSecret(input: {
     : createSafeRemoteFetch(input.remote?.fetch, input.remote?.resolveHostname);
   try {
     headers.set(headerName, headerValue);
+    await input.beforeSend?.();
     const response = await withAbort(
       fetch(url, {
         method: request.method,
@@ -556,6 +616,12 @@ export async function requestWithBotSecret(input: {
       }),
       signal,
     );
+    // Only a 2xx counts as a use; other errors (404, 429, 5xx) say nothing about the credential.
+    // Recorded before the body read, so a huge or broken body cannot skip it.
+    if (response.ok) await recordSecretUse(input.prisma, input.scope, row, "ok");
+    else if (response.status === 401 || response.status === 403) {
+      await recordSecretUse(input.prisma, input.scope, row, "rejected");
+    }
     const bytes = await readBodyCapped(response, 1_000_000, signal);
     const text = new TextDecoder().decode(bytes);
     let body: unknown = text;
@@ -566,13 +632,24 @@ export async function requestWithBotSecret(input: {
     }
     // Redact before truncating, so an output boundary cannot expose part of a value.
     const safe = JSON.stringify(redactConnectorPayload(body, redactions));
+    const limit = input.maxOutputChars ?? 20_000;
     return {
       status: response.status,
-      body: safe.length > 20_000 ? safe.slice(0, 20_000) : JSON.parse(safe),
-      truncated: safe.length > 20_000,
+      body: safe.length > limit ? safe.slice(0, limit) : JSON.parse(safe),
+      truncated: safe.length > limit,
     };
-  } catch {
-    return { error: "Authenticated request failed. Check the destination and credential." };
+  } catch (error) {
+    // The caller sees fixed text; the log keeps why (transport errors carry no credential).
+    getLogger().warn("secret request failed", {
+      host: url.host,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      error: "Authenticated request failed. Check the destination and credential.",
+      ...(error instanceof Error && /redirects are not allowed/.test(error.message)
+        ? { redirected: true }
+        : {}),
+    };
   } finally {
     controller.abort();
     await withAbort(fetch.close(), AbortSignal.timeout(1000)).catch(() => undefined);
@@ -581,6 +658,51 @@ export async function requestWithBotSecret(input: {
 
 export type LoginField = "username" | "password";
 const MIN_REDACTED_USERNAME = 6;
+const MIN_REDACTED_PASSWORD_EVERY_RUN = MIN_REDACTED_USERNAME;
+
+function passwordRedactionForms(password: string): string[] {
+  return [
+    ...new Set([
+      ...commandRedactionForms(password),
+      // A submitted form encodes `+` for spaces and escapes `!'()~`, unlike encodeURIComponent.
+      new URLSearchParams({ v: password }).toString().slice(2),
+    ]),
+  ];
+}
+
+/**
+ * Redaction forms of the password of every website login saved for this bot. A filled login
+ * stays on its page after the run that filled it, so each run hides the passwords before any
+ * tool output reaches the model. Usernames stay visible outside the filling run: one is often
+ * the user's own email, which ordinary tasks need. Only login rows are decrypted.
+ */
+export async function loadLoginPasswordRedactions(
+  prisma: PrismaClient,
+  secretStore: Pick<SecretStore, "load">,
+  scope: BotSecretScope,
+): Promise<string[]> {
+  // Every saved login, however many other credentials the bot has.
+  const rows = await prisma.botSecret.findMany({
+    where: { ...scopeFields(scope), auth: { path: ["type"], equals: "login" } },
+    select: { id: true, auth: true, ciphertext: true },
+  });
+  const forms = new Set<string>();
+  for (const row of rows) {
+    if (BotSecretAuth.safeParse(row.auth).data?.type !== "login") continue;
+    try {
+      const { password } = decodeLoginSecret(await secretStore.load(row.ciphertext, row.id));
+      // Every run would mangle each occurrence of a short password; the filling run still hides it.
+      if (password.length < MIN_REDACTED_PASSWORD_EVERY_RUN) continue;
+      for (const form of passwordRedactionForms(password)) forms.add(form);
+    } catch {
+      // Like an unreadable command variable, it must not stop every computer tool. The id only:
+      // an operator can see which login is no longer hidden. Not under a "secret" key, which
+      // the logger scrubs.
+      getLogger().warn("saved login could not be loaded for redaction", { loginId: row.id });
+    }
+  }
+  return [...forms];
+}
 
 /**
  * Resolve one field of a saved website login for a page fill. The caller must pass `origin` to
@@ -592,7 +714,16 @@ export async function resolveLoginFill(input: {
   scope: BotSecretScope;
   name: string;
   field: LoginField;
-}): Promise<{ text: string; origin: string; redactions: string[] } | { error: string }> {
+}): Promise<
+  | {
+      text: string;
+      origin: string;
+      redactions: string[];
+      /** Call once the page action that used the value has succeeded. */
+      markUsed: () => Promise<void>;
+    }
+  | { error: string }
+> {
   const row = await input.prisma.botSecret.findFirst({
     where: { ...scopeFields(input.scope), name: input.name },
   });
@@ -622,6 +753,7 @@ export async function resolveLoginFill(input: {
   const login = decodeLoginSecret(await input.secretStore.load(row.ciphertext, row.id));
   return {
     text: login[input.field],
+    markUsed: () => recordSecretUse(input.prisma, input.scope, row, "ok"),
     origin: destination.origin,
     // Redaction is substring replacement, so a short username would mangle unrelated text.
     redactions: [

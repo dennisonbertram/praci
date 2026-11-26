@@ -12,14 +12,17 @@ const PAGE_SEGMENTS = new Set([
   "inbox",
   "integrations",
   "finance",
+  "brex",
   "legal",
   "gtm",
   "devin",
   "data-room",
+  "scanner",
   "investors",
   "fundraising",
   "cap-table",
   "contacts",
+  "calendar",
   "company",
 ]);
 

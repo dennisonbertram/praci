@@ -13,7 +13,7 @@ import type {
   TerminalRequest,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
-import { DesktopSandboxProvider } from "./desktop-sandbox.js";
+import { assertHostCommandsAllowed, DesktopSandboxProvider } from "./desktop-sandbox.js";
 import type { SandboxProviderOptions } from "./sandbox-factory.js";
 import { createSandboxProvider } from "./sandbox-factory.js";
 
@@ -27,6 +27,7 @@ export function createRunSandbox(
   opts: SandboxProviderOptions & { prisma?: PrismaClient },
 ): SandboxProvider {
   if (kind === "desktop") {
+    assertHostCommandsAllowed();
     return new DesktopSandboxProvider({
       root: opts.dataDir,
       hostRoots: [homedir()],

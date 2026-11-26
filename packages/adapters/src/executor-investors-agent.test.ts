@@ -1,5 +1,9 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
-import { AI_DISCLOSURE_VERSION, INVESTORS_AGENT_BUILTIN_TOOLS } from "@rakazo/contracts";
+import {
+  AI_DISCLOSURE_VERSION,
+  INVESTORS_AGENT_BUILTIN_TOOLS,
+  MEETING_ROUTE_PROMPT_START,
+} from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -229,6 +233,17 @@ describe("Investors agent runs", () => {
     expect(names).toContain("audit_request_upsert");
   });
 
+  it("does not offer cap_table_update on a routed investor call run", async () => {
+    const routed = await runInvestors(
+      "routine",
+      "investors-agent:user-1",
+      `${MEETING_ROUTE_PROMPT_START}meeting m1.`,
+    );
+    const names = (routed.request?.tools ?? []).map((tool) => tool.name);
+    expect(names).not.toContain("cap_table_update");
+    expect(names).toContain("contacts_list");
+  });
+
   it("offers investor_update_draft to the Investors agent and to no other bot", async () => {
     const investors = await runInvestors();
     expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
@@ -253,6 +268,33 @@ describe("Investors agent runs", () => {
         "audit_request_upsert",
       );
     }
+  });
+
+  it("offers the round and prospect writes to the Investors agent only", async () => {
+    const investors = await runInvestors();
+    const names = (investors.request?.tools ?? []).map((tool) => tool.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "fundraising_round_save",
+        "pipeline_import_stage",
+        "pipeline_import_review",
+      ]),
+    );
+    for (const spawnKey of ["carta-agent:user-1", "legal-agent:user-1", null]) {
+      const other = await runInvestors("user", spawnKey);
+      const otherNames = (other.request?.tools ?? []).map((tool) => tool.name);
+      expect(otherNames).not.toContain("fundraising_round_save");
+      expect(otherNames).not.toContain("pipeline_import_stage");
+      expect(otherNames).not.toContain("pipeline_import_review");
+    }
+  });
+
+  it("does not offer the fundraising writes on a run another bot started", async () => {
+    const { request } = await runInvestors("bot_message");
+    const names = (request?.tools ?? []).map((tool) => tool.name);
+    expect(names).not.toContain("fundraising_round_save");
+    expect(names).not.toContain("pipeline_import_stage");
+    expect(names).not.toContain("pipeline_import_review");
   });
 
   it("is not offered fundraising_read on a run another bot started", async () => {

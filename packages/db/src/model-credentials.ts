@@ -1,4 +1,4 @@
-import { usableModelId } from "@rakazo/contracts";
+import { PINNED_CONNECTION_LOST_MESSAGE, usableModelId } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 
 export const newestCredentialOrder = [
@@ -17,17 +17,21 @@ export async function selectSpaceModelPreference(
   credentialId: string,
   modelId: string | null | undefined,
   thinkingLevel?: string | null,
+  // false saves the model and effort without touching which credential is the default.
+  { makeDefault = true }: { makeDefault?: boolean } = {},
 ) {
   const persistedModelId = usableModelId(modelId);
-  await prisma.spaceModelPreference.updateMany({
-    where: {
-      spaceId: scope.spaceId,
-      userId: scope.userId,
-      isDefault: true,
-      credentialId: { not: credentialId },
-    },
-    data: { isDefault: false },
-  });
+  if (makeDefault) {
+    await prisma.spaceModelPreference.updateMany({
+      where: {
+        spaceId: scope.spaceId,
+        userId: scope.userId,
+        isDefault: true,
+        credentialId: { not: credentialId },
+      },
+      data: { isDefault: false },
+    });
+  }
   return prisma.spaceModelPreference.upsert({
     where: {
       spaceId_userId_credentialId: {
@@ -42,14 +46,14 @@ export async function selectSpaceModelPreference(
       credentialId,
       modelId: persistedModelId,
       thinkingLevel: thinkingLevel ?? null,
-      isDefault: true,
+      isDefault: makeDefault,
     },
     // The level belongs to the stored modelId, so callers resolve it
     // themselves: pass the existing level to keep it, null to clear it. An
     // omitted level never survives a model change on this write.
     update: {
       modelId: persistedModelId,
-      isDefault: true,
+      ...(makeDefault ? { isDefault: true } : {}),
       thinkingLevel: thinkingLevel ?? null,
     },
   });
@@ -246,6 +250,67 @@ function credentialFromChoice<
   if (!choice) return null;
   if (choice.source === "preference") return withModelPreference(choice.preference);
   return { ...choice.credential, isDefault: false, defaultModel: null, thinkingLevel: null };
+}
+
+/**
+ * The connection a bot is pinned to, shaped like findModelCredential's result.
+ * Null when there is no pin, the connection is gone, belongs to someone else, or
+ * is for a different provider than the bot's model.
+ */
+export async function findPinnedModelCredential(
+  prisma: PrismaClient,
+  scope: ModelCredentialScope,
+  bot: { modelCredentialId?: string | null; modelProvider?: string | null },
+) {
+  if (!bot.modelCredentialId || !bot.modelProvider) return null;
+  const credential = await prisma.userModelCredential.findFirst({
+    where: { id: bot.modelCredentialId, userId: scope.userId, provider: bot.modelProvider },
+  });
+  if (!credential) return null;
+  const preference = await prisma.spaceModelPreference.findFirst({
+    where: { spaceId: scope.spaceId, userId: scope.userId, credentialId: credential.id },
+    include: { credential: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+  });
+  return preference
+    ? withModelPreference(preference)
+    : { ...credential, isDefault: false, defaultModel: null, thinkingLevel: null };
+}
+
+/** A pinned connection that is gone, foreign or for another provider: the run must not use a different one. */
+export class PinnedConnectionLostError extends Error {
+  constructor() {
+    super(PINNED_CONNECTION_LOST_MESSAGE);
+    this.name = "PinnedConnectionLostError";
+  }
+}
+
+/** For callers that only ask who would receive data: the run itself fails by name. */
+export function ignorePinnedConnectionLost(error: unknown): null {
+  if (error instanceof PinnedConnectionLostError) return null;
+  throw error;
+}
+
+/**
+ * The connection a bot or routine model runs on. A pinned choice returns exactly that connection
+ * or throws PinnedConnectionLostError; there is no fallback, because an automatic sign-out deletes
+ * the credential and the owner chose this connection on purpose. Unpinned choices use the usual
+ * per-provider lookup.
+ */
+export async function findBotModelCredential(
+  prisma: PrismaClient,
+  scope: ModelCredentialScope,
+  bot: {
+    modelProvider: string;
+    modelId?: string | null;
+    modelCredentialId?: string | null;
+  },
+) {
+  if (!bot.modelCredentialId)
+    return findModelCredential(prisma, scope, bot.modelProvider, bot.modelId);
+  const pinned = await findPinnedModelCredential(prisma, scope, bot);
+  if (!pinned) throw new PinnedConnectionLostError();
+  return pinned;
 }
 
 export async function findModelCredential(

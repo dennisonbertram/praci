@@ -5,7 +5,7 @@ group: Start
 order: 1
 ---
 
-Praci is an open source AI team for the work that runs a company: your inbox, cash, contracts, cap table and investor documents. You talk to bots. Each bot has its own conversation, memory, scheduled routines and a computer it can use (a browser, a terminal and files). Several bots come ready-made for the main pages of the app, and you can add your own.
+Praci is an open source AI team for the work that runs a company: your inbox, cash, contracts, cap table and investor documents. You talk to bots. Each bot has its own conversation, memory, [routines](/docs/routines) and a computer it can use (a browser, a terminal and files). Several bots come ready-made for the main pages of the app, and you can add your own.
 
 Praci is in beta. It runs as a web app, an Electron desktop app and an Expo mobile app.
 
@@ -46,5 +46,6 @@ You can connect more than one model, pick a default, and set backup models that 
 2. Connect Gmail so the [Inbox](/docs/inbox) has mail to work with. See [Connect apps](/docs/integrations).
 3. Connect Mercury or Brex to see runway on [Finance](/docs/finance).
 4. Drop contracts and board decks into the [Data room](/docs/data-room).
+5. Ask a bot to "Tell me if https://example.com changes.", or turn on **Check in** in its settings. See [Routines](/docs/routines) and [Check-ins and open work](/docs/check-ins).
 
 Bots ask before they send, pay or change anything outside their own computer. See [Privacy and safety](/docs/privacy-and-safety).

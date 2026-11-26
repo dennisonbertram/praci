@@ -5,7 +5,37 @@ export const DELEGATE_WAIT_SHOWN_AFTER_MS = 60_000;
 /** After this long the wait is reported as unanswered. */
 export const DELEGATE_WAIT_FAILED_AFTER_MS = 5 * 60_000;
 /** Older unanswered messages are history (the answer may have come another way), not a wait. */
-const DELEGATE_WAIT_FORGOTTEN_AFTER_MS = 60 * 60_000;
+export const DELEGATE_WAIT_FORGOTTEN_AFTER_MS = 60 * 60_000;
+
+function asksForAnswer(intent: string | undefined) {
+  return (intent ?? "request") === "request" || intent === "question";
+}
+
+/** Per message id, each sent request block's state: pending, or answered by a later message from that agent. Old unanswered requests are left out. */
+export function pendingSentBlocks(
+  messages: readonly { id: string; blocks: readonly MessageBlock[]; createdAt?: string }[],
+  now: number,
+) {
+  const answered = new Set<string>();
+  const states = new Map<string, ReadonlyMap<number, "pending" | "answered">>();
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (!message) continue;
+    const indexes = new Map<number, "pending" | "answered">();
+    for (const block of message.blocks) {
+      if (block.kind === "bot_message_received") answered.add(block.fromBotId);
+    }
+    message.blocks.forEach((block, index) => {
+      if (block.kind === "bot_message_sent" && asksForAnswer(block.intent)) {
+        const age = now - Date.parse(message.createdAt ?? "");
+        if (answered.has(block.toBotId)) indexes.set(index, "answered");
+        else if (age < DELEGATE_WAIT_FORGOTTEN_AFTER_MS) indexes.set(index, "pending");
+      }
+    });
+    if (indexes.size) states.set(message.id, indexes);
+  }
+  return states;
+}
 
 /** The agent this chat last messaged with no answer back yet, and when, or null when nothing is awaited. */
 export function delegateWait(
@@ -21,8 +51,7 @@ export function delegateWait(
     if (sent?.kind !== "bot_message_sent") continue;
     // Only a request or question (a missing intent means request) waits for an answer; a result,
     // status or FYI sent back does not, and a request ends only when that same agent answers.
-    const intent = sent.intent ?? "request";
-    if (intent !== "request" && intent !== "question") continue;
+    if (!asksForAnswer(sent.intent)) continue;
     if (answered.has(sent.toBotId)) continue;
     return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
   }

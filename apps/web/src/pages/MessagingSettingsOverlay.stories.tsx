@@ -138,6 +138,22 @@ export const LinkCodeIssued: Story = {
 
 export const LoadFailed: Story = {
   beforeEach: () => mockRpc({ "messaging.status": () => Promise.reject(new Error("offline")) }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("Couldn't load messaging settings");
+    await canvas.findByRole("button", { name: "Try again" });
+  },
+};
+
+export const Loading: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "messaging.status": () => new Promise(() => undefined),
+      "messaging.channels.list": [],
+      "messaging.connections.list": [],
+      "bots.list": [bot],
+      "spaces.list": spaces([]),
+    }),
 };
 
 export const ConversationSettingsOpen: Story = {

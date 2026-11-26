@@ -504,6 +504,32 @@ describe("web external link confirmation", () => {
     await view.cleanup();
   });
 
+  it("opens an agent's page link in place, and keeps scripted and look-alike links out of the router", async () => {
+    const onNavigate = vi.fn();
+    const view = await render(
+      <ChatMarkdown onNavigate={onNavigate}>
+        {
+          "[Customer support](/app/pages/b1/p1) [x](javascript:alert(1)) [y](//evil.test/app/pages/b/p)"
+        }
+      </ChatMarkdown>,
+    );
+    const links = [...view.container.querySelectorAll("a")];
+    expect(links[0]?.getAttribute("href")).toBe("/app/pages/b1/p1");
+    await act(async () => {
+      links[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith("/app/pages/b1/p1");
+    onNavigate.mockClear();
+    expect(view.container.innerHTML).not.toContain("javascript:");
+    for (const link of links.slice(1)) {
+      await act(async () => {
+        link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      });
+    }
+    expect(onNavigate).not.toHaveBeenCalled();
+    await view.cleanup();
+  });
+
   it("asks before an external bot link and opens it only after confirmation", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const view = await render(
@@ -597,5 +623,31 @@ describe("web external link confirmation", () => {
     expect(open).not.toHaveBeenCalled();
     open.mockRestore();
     await view.cleanup();
+  });
+});
+
+describe("web markdown parser failure", () => {
+  it("shows a message the parser cannot handle as plain text", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const nested = `${">".repeat(20_000)} deep`;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ChatMarkdown>{nested}</ChatMarkdown>);
+    });
+    expect(container.querySelector(".rk-chat-markdown p")?.textContent).toBe(nested);
+
+    await act(async () => {
+      root.render(<ChatMarkdown>{"**fine**"}</ChatMarkdown>);
+    });
+    expect(container.querySelector("strong")?.textContent).toBe("fine");
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+    vi.restoreAllMocks();
   });
 });

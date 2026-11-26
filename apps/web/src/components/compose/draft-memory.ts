@@ -26,3 +26,20 @@ export function forgetClosed(seed: ComposeSeed) {
   const key = keyOf(seed);
   if (key) closed.delete(key);
 }
+
+/**
+ * Draft work (a save or a discard) for one client id, queued so it runs after everything already
+ * queued for that draft, whichever composer started it. A task never waits on a later one, so a
+ * send, an Undo and another send cannot wait on each other. The tail is forgotten once it settles.
+ */
+const chain = new Map<string, Promise<unknown>>();
+
+export function enqueueDraftWork<T>(clientId: string, task: () => Promise<T>): Promise<T> {
+  const run = (chain.get(clientId) ?? Promise.resolve()).then(task, task);
+  chain.set(clientId, run);
+  const clear = () => {
+    if (chain.get(clientId) === run) chain.delete(clientId);
+  };
+  void run.then(clear, clear);
+  return run;
+}

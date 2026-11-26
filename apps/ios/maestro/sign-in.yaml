@@ -1,0 +1,28 @@
+# Usage: maestro --udid <UDID> test maestro/sign-in.yaml -e EMAIL=... -e PASSWORD=... -e SERVER=http://127.0.0.1:3301
+# The app must already be installed. Clears app state, points it at SERVER (http needs the Use anyway confirmation), then signs in.
+appId: ai.praci.mobile.dev
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: customServer
+- tapOn:
+    id: serverAddress
+- eraseText: 200
+- inputText: ${SERVER}
+- tapOn: Save
+- tapOn: Use anyway
+- tapOn:
+    id: email
+- inputText: ${EMAIL}
+- tapOn:
+    id: password
+- inputText: ${PASSWORD}
+- swipe:
+    direction: DOWN
+    duration: 300
+- tapOn:
+    text: Sign in
+    index: 1
+- assertVisible:
+    id: settings

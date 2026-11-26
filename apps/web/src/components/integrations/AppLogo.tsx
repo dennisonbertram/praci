@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  AudioLines,
   Blocks,
   ChartPie,
   Database,
@@ -42,6 +43,7 @@ const GLYPHS: Record<string, LucideIcon> = {
   treg: Database,
   devin: SquareTerminal,
   granola: NotebookText,
+  omi: AudioLines,
   wisprflow: Mic,
   imessageonyourmac: Laptop,
   imessage: MessageCircle,

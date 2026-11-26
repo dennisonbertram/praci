@@ -7,6 +7,7 @@ import type {
   BillingProvider,
   JobPublisher,
   ManagedConnectorProvider,
+  MessagingInboundEvent,
   MessagingSurface,
   RealtimeFanout,
   SandboxProvider,
@@ -28,6 +29,7 @@ import {
   CodexCatalogCache,
   ComposioConnector,
   createAgentHomeStore,
+  createAppControlProvider,
   createArtifactStore,
   createBackgroundJobHandlers,
   createBlueBubblesPollState,
@@ -45,8 +47,10 @@ import {
   createJobReconciler,
   createMailProvider,
   createMailUnsubscriber,
+  createMeetingSourceRegistry,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
+  createPushChannel,
   createRpcClient,
   createRunExecutor,
   createRunSandbox,
@@ -56,9 +60,10 @@ import {
   createSecretStore,
   createTicketChangeNotifier,
   createWebProvider,
+  deleteExpiredTeachData,
+  describeTeachSteps,
   destroyBot,
   EmailEmulator,
-  ExpoPushProvider,
   GraphileJobPublisher,
   gmailPushConfigFromEnv,
   ImessageNotificationChannel,
@@ -85,15 +90,18 @@ import {
   reconcileCloudAgents,
   reconcileComputerUpdates,
   reconcileMeetingSyncs,
-  removeAccountExportBlobs,
   removePiUserSessions,
   resolveEnsName,
+  reviewAttachment,
+  runPageRefreshTick,
+  runWatchProbeTick,
   ScriptedAgentRuntime,
   SmtpEmailProvider,
   SpaceMemoryProviderResolver,
   StripeBillingProvider,
   sandboxProviderOptionsFromEnv,
   stripeBillingConfigFromEnv,
+  summarizePerson,
   syncCryptoHoldings,
   toTeamChatInbound,
   triageStatus,
@@ -110,13 +118,18 @@ import {
   createNotificationEvents,
   createPool,
   createThreadEvents,
+  describeRowSecurity,
   endSessionPushTokens,
   IsolationError,
+  isDatabaseInterruption,
+  PostgresAppControlStore,
   parsePositiveInteger,
   provisionMessagingIdentity,
   pushSessionExpiresAt,
   recordUsage,
   requireMembership,
+  rowSecurityWarning,
+  runAsSystem,
 } from "@rakazo/db";
 import type { Logger } from "@rakazo/logging";
 import {
@@ -131,16 +144,23 @@ import { MarkdownMemoryStore } from "@rakazo/memory";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { mountAccountExportDownload } from "./account-export.js";
+import { upgradeBuiltInAgentInstructions } from "./agent-instruction-upgrades.js";
+import { mountArtifactShare, prismaShareStore } from "./artifact-share.js";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
 import { createCompanyImportPage } from "./company-import-page.js";
+import { mountContactPhoto } from "./contact-photo.js";
 import { mountDataRoomRoutes } from "./data-room.js";
+import { handleHttpError, withRetryAfter } from "./database-unavailable.js";
 import { mountEmailImageProxy } from "./email-image-proxy.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
+import { nativeReturnRoutes } from "./native-return.js";
 import type { GtmQueueReader } from "./gtm.js";
 import { healthRoutes } from "./health.js";
+import { trackInFlightRequests } from "./in-flight-requests.js";
 import { mountInboxAttachment } from "./inbox-attachment.js";
+import { upgradeIntegrationAgentInstructions } from "./integration-agent-upgrades.js";
 import {
   mountInvestorPortal,
   PORTAL_PATH,
@@ -149,14 +169,20 @@ import {
 } from "./investor-portal.js";
 import { mountLocalSettings } from "./local-settings.js";
 import { mountMailPushRoute } from "./mail-push.js";
+import { mountRegisterLimit } from "./mcp-register-limit.js";
+import { mountMcpDiscovery, mountMcpServer } from "./mcp-server.js";
+import { mountMeetingCaptureRoutes } from "./meeting-captures.js";
 import {
   createMessagingInboundHandler,
   teamChatSenderCanWakeMessageRoutines,
   wakeMessageRoutines,
 } from "./messaging-inbound.js";
 import { mountMessagingWebhookRoutes } from "./messaging-webhook.js";
-import { mountApiRequestBodyLimits } from "./request-body-limit.js";
+import { mountOmiRoutes } from "./omi.js";
+import { limitRpcBody, mountApiRequestBodyLimits } from "./request-body-limit.js";
+import { mountSystemRoutes, mountTenantRoutes } from "./route-scope.js";
 import { createRouter } from "./router.js";
+import type { RouteAuthContext } from "./routes/context.js";
 import { mountScreenTarget } from "./screen-proxy.js";
 import { isDeferredReservationLost, TeamChatBridge } from "./team-chat-bridge.js";
 import { ModelTeamChatEngagementJudge } from "./team-chat-judge.js";
@@ -182,6 +208,9 @@ export const MOBILE_AUTH_ORIGINS = [
   "http://127.0.0.1:19006",
 ];
 
+// Deploys give the old API 30 seconds to stop before killing it.
+const REQUEST_DRAIN_MS = 20_000;
+
 export interface AppHandles {
   app: Hono;
   prisma: PrismaClient;
@@ -199,31 +228,42 @@ export interface AppHandles {
   stop: () => Promise<void>;
 }
 
-export async function createApp(
-  overrides: Partial<AppEnv> & {
-    prisma?: PrismaClient;
-    realtime?: RealtimeFanout;
-    sandbox?: SandboxProvider;
-    composio?: ComposioProvider;
-    pipedream?: ManagedConnectorProvider;
-    messaging?: MessagingSurface;
-    email?: TransactionalEmailProvider;
-    billing?: BillingProvider;
-    remoteConnectors?: RemoteConnectorDependencies;
-    logger?: Logger;
-    runtime?: AgentRuntime;
-    contextStrategy?: AgentContextStrategy;
-    /** Replaces the Mercury and Brex tool caller, so a stack with canned finance data can run offline. */
-    financeCallToolFor?: FinanceSyncDeps["callToolFor"];
-    /** Replaces the network for wallet balances, prices, ENS and exchange reads, so canned crypto data runs offline. */
-    cryptoFetch?: typeof fetch;
-    /** Replaces the real meeting providers, so the demo and tests run Granola against its emulator. */
-    meetingSources?: MeetingSourceRegistry;
-    /** Offline acceptance seams limited to GTM account and queue reads. */
-    gtmQueueReader?: GtmQueueReader;
-    gtmMcp?: Pick<McpConnector, "callServerTool">;
-  } = {},
-): Promise<AppHandles> {
+// Startup and everything it schedules (pollers, team chat, the in-memory job
+// queue, retries) runs across tenants. Requests start without a context and get
+// one per route: tenant for signed-in procedures, system for auth and webhooks.
+export function createApp(overrides: CreateAppOverrides = {}): Promise<AppHandles> {
+  return runAsSystem("api startup and background work", () => buildApp(overrides));
+}
+
+type CreateAppOverrides = Partial<AppEnv> & {
+  prisma?: PrismaClient;
+  realtime?: RealtimeFanout;
+  sandbox?: SandboxProvider;
+  composio?: ComposioProvider;
+  pipedream?: ManagedConnectorProvider;
+  messaging?: MessagingSurface;
+  email?: TransactionalEmailProvider;
+  billing?: BillingProvider;
+  remoteConnectors?: RemoteConnectorDependencies;
+  logger?: Logger;
+  runtime?: AgentRuntime;
+  contextStrategy?: AgentContextStrategy;
+  /** Replaces the Mercury and Brex tool caller, so a stack with canned finance data can run offline. */
+  financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Replaces the network for wallet balances, prices, ENS and exchange reads, so canned crypto data runs offline. */
+  cryptoFetch?: typeof fetch;
+  /** Replaces the real meeting providers, so the demo and tests run Granola against its emulator. */
+  meetingSources?: MeetingSourceRegistry;
+  /** Points the in-process Brex cards server at an emulator instead of api.brex.com. */
+  brexApi?: { baseUrl?: string; fetch?: typeof fetch };
+  /** Offline acceptance seams limited to GTM account and queue reads. */
+  gtmQueueReader?: GtmQueueReader;
+  gtmMcp?: Pick<McpConnector, "callServerTool">;
+  /** Replaces the Google connector, so the demo stack reads Calendar from an emulator. */
+  google?: ManagedConnectorProvider;
+};
+
+async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   const {
     prisma: prismaOverride,
     realtime: realtimeOverride,
@@ -240,8 +280,10 @@ export async function createApp(
     financeCallToolFor: financeCallToolOverride,
     cryptoFetch,
     meetingSources,
+    brexApi,
     gtmQueueReader,
     gtmMcp,
+    google: googleOverride,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -254,6 +296,8 @@ export async function createApp(
         applicationName: "rakazo-api",
       });
   let { prisma } = created;
+  const rowSecurity = rowSecurityWarning(await describeRowSecurity(prisma));
+  if (rowSecurity) logger.warn(rowSecurity);
   const realtime =
     realtimeOverride ??
     (created.pool
@@ -274,6 +318,21 @@ export async function createApp(
   const boardEvents = createBoardEvents(realtime);
   const notificationEvents = createNotificationEvents(realtime);
   const environmentSignupPolicy = signupPolicyFromEnv(env);
+  // Not awaited: a slow or failed upgrade leaves agents on their old text but never delays startup.
+  void upgradeBuiltInAgentInstructions(prisma).then(
+    (counts) => logger.info("built-in agent instructions upgraded", counts),
+    (error: unknown) =>
+      logger.warn("built-in agent instruction upgrade failed", {
+        reason: error instanceof Error ? error.name : "error",
+      }),
+  );
+  void upgradeIntegrationAgentInstructions(prisma).then(
+    (upgraded) => logger.info("integration agent instructions upgraded", { upgraded }),
+    (error: unknown) =>
+      logger.warn("integration agent instruction upgrade failed", {
+        reason: error instanceof Error ? error.name : "error",
+      }),
+  );
   const deploymentSettings = await prisma.deploymentSettings.upsert({
     where: { id: "default" },
     create: {
@@ -354,6 +413,12 @@ export async function createApp(
       dataDir: env.dataDir,
       prisma,
     });
+  // Local desktop control: absent unless APP_CONTROL_PROVIDER is set (docs/local-desktop-control).
+  const appControlStore = new PostgresAppControlStore(prisma);
+  const appControl = createAppControlProvider(process.env, {
+    dataDir: env.dataDir,
+    store: appControlStore,
+  });
   const mcpOAuth = new McpOAuthBroker(
     prisma,
     secrets,
@@ -374,6 +439,7 @@ export async function createApp(
       network: remoteConnectors,
       events,
       allowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+      ...(brexApi ? { brexApi } : {}),
     },
     mcpOAuth,
   );
@@ -448,7 +514,9 @@ export async function createApp(
     installed,
     ...integrationSettings
       .providers()
-      .filter((provider) => !composioOverride || provider.describe().id !== "composio"),
+      .filter((provider) => !composioOverride || provider.describe().id !== "composio")
+      .filter((provider) => !googleOverride || provider.describe().id !== "google"),
+    ...(googleOverride ? [googleOverride] : []),
     mcp,
   ]);
   const connector = stack.destination;
@@ -464,20 +532,35 @@ export async function createApp(
       : new PiAgentRuntime({
           sessionRoot: env.piSessionRecording ? piSessionsRoot(env.dataDir) : undefined,
         }));
-  const notifications = new ExpoPushProvider(prisma, (sessionId) =>
-    pushSessionExpiresAt(prisma, sessionId),
+  const notifications = createPushChannel(
+    prisma,
+    (sessionId) => pushSessionExpiresAt(prisma, sessionId),
+    process.env,
   );
+  // Localhost needs no setting: MCP clients reach the API where it listens.
+  const mcpBaseUrl = (env.publicMcpUrl ?? env.apiUrl).replace(/\/+$/, "");
   const auth = createAuth(prisma, {
     passwordAuth: env.passwordAuth,
     oidc: env.oidc,
     secret: env.authSecret,
     baseURL: env.authUrl,
     webOrigin: env.webOrigin,
+    mcp: {
+      issuer: mcpBaseUrl,
+      resource: `${mcpBaseUrl}/mcp`,
+      webOrigin: env.webOrigin,
+      onNotice: (owner, notice) =>
+        notificationEvents.notify(owner, {
+          id: notice.id,
+          surface: "mcp",
+          importance: notice.importance,
+        }),
+    },
     signupsEnabled: env.signupsEnabled,
     signupAllowlist: env.signupAllowlist,
     email,
     onEmailError: (error) => getLogger().error("transactional email delivery failed", error),
-    extraOrigins: MOBILE_AUTH_ORIGINS,
+    extraOrigins: [...MOBILE_AUTH_ORIGINS, ...env.trustedOrigins],
     beforeDeleteUser: async (userId) => {
       // First, so a provider failure aborts deletion before anything is destroyed.
       await billing?.cancelForDeletedUser(userId);
@@ -502,7 +585,6 @@ export async function createApp(
           ),
         ),
       );
-      await removeAccountExportBlobs({ prisma, artifacts }, userId);
       await removePiUserSessions(env.dataDir, userId);
     },
     afterDeleteUserData: async (blobs, homes, userId) => {
@@ -536,6 +618,9 @@ export async function createApp(
       );
     },
   });
+  const oauthTokenUpgrade = auth
+    .encryptStoredOAuthTokens()
+    .catch((error) => getLogger().error("oauth token encryption upgrade failed", error));
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection({
     CLOUD_AGENT_PROVIDER: env.cloudAgentProvider,
@@ -548,6 +633,8 @@ export async function createApp(
   const codexCatalog = new CodexCatalogCache();
   let companyImport: ReturnType<typeof createCompanyImportEngine> | undefined;
   const executor = createRunExecutor({
+    appControl,
+    appControlStore,
     notificationEvents,
     contextStrategy,
     prisma,
@@ -582,6 +669,8 @@ export async function createApp(
     secretStore: secrets,
     secretHttp: remoteConnectors,
     mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+    mcpStdio: { stdioEnabled: env.mcpStdioEnabled, allowedCommands: env.mcpStdioAllowedCommands },
+    fragmentKey: env.encryptionKey,
     deploymentModelKey: env.deploymentModelKey,
     deploymentModelConfigured: env.deploymentModelConfigured,
     dataDir: env.dataDir,
@@ -629,6 +718,7 @@ export async function createApp(
     documents: documentReader,
   });
   const jobHandlers = createBackgroundJobHandlers({
+    ticketBoardEnabled,
     executor,
     prisma,
     sandbox,
@@ -644,9 +734,11 @@ export async function createApp(
     messaging,
     cloudAgent,
     devinCallTool: createDevinCallTool(prisma, mcp),
+    ...(brexApi ? { brexApi } : {}),
     notificationEvents,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
+    connector: stack.connector,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),
     notificationChannels: [
@@ -658,7 +750,8 @@ export async function createApp(
     mail,
     mailWritesDisabled: env.mailWritesDisabled,
     gmailPush,
-    ...(meetingSources ? { meetingSources } : {}),
+    meetingSources:
+      meetingSources ?? createMeetingSourceRegistry({ mcp: { prisma, connector: mcp } }),
     companyImport,
   });
   if (inMemoryJobs) {
@@ -674,12 +767,39 @@ export async function createApp(
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
         reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
         reconcileCompanyImports: () => companyImport.recoveryJob(),
+        reconcileTeachHeldValues: () => deleteExpiredTeachData(prisma),
+        // Graphile mode runs watch.probe from RECURRING_JOBS in apps/worker; memory mode has no cron.
+        runWatchProbes: () =>
+          runWatchProbeTick({
+            prisma,
+            jobs,
+            events,
+            notificationEvents,
+            connector: stack.connector,
+          }),
+        runPageRefreshes: () =>
+          runPageRefreshTick({
+            prisma,
+            jobs,
+            events,
+            ticketBoardEnabled,
+            mcp,
+            secretStore: secrets,
+            network: remoteConnectors,
+          }),
       })
     : undefined;
   reconciler?.start();
 
   const router = createRouter({
     email,
+    ...(brexApi ? { brexApi } : {}),
+    describeTeachSteps: (input) =>
+      describeTeachSteps({ prisma, runtime, resolveModel: executor.resolveModel }, input),
+    reviewAttachment: (input, signal) =>
+      reviewAttachment({ prisma, runtime, resolveModel: executor.resolveModel }, input, signal),
+    summarizePerson: (input, signal) =>
+      summarizePerson({ prisma, runtime, resolveModel: executor.resolveModel }, input, signal),
     unsubscriber: createMailUnsubscriber(),
     proposeSort: (model, input, context) =>
       new LlmDataRoomClassifier({
@@ -699,6 +819,7 @@ export async function createApp(
     auth,
     jobs,
     sandbox,
+    ...(appControl ? { appControl } : {}),
     memory,
     memoryProviders,
     home,
@@ -790,6 +911,7 @@ export async function createApp(
       deploymentModelConfigured: env.deploymentModelConfigured,
       deploymentModelHostCredentials: env.deploymentModelHostCredentials,
       webOrigin: env.webOrigin,
+      trustedOrigins: env.trustedOrigins,
       privacyPolicyUrl: env.privacyPolicyUrl,
       screenProxySecret: env.screenProxySecret,
       sandboxProvider: env.sandboxProvider,
@@ -799,13 +921,19 @@ export async function createApp(
       imageTag: env.imageTag,
       integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+      mcpStdioEnabled: env.mcpStdioEnabled,
+      mcpStdioAllowedCommands: env.mcpStdioAllowedCommands,
+      mcpUrl: `${mcpBaseUrl}/mcp`,
       mailWritesDisabled: env.mailWritesDisabled,
     },
   });
-  const rpc = new RPCHandler(router, {
+  const rpc = new RPCHandler<RouteAuthContext>(router, {
     clientInterceptors: [onError((error, { path }) => logUnexpectedRpcError(error, path))],
   });
   const app = new Hono();
+  app.onError(handleHttpError);
+  const inFlight = trackInFlightRequests();
+  app.use("*", inFlight.middleware);
   app.use("*", requestLogging(logger));
   app.use(
     "*",
@@ -825,6 +953,8 @@ export async function createApp(
     });
   }
   app.use(PORTAL_PATH, portalNoStore);
+  // Webhooks, public links and sign-in run outside any one Space; see route-scope.ts.
+  mountSystemRoutes(app);
   app.get("/api/auth/capabilities", (c) => {
     return c.json({
       sso: env.oidc
@@ -835,6 +965,7 @@ export async function createApp(
       resetUrl:
         env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
       billing: Boolean(billing),
+      passkey: env.passwordAuth !== false,
     } satisfies AuthCapabilities);
   });
   if (localEmailEmulator && env.nodeEnv === "development") {
@@ -847,6 +978,7 @@ export async function createApp(
     );
   }
   mountApiRequestBodyLimits(app);
+  mountRegisterLimit(app, prisma);
   mountScreenTarget(app, prisma, env.screenProxySecret);
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
@@ -855,19 +987,42 @@ export async function createApp(
     }
     return auth.handler(emptyAuthBodyAsJson(c.req.raw));
   });
+  mountMcpDiscovery(app, { auth, baseUrl: mcpBaseUrl, authUrl: env.authUrl });
+  mountMcpServer(app, {
+    prisma,
+    auth,
+    baseUrl: mcpBaseUrl,
+    notificationEvents,
+    agents: { events, jobs },
+    jwksUrl: `${env.apiUrl.replace(/\/+$/, "")}${"/api/auth"}/jwks`,
+  });
   mountLocalSettings(app, { token: env.desktopStackToken, prisma, rpc });
   const requestSession = async (request: Request) => {
-    const session = await auth.api.getSession({ headers: sessionHeaders(request) });
+    // The bearer plugin turns a signed `Authorization: Bearer` into the session cookie.
+    const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user) return null;
     const actor = await actorFromMembership(
       requireMembership(prisma, session.user.id, request.headers.get("x-rakazo-space-id")),
     );
     return actor && { actor, sessionId: session.session.id };
   };
-  const sessionActor = async (request: Request) => (await requestSession(request))?.actor ?? null;
+  // One lookup per request: the Space scope below and the route itself both ask.
+  const sessions = new WeakMap<Request, ReturnType<typeof requestSession>>();
+  const cachedSession = (request: Request) => {
+    let session = sessions.get(request);
+    if (!session) {
+      session = requestSession(request);
+      sessions.set(request, session);
+    }
+    return session;
+  };
+  const sessionActor = async (request: Request) => (await cachedSession(request))?.actor ?? null;
+  mountTenantRoutes(app, sessionActor);
   app.use("/rpc/*", async (c, next) => {
-    const session = await requestSession(c.req.raw);
+    const session = await cachedSession(c.req.raw);
     const actor = session?.actor ?? null;
+    const tooLarge = await limitRpcBody(c, actor !== null);
+    if (tooLarge) return tooLarge;
     if (actor) {
       enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     }
@@ -877,17 +1032,19 @@ export async function createApp(
         actor,
         sessionId: session?.sessionId,
         signal: c.req.raw.signal,
+        requestHeaders: c.req.raw.headers,
         // Same user in the same space, so leaving the space also ends a stream.
         // A database failure rejects this check; only a missing membership is unauthorized.
         stillAuthorized: async () => {
-          const current = await sessionActor(c.req.raw);
+          // Not the cached lookup: this check exists to see a sign-out that happened since.
+          const current = (await requestSession(c.req.raw))?.actor ?? null;
           return Boolean(
             actor && current?.userId === actor.userId && current.spaceId === actor.spaceId,
           );
         },
       },
     });
-    if (matched) return c.newResponse(response.body, response);
+    if (matched) return withRetryAfter(c.newResponse(response.body, response));
     await next();
   });
   const loggedActor = async (request: Request) => {
@@ -897,12 +1054,16 @@ export async function createApp(
   };
   mountEmailImageProxy(app, { secret: env.authSecret }, async (request) => sessionActor(request));
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
+  mountContactPhoto(app, { prisma, artifacts }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
+  mountOmiRoutes(app, { prisma, artifacts, jobs }, loggedActor);
+  mountMeetingCaptureRoutes(app, { prisma, artifacts, jobs }, loggedActor);
   mountInvestorPortal(app, {
     store: prismaPortalStore(prisma),
     artifacts,
     isTrustedOrigin: (origin) => isTrustedOrigin(origin, env),
   });
+  mountArtifactShare(app, { store: prismaShareStore(prisma), artifacts });
   mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
   mountVoiceHttpRoutes(app, { prisma, secrets, ticketBoardEnabled }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
@@ -1122,7 +1283,7 @@ export async function createApp(
         })();
       }
     }
-    messaging.onInbound(async (event) => {
+    const handleInbound = async (event: MessagingInboundEvent) => {
       if (event.type !== "message") {
         await applyMessagingOutboundStatus(prisma, event);
         return;
@@ -1147,7 +1308,8 @@ export async function createApp(
         throw new Error("Team chat bridge is unavailable");
       }
       await inbound(event);
-    });
+    };
+    messaging.onInbound((event) => runAsSystem("messaging inbound", () => handleInbound(event)));
     mountMessagingWebhookRoutes(app, { messaging });
     // Start polling-mode adapters (e.g. Telegram with no public webhook URL
     // registered) immediately rather than waiting for the first webhook
@@ -1189,6 +1351,7 @@ export async function createApp(
     })();
   }
 
+  app.route("/", nativeReturnRoutes());
   app.route(
     "/",
     healthRoutes(() => ({
@@ -1222,6 +1385,8 @@ export async function createApp(
     awaitIdle: inMemoryJobs ? () => inMemoryJobs.awaitIdle() : undefined,
     backgroundFailures: inMemoryJobs ? () => inMemoryJobs.failureCounts() : undefined,
     stop: async () => {
+      // Handlers still running would otherwise query the pool after it ends.
+      const requestsSettled = settleWithTimeout(inFlight.settled(), REQUEST_DRAIN_MS);
       // Abort in-flight continueRun boot waits before draining jobs so stop() cannot sit
       // on waitForComputerReady for the full boot-wait window during shared Postgres journeys.
       auth.disposeOidcDiscovery();
@@ -1241,8 +1406,10 @@ export async function createApp(
       await settleWithTimeout(teamChatInitTask, TEAM_CHAT_STARTUP_SHUTDOWN_MS);
       await messaging?.shutdown?.();
       await teamChatBridge?.stop();
-      await email?.drain?.();
       await reconciler?.stop();
+      await oauthTokenUpgrade;
+      await requestsSettled;
+      await email?.drain?.();
       await jobs.close();
       await secrets.close();
       await realtime.close();
@@ -1258,12 +1425,18 @@ export async function createApp(
 
 export function isTrustedOrigin(
   origin: string,
-  env: Pick<AppEnv, "webOrigin" | "apiUrl" | "authUrl">,
+  env: Pick<AppEnv, "webOrigin" | "apiUrl" | "authUrl"> & { trustedOrigins?: string[] },
 ) {
   if (!origin) return true;
   if (origin.startsWith("rakazo://")) return true;
   const allowed = new Set(
-    [env.webOrigin, env.apiUrl, env.authUrl, ...MOBILE_AUTH_ORIGINS].flatMap(originVariants),
+    [
+      env.webOrigin,
+      env.apiUrl,
+      env.authUrl,
+      ...MOBILE_AUTH_ORIGINS,
+      ...(env.trustedOrigins ?? []),
+    ].flatMap(originVariants),
   );
   return allowed.has(origin);
 }
@@ -1323,15 +1496,6 @@ function emptyAuthBodyAsJson(request: Request) {
   return new Request(request, { headers, body: "{}" });
 }
 
-function sessionHeaders(request: Request) {
-  const headers = new Headers(request.headers);
-  const authz = headers.get("authorization");
-  if (authz?.toLowerCase().startsWith("bearer ") && !headers.get("cookie")) {
-    headers.set("cookie", `better-auth.session_token=${authz.slice(7).trim()}`);
-  }
-  return headers;
-}
-
 /**
  * An ORPCError is a decision the router made (BAD_REQUEST, UNAUTHORIZED, ...) and reaches the
  * caller intact. Everything else is flattened into an opaque "Internal server error", so
@@ -1343,5 +1507,11 @@ function sessionHeaders(request: Request) {
 export function logUnexpectedRpcError(error: unknown, path: readonly string[]): void {
   if (error instanceof ORPCError) return;
   const where = `rpc ${path.join("/")} failed`;
+  // A database failover is the database's failure, not the procedure's: answer 503 so the
+  // client retries, and log it as a warning.
+  if (isDatabaseInterruption(error)) {
+    getLogger().warn(`${where}: database unavailable`, { "error.message": String(error) });
+    throw new ORPCError("SERVICE_UNAVAILABLE", { cause: error });
+  }
   getLogger().error(where, error);
 }

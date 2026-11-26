@@ -5,7 +5,6 @@ import SwiftUI
 struct AuthenticationView: View {
   @Bindable var model: AuthenticationModel
   @Environment(\.colorScheme) private var colorScheme
-  @State private var showingServer = false
   @State private var passwordVisible = false
 
   private var title: String {
@@ -24,20 +23,12 @@ struct AuthenticationView: View {
           Text("Praci")
             .font(.headline)
             .foregroundStyle(color(.mutedForeground))
-          if model.isSignedIn {
-            signedIn
-          } else {
-            Text(title)
-              .font(.largeTitle.bold())
-              .accessibilityAddTraits(.isHeader)
-            authentication
-          }
+          Text(title)
+            .font(.largeTitle.bold())
+            .accessibilityAddTraits(.isHeader)
+          authentication
           AuthStatus(error: model.errorMessage, notice: model.notice)
-          Button("Use a custom server") { showingServer = true }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .foregroundStyle(color(.mutedForeground))
-            .disabled(model.busy)
-            .accessibilityIdentifier("customServer")
+          customServerButton
         }
         .padding(24)
         .frame(maxWidth: 480)
@@ -47,10 +38,25 @@ struct AuthenticationView: View {
       .background(color(.background))
       .foregroundStyle(color(.foreground))
       .tint(color(.primary))
-      .sheet(isPresented: $showingServer) {
-        ServerView(model: model)
-      }
       .onChange(of: model.page) { _, _ in passwordVisible = false }
+    }
+  }
+
+  /// With no connection, a custom server is the way forward, so the button stands out.
+  private var unreachable: Bool {
+    model.capabilities == nil && !model.busy && model.page != .verification
+  }
+
+  @ViewBuilder
+  private var customServerButton: some View {
+    let button = Button("Use a custom server") { model.presentServerSheet() }
+      .frame(maxWidth: .infinity, minHeight: 44)
+      .disabled(model.busy)
+      .accessibilityIdentifier("customServer")
+    if unreachable {
+      button.buttonStyle(.borderedProminent).foregroundStyle(color(.primaryForeground))
+    } else {
+      button.foregroundStyle(color(.mutedForeground))
     }
   }
 
@@ -171,22 +177,6 @@ struct AuthenticationView: View {
           .disabled(model.busy)
       }
     }
-  }
-
-  private var signedIn: some View {
-    VStack(spacing: 20) {
-      ContentUnavailableView {
-        Label("Signed in", systemImage: "checkmark.circle")
-      } description: {
-        Text(model.endpoint.host() ?? model.endpoint.absoluteString)
-      }
-      Button("Sign out", role: .destructive) { Task { await model.signOut() } }
-        .buttonStyle(.bordered)
-        .disabled(model.busy)
-        .accessibilityIdentifier("signOut")
-      if model.busy { ProgressView() }
-    }
-    .frame(maxWidth: .infinity)
   }
 
   private func primaryButton(

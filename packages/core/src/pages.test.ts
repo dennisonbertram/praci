@@ -2,8 +2,11 @@ import type { GtmPageBlock } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   gtmPageContentError,
+  historyChartRows,
   pageChartFence,
   pageGtmFence,
+  pageMetricFence,
+  pageTableFence,
   parsePageGtm,
   splitPage,
 } from "./pages.js";
@@ -85,6 +88,74 @@ describe("splitPage", () => {
   });
 });
 
+describe("live blocks", () => {
+  it("reports JSON written on the fence line instead of passing it through as code", () => {
+    // Seen in a real run: the model wrote ```metric {...} with an empty body.
+    const segments = splitPage(
+      'Intro\n\n```metric {"label":"Cash","source":"cash","path":"/balance"}\n```\n\nAfter',
+    );
+    expect(segments.map((segment) => segment.kind)).toEqual([
+      "markdown",
+      "invalid_live",
+      "markdown",
+    ]);
+    expect(segments[1]).toMatchObject({
+      error: "Put the metric block's JSON on its own line after ```metric, not on the fence line.",
+    });
+  });
+
+  const metric = { label: "Cash", source: "cash", path: "/balance", format: "usd" as const };
+  const table = {
+    name: "Vendors",
+    source: "spend",
+    path: "/vendors",
+    columns: [{ key: "name", label: "Vendor" }],
+    limit: 10,
+  };
+
+  it("splits metric and table fences in order and round-trips them", () => {
+    const page = `Intro\n${pageMetricFence(metric)}\n${pageTableFence(table)}\nEnd`;
+    expect(splitPage(page).map((segment) => segment.kind)).toEqual([
+      "markdown",
+      "metric",
+      "table",
+      "markdown",
+    ]);
+    expect(splitPage(pageMetricFence(metric))).toEqual([{ kind: "metric", block: metric }]);
+    expect(splitPage(pageTableFence(table))).toEqual([{ kind: "table", block: table }]);
+  });
+
+  it("applies defaults and reports invalid, unknown-key and unclosed fences", () => {
+    expect(splitPage('```metric\n{"label":"A","source":"cash"}\n```')).toEqual([
+      { kind: "metric", block: { label: "A", source: "cash", path: "", format: "number" } },
+    ]);
+    expect(splitPage('```metric\n{"label":"A","source":"cash","extra":1}\n```')[0]?.kind).toBe(
+      "invalid_live",
+    );
+    expect(splitPage("```table\n{nope\n```")).toEqual([
+      { kind: "invalid_live", raw: "{nope", error: "The table block is not valid JSON." },
+    ]);
+    expect(splitPage('```metric\n{"label":"A"')[0]).toMatchObject({
+      kind: "invalid_live",
+      error: expect.stringContaining("missing its closing"),
+    });
+  });
+
+  it("keeps a metric example inside a longer fence as markdown", () => {
+    const page = `\`\`\`\`md\n${pageMetricFence(metric)}\n\`\`\`\``;
+    expect(splitPage(page).map((segment) => segment.kind)).toEqual(["markdown"]);
+  });
+
+  it("checks the source name and path of a sourced chart", () => {
+    const ok = splitPage(pageChartFence({ ...chart, source: "cash flow", path: "/rows" }));
+    expect(ok[0]?.kind).toBe("chart");
+    const badName = splitPage(pageChartFence({ ...chart, source: "bad/name" }));
+    expect(badName[0]).toMatchObject({ kind: "invalid_chart" });
+    const badPath = splitPage(pageChartFence({ ...chart, source: "cash", path: "rows" }));
+    expect(badPath[0]).toMatchObject({ kind: "invalid_chart" });
+  });
+});
+
 describe("gtmPageContentError", () => {
   it.each([
     "[inline](https://example.test)",
@@ -150,5 +221,22 @@ describe("gtmPageContentError", () => {
       "> ```",
     ].join("\n");
     expect(gtmPageContentError(content, true)).toEqual(expect.any(String));
+  });
+});
+
+describe("historyChartRows", () => {
+  it("turns ISO at strings into Dates and leaves everything else alone", () => {
+    const none = { value: 1 };
+    const word = { at: "soon", value: 2 };
+    const [first, second, third, fourth] = historyChartRows([
+      { at: "2026-09-06T13:17:00.000Z", value: 3 },
+      none,
+      word,
+      "text",
+    ]) as [Record<string, unknown>, unknown, unknown, unknown];
+    expect(first?.at).toEqual(new Date("2026-09-06T13:17:00.000Z"));
+    expect(second).toBe(none);
+    expect(third).toBe(word);
+    expect(fourth).toBe("text");
   });
 });

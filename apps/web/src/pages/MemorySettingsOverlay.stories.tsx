@@ -35,6 +35,10 @@ const connected: SpaceMemoryConfig = {
 
 export const NotConnected: Story = { beforeEach };
 export const Loading: Story = { beforeEach, args: { config: undefined } };
+export const ProviderConfigLoadFailed: Story = {
+  beforeEach,
+  args: { config: undefined, loadFailed: true, onRetryLoad: async () => undefined },
+};
 export const Connected: Story = { beforeEach, args: { config: connected } };
 export const ConnectedShared: Story = {
   beforeEach,
@@ -45,3 +49,46 @@ export const UnknownProvider: Story = {
   args: { config: { ...connected, provider: "removed" } },
 };
 export const Embedded: Story = { beforeEach, args: { embedded: true } };
+
+const populated = [
+  {
+    id: "memory_customer_feedback",
+    scope: "bot",
+    botId: "bot_research",
+    path: "feedback.md",
+    content: "Customer feedback is reviewed weekly.",
+    revision: 4,
+    updatedAt: "2026-11-07T15:00:00.000Z",
+    source: { kind: "routine", label: "Customer feedback check" },
+  },
+  {
+    id: "memory_shared",
+    scope: "user",
+    botId: null,
+    path: "preferences.md",
+    content: "Prefers concise summaries.",
+    revision: 2,
+    updatedAt: "2026-11-05T12:00:00.000Z",
+    source: { kind: "chat", label: "Research" },
+  },
+] as const;
+
+export const Populated: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "memory.list": populated,
+      "bots.list": [{ id: "bot_research", name: "Research" }],
+      "bots.listArchived": [],
+    }),
+};
+
+export const LoadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "memory.list": () => {
+        throw new Error("offline");
+      },
+      "bots.list": [],
+      "bots.listArchived": [],
+    }),
+};

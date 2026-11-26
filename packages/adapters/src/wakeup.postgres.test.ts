@@ -21,11 +21,13 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
   return {
     "run.continue": vi.fn(async () => undefined),
     "routine.wakeup": vi.fn(async () => undefined),
+    "routine.retry": vi.fn(async () => undefined),
     "computer.update": vi.fn(async () => undefined),
     "computer.sleep": vi.fn(async () => undefined),
     "computer.control-expire": vi.fn(async () => undefined),
     "skill.teaching-expire": vi.fn(async () => undefined),
     "history.compact": vi.fn(async () => undefined),
+    "goal.check": vi.fn(async () => undefined),
     "messaging.deliver": vi.fn(async () => undefined),
     "notifications.deliver": vi.fn(async () => undefined),
     "notifications.retention": vi.fn(async () => undefined),
@@ -34,15 +36,28 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
     "account.export.cleanup": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
+    "mail.reply.batch": vi.fn(async () => undefined),
+    "pipeline.import": vi.fn(async () => undefined),
+    "pipeline.auto_status": vi.fn(async () => undefined),
+    "pipeline.auto_status.sweep": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
     "mail.sync": vi.fn(async () => undefined),
     "mail.attachments": vi.fn(async () => undefined),
+    "contacts.photos": vi.fn(async () => undefined),
     "audit.intake": vi.fn(async () => undefined),
     "mail.watch.renew": vi.fn(async () => undefined),
+    "mail.sync.sweep": vi.fn(async () => undefined),
     "devin.refresh": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
+    "omi.assemble": vi.fn(async () => undefined),
+    "omi.transcribe": vi.fn(async () => undefined),
+    "omi.sort": vi.fn(async () => undefined),
+    "meetings.capture_transcribe": vi.fn(async () => undefined),
+    "meetings.capture_finalize": vi.fn(async () => undefined),
+    "meetings.capture_sweep": vi.fn(async () => undefined),
     "meetings.sync": vi.fn(async () => undefined),
     "meetings.digest": vi.fn(async () => undefined),
+    "meetings.followup": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),
     "dataroom.classify": vi.fn(async () => undefined),
@@ -58,6 +73,9 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
     "company.import.unit": vi.fn(async () => undefined),
     "company.import.recover": vi.fn(async () => undefined),
     "company.refresh.tick": vi.fn(async () => undefined),
+    "watch.probe": vi.fn(async () => undefined),
+    "pages.refresh.tick": vi.fn(async () => undefined),
+    "pages.snapshots.retention": vi.fn(async () => undefined),
   };
 }
 
@@ -257,6 +275,79 @@ describePostgres("Graphile background jobs (PostgreSQL contract)", () => {
       expect(revived?.runAt.getTime()).toBe(revivedAt.getTime());
       expect(revived?.payload).toContain("revived");
     } finally {
+      await publisher.cancel(key).catch(() => undefined);
+      await publisher.close();
+    }
+  });
+
+  it("replaces a job still locked by a worker that died mid-job", async () => {
+    const publisher = new GraphileJobPublisher(testPool());
+    const key = `contract:keep-locked:${Date.now()}`;
+    const deadWorker = `contract-dead-worker-${Date.now()}`;
+    try {
+      await publisher.enqueue({
+        name: "run.continue",
+        payload: { runId: "abandoned" },
+        replaceKey: key,
+      });
+      await testPool().query(
+        `update graphile_worker._private_jobs
+         set attempts = 1, locked_at = now(), locked_by = $2 where key = $1`,
+        [key, deadWorker],
+      );
+      await publisher.enqueue({
+        name: "run.continue",
+        payload: { runId: "reclaimed" },
+        replaceKey: key,
+        keepExisting: true,
+        replaceLockedBefore: new Date(),
+      });
+      const reclaimed = await keyedRow(key);
+      expect(reclaimed?.attempts).toBe(0);
+      expect(reclaimed?.payload).toContain("reclaimed");
+      const detached = await testPool().query<{ key: string | null }>(
+        "select key from graphile_worker._private_jobs where locked_by = $1",
+        [deadWorker],
+      );
+      expect(detached.rows).toEqual([{ key: null }]);
+    } finally {
+      await testPool()
+        .query("delete from graphile_worker._private_jobs where locked_by = $1", [deadWorker])
+        .catch(() => undefined);
+      await publisher.cancel(key).catch(() => undefined);
+      await publisher.close();
+    }
+  });
+
+  it("keeps a job locked after replaceLockedBefore", async () => {
+    const publisher = new GraphileJobPublisher(testPool());
+    const key = `contract:keep-live-lock:${Date.now()}`;
+    const liveWorker = `contract-live-worker-${Date.now()}`;
+    try {
+      await publisher.enqueue({
+        name: "run.continue",
+        payload: { runId: "finishing" },
+        replaceKey: key,
+      });
+      await testPool().query(
+        `update graphile_worker._private_jobs
+         set attempts = 1, locked_at = now(), locked_by = $2 where key = $1`,
+        [key, liveWorker],
+      );
+      await publisher.enqueue({
+        name: "run.continue",
+        payload: { runId: "too-early" },
+        replaceKey: key,
+        keepExisting: true,
+        replaceLockedBefore: new Date(Date.now() - 5 * 60_000),
+      });
+      const kept = await keyedRow(key);
+      expect(kept?.attempts).toBe(1);
+      expect(kept?.payload).toContain("finishing");
+    } finally {
+      await testPool()
+        .query("delete from graphile_worker._private_jobs where locked_by = $1", [liveWorker])
+        .catch(() => undefined);
       await publisher.cancel(key).catch(() => undefined);
       await publisher.close();
     }

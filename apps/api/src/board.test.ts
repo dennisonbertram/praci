@@ -29,12 +29,8 @@ describe("disabled ticket board", () => {
         { context: { actor } },
       );
       const calls = [
-        () => client.boards.list(),
-        () => client.boards.get(),
-        () => client.boards.rename({ name: "Launch" }),
         () => client.boards.subscribe(),
         () => client.tickets.list({}),
-        () => client.tickets.get({ id: "ticket-1" }),
         () => client.tickets.create({ title: "Launch", assigneeBotId: "bot-1" }),
         () => client.tickets.update({ id: "ticket-1", assigneeBotId: "bot-1" }),
         () => client.tickets.move({ id: "ticket-1", status: "doing" }),
@@ -46,6 +42,17 @@ describe("disabled ticket board", () => {
       expect(follow).not.toHaveBeenCalled();
     },
   );
+});
+
+it("answers NOT_FOUND, not a server error, for another space's bot on a ticket", async () => {
+  const prisma = { bot: { findFirst: vi.fn(async () => null) } };
+  const client = createRouterClient(
+    createRouter({ prisma, env: { ticketBoardEnabled: true } } as unknown as RouterDeps),
+    { context: { actor } },
+  );
+  await expect(
+    client.tickets.update({ id: "ticket-1", assigneeBotId: "bot-of-another-space" }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
 
 it.each([false, true])("includes the board capability in me (%s)", async (ticketBoardEnabled) => {

@@ -1,154 +1,83 @@
-# UX Flow Report: planned native iPhone app
+# UX Flow Report: native iPhone app, as built
 
-Generated 2026-10-20 by `/ux-flow` for epic #427. Six journeys and one redundancy pass. Everything here is a finding about planned design, not shipped behavior.
+Generated 2026-11-04 by `/ux-flow` against the built SwiftUI app (`apps/ios`). This replaces the plan-era run of 2026-10-20, now in `flow/archive/2026-10-20-plan-era/`.
 
-## Run Summary
+## Run summary
 
 | Metric | Value |
 | --- | --- |
-| Target | Planned native SwiftUI iPhone app (epic #427, phases #412 to #426) |
-| Evidence source | No native code exists. The "app" walked was the 40 design boards in `docs/design-system/ios/boards/`, rendered locally with a preview shim (not the real canvas runtime) and screenshotted. Boards are static, so each step was judged against the board that defines it. A screen with no board is recorded as a finding. |
-| Journeys critiqued | 6 (STORY-019, 043, 047, 064, 076, 085) of 105 catalog stories |
-| Verdicts | 0 minimal, 3 acceptable (043, 064, 085), 3 convoluted (019, 047, 076) |
-| Redundancy findings | 6 duplicate paths, 9 duplicate information, 6 overlapping features, 8 hierarchy and naming, 12 cross-board consistency rows (11 findings, 1 pass) |
-| Main cause of friction | Missing boards, not long flows. Most journeys depend on steps with no board. |
-| Not verified | Row heights, radii and spacing are estimates from 466 x 678 screenshots. DS-04, DS-05 and DS-06 are tall and were read downscaled. No board exists for Compose, consent, global search, Account detail, offline or connect-a-model, so those steps could not be judged. |
+| Evidence source | Swift code in `apps/ios/Sources/Praci`, `catalog.md` (127 stories, 58 code findings) and the topic files. Nothing was run on a device or simulator. Steps are counted from the code. |
+| Journey files | 8, covering about 35 stories (`flow/journeys/`) |
+| Redundancy pass | `flow/redundancy.md`: 9 duplicate paths, 5 duplicate information, 6 overlapping features, 9 hierarchy and naming checks |
+| Verdicts | minimal: Settings key replace (118), compose fix recipient (068), start/stop recording (077), to-do tick (080), Finance read (099). acceptable: approvals, morning triage, open-and-send, compose reply, business-page setup, settings model/rules. convoluted: install to first reply (001), reply then archive (076), find a finished meeting off the Meetings list (081), computer take control and takeover request (111, 112) |
+| Device walk | Items marked "walk: y" below rest on code reading only and need confirming on a device. |
 
-"Actual" is the step count the catalog and boards describe. "Ideal" is the count after the simplification proposed in the journey file (`docs/ios-native/ux/flow/journeys/`).
+Ids in the journey files restart per file (JA, JB, JC, JD, R). This report uses its own ids (F1 to F25) and names the source file and id.
 
-## Friction Scorecard
+## Friction scorecard
 
-| Journey | Steps actual / ideal | Needless decisions | Re-entry of known data | Dead ends | Verdict |
-| --- | --- | --- | --- | --- | --- |
-| STORY-019 First run with no model connected | 14 / 8 | 3: provider choice with no recommendation; optional Title and Description on New bot; which New menu entry | None | 2: Home never says a model is missing; after connecting, Home has no next action | Convoluted |
-| STORY-043 Long founder session (attach, reply, fail, recover) | about 24 / about 20 (catalog says 22) | 2: Attach menu asks "Photo library or File" four times; "max 4" shows only after opening the menu | None found; carry-over of composer text, chips and queue on unfold is not drawn | 1: a long offline wait has no visible next action | Acceptable |
-| STORY-047 Fix the recipient list, edit and send | 7 / 3 | 2: edit form versus telling the agent; two label pairs (Save/Send, Deny/Allow) on one card | Yes: a known contact retyped as comma-separated text | 3: abandoned edit, invalid email, removing the only recipient | Convoluted (minimal if the composer route replaces the edit screen) |
-| STORY-064 Full triage session on the inner display | 24 / 19 | 2: Filter and "Important only" detour; ask the agent, then abandon it to compose by hand | Yes: payroll recipient, subject and body typed by hand | 4: selection after Archive; "Inbox zero" in two panes; abandoned agent route; message and agent thread both claim the detail pane | Acceptable |
-| STORY-076 Month-end handoff (computer, artifact, page, list, routine) | 22 / 14 | 1: "Skip / I'm done" right after the task is finished | None | 2: routine does not say which run it belongs to; leaving Computer while holding control has no rule | Convoluted |
-| STORY-085 Four pages on Duo, inner display and laptop pose | 20 / 20 | 0 | None (where Hide amounts state lives is not shown) | 1: folding to the outer display with an agent thread open has no defined result | Acceptable |
-
-Steps with no board: 019 has 7 of 14; 043 has 8 of 15; 047 has 6 of 7; 064 has about 9 of 24; 076 lacks the handoff prompt, the pre-control Computer state and every laptop-pose screen; 085 has 9 of 20.
-
-## Redundancy Map
-
-Condensed from `docs/ios-native/ux/flow/redundancy.md`; ids match that file.
-
-| Ids | Redundancy | Recommendation |
+| Journey | Steps actual / ideal | Verdict |
 | --- | --- | --- |
-| D1 | Two claimed routes to the Inbox agent; the Personnel row the catalog relies on is not drawn | Decide: Personnel row, or reached only from Inbox. State it in the catalog. |
-| D3, H7 | No drawn route from the outer display to Finance, Legal, Cap table or Data room | Draw it. Cheapest: the domain agent row opens its page first, chat second. |
-| D5 | Four routes to fix a missing model, one destination board | One "Connect a model" action that opens Models and returns. |
-| D6, C9 | New bot and New space are sheets; New group is a pushed page | Sheets for all three. |
-| D2 | Bell and "See all" both mean "what needs me" | Keep both only if they open the same screen. |
-| D4, H4 | Integrations has three names | One label: "Integrations". |
-| H1 | Boards say Rakazo; epic and Expo say Praci | Praci (sign-in copy already changed in this run). |
-| H2 | "Agent" and "bot" for one object | Pick one word; "agent" matches the most-seen rows. |
-| I1, I2, I5, C6 | Runway and cash drawn by five renderers with three label sets; "Runway summary" is both agent page and artifact; artifact title shown twice | One tile component and label set; decide whether page and artifact are one object; drop the repeated heading. Equal tile widths already fixed. |
-| F1, I3, H8 | A domain has up to three entries (page, domain agent, vendor agent); deadline count in three places | Personnel holds agents only; pages open from inside the agent; count on the page row only. |
-| F2 | Page, list, artifact and Data room file are four output surfaces | Product decision needed. |
-| F3, C1 | Mail approval card has three title and button sets | One pair for mail: Save and Send. |
-| F4 | Six search controls; the global one has no result screen | Scope rule: global in sidebar, local in each list, one control. |
-| F5 | Global device-voice setting and per-bot "Read replies aloud" use the same words | State which wins. |
-| F6, C5 | Filter, "Important only", sections and chips all classify mail; Hide amounts on a list with no amounts | Drop chips on rows users swipe away; Hide amounts only where amounts appear. |
-| I6 to I9 | Unlabeled "42"; two unread dots on one row; Title and Description hold one sentence; avatar initials differ for one account | Label or drop the count; one dot; one field on phone; align sample data. |
-| C2, C3, C4, C7, C8, C11, C12 | Bot identity differs by board; Home differs between boards; three mail-row heights; four status treatments; glass and prominent-action counts exceed README rules | Bot identity fixed on New group in this run. The rest need a board pass before Swift copies them. |
+| Install to first agent reply (001, 005-007, 013, 014) | about 26 to 30 / about 14 | Convoluted |
+| Open app, attach, send, offline (012, 024, 031, 032) | 5 to 6 / 4 | Acceptable |
+| Approvals (035, 040, 043, 045) | already one tap per decision | Acceptable |
+| Morning triage (056, 057, 063, 064) | archive from a message needs an extra Back | Acceptable |
+| Reply and send (067) | 4 / 3 | Acceptable |
+| Reply then archive (076) | 7 per message / 4 to 5 | Convoluted |
+| Record a meeting (077) | 3 to start, 1 to stop | Minimal |
+| Find the finished meeting off the list (081) | 3 taps plus knowing to look / 1 | Convoluted |
+| Business pages setup (102, 105, 108) | 6 to 7 / 3 to 5 | Acceptable |
+| Computer take control, takeover (111, 112) | hidden controls, silent lease | Convoluted |
+| Settings: default model, key, rule (117, 118, 121) | rule from scratch about 6 taps | Acceptable |
 
-## Simplification Proposals
+## Ranked proposals
 
-Ranked by (centrality of journey x steps or elements removed) divided by effort. Effort: S = board edit or decision, M = new or reworked screens, L = new flow.
+Rank = (how central the journey is x steps or elements removed) / effort. Size: S = a few lines or one view, M = several views or a small model change, L = new flow. Risk is the chance of a regression or a product disagreement.
 
-### 1. Connect a model from Home in one prompt
-- **Now:** a new user with no model sees nothing on Home, goes Account, Settings, Models, provider, back out, then creates a bot (14 steps). The first send fails.
-- **Proposed:** while no model is connected, Home shows one prominent "Connect a model" action that opens Models as a sheet and closes itself on success; then "Create a bot" with Name only, opening the thread directly. Hide Default model, Thinking and Add a server until a provider is connected.
-- **Saves:** 6 steps (14 to 8), one dead end, two optional fields on first run.
-- **Effort:** M. Needs Home empty state, first-run Models variant, provider key form, thread empty state.
-- **Evidence:** `docs/ios-native/ux/flow/journeys/STORY-019.md`; `docs/ios-native/ux/flow/redundancy.md` (D5); F-first-run-home-016, F-thread-021.
-- **Phase issue:** #415 (with #421 Models, #417 send-time error).
+| # | Proposal | Problem and evidence | Saves | Risk | Size | Walk |
+|---|---|---|---|---|---|---|
+| F1 | Default release builds to a reachable server (hosted origin); keep loopback for debug | Default `http://127.0.0.1:3100` cannot work on a phone, so first launch is an error (001 JA-1; `ServerEndpoint.swift:24`, `AuthenticationView.swift:99-103`; finding 7) | 5 to 6 taps per fresh install | Needs a product decision on the origin | S | n |
+| F2 | Open the connect sheet directly from the Home banner and from an empty thread that needs a model; reload Home and the thread when it closes | Banner leads to Models, whose only action is another "Connect a model"; closing the sheet leaves the banner (001 JA-4, JA-5, JA-9; `HomeScreen.swift:48,60-61`, `ModelsScreen.swift:24-29`, `ConnectModelSheet.swift:77-82`; STORY-014; finding 27) | 2 taps and a dead end on the most important first-run path | Low | S-M | y |
+| F3 | Every "Connect" button (Finance, Cap table, Legal, Inbox) opens Settings at the right screen (Integrations or Models), and the page underneath reloads on dismiss | Sheet is a bare `SettingsScreen` at its root; pages load once in `.task` (099 JD-1, JD-2; redundancy R-2; `App/AppShell.swift`; findings 27, 50; STORY-102, 105, 108) | 2 taps per setup, removes stale "No accounts yet" | Low | M | y |
+| F4 | Archive from the message screen returns to the list with the existing Undo toast; add "Send and archive" to a reply | `InboxMessageModel.archive()` sets a flag and never dismisses (`InboxMessageModel.swift:51-58`, `InboxMessageScreen.swift:26`); topic text says it pops (067 JC-3, JC-4; 056 JB-1; STORY-076, 056) | 1 to 2 taps per message, repeated all morning | Archiving a thread by mistake, covered by Undo | M | y |
+| F5 | Reply is a tap, with Reply all and Forward on long press; focus the body when the compose sheet opens | Reply sits in a menu and the body is not focused (`InboxMessageScreen.swift:88-103`, `ComposeSheet.swift:127-132`; 067 JC-1, JC-2, JC-5) | 2 taps per reply; Reply becomes the prominent action over "Ask Inbox agent" | Reply all and Forward less visible | S | y |
+| F6 | Tell the user when a recording is stored off the Meetings list: keep the glass bar a few seconds with "Meeting saved" and Open | `CaptureController.swift:112-115,318-320`; finding 11; STORY-081, 086 (077 JC-1) | 3 taps and the "where is it" hesitation | Bar must not stack with another bar | M | y |
+| F7 | Computer: release control when the screen closes, focus the keyboard after Take control, show the takeover request and Skip / I'm done as soon as it exists, and add a push target and thread card | Closing keeps the lease; the request is found only after taking control (111 JD-1 to JD-4; `ComputerScreen.swift`, `ComputerKeyBar.swift`, `NotificationRouter.swift`; findings 13 to 15; STORY-111, 112) | 4 to 5 taps and removes a silent failure | Low | M | y |
+| F8 | Add "Routines" to the thread menu so the built feature is reachable | Routines are built and routed but nothing opens them; the thread menu lists Computer, Artifacts, Agent page, Settings, Archive (redundancy R-1; `ThreadScreen.swift:208-222`) | New capability; no steps | Low | S | y |
+| F9 | Approvals: put the reason above the buttons, let the clipped detail and the 10-line mail body expand in place, replace the bare word "Firewall" with a sentence, and offer a way to stop the repeated ask (iOS "Clear conversation") | Reason sits below the buttons; the well clips at 4 lines; finding 9 (035 JA-1, JA-2, JA-5, JA-6; `Thread/Approvals/*`; STORY-040, 043) | No steps, but removes approving blind and a repeating card | RPC for clearing needs checking | S-M | y |
+| F10 | First-run form: ask only for the agent's Name (prefilled "Assistant"), hide Inbox and Pages until the first agent exists, skip the http alert for loopback or the default address | `NewBotSheet.swift:23-35`, `HomeScreen.swift:119-130,191-231`, `ServerView.swift:63-70,71` (001 JA-2, JA-3, JA-6, JA-7, JA-8, JA-10, JA-11) | 3 to 5 taps and 2 fields | Medium for hiding Home sections (deep links) | S-M | y |
+| F11 | One shared Hide amounts value for Finance, Legal, Cap table and Settings | Each page model reads `me` once (099 JD-4; redundancy R-6; findings 29; STORY-103, 104) | Removes a stale-mask privacy gap | Low | M | y |
+| F12 | Offline and send queue: show the offline line only on a thread with a queued message, clear it when the queue empties, add Edit to a refused bubble, keep drafts per thread | `ComposerView.swift:22-26`, `PendingSendsView.swift:59-79`, `SendQueue.swift:162-167` (012 JA-13 to JA-16; findings 38, 53) | 2 to 5 inputs per refusal or accidental Back | Draft files must not outlive sign-out | M | y |
+| F13 | Settings: remove the duplicate Sign out row (keep Account's) and add a confirmation | Two rows, neither confirms (redundancy R-3; `SettingsScreen.swift`, `AccountScreen.swift`; finding 46; STORY-009, 126) | 1 duplicate path | Low | S | n |
+| F14 | Cleanup: surface it instead of a one-item "More" menu, drop the Archive confirmation (its own text says Undo restores), keep the Unsubscribe confirmation | 056 JB-5, JB-6, JB-7, JB-10; STORY-063, 065 | 1 tap and one needless confirmation per bulk run | Low | S | y |
+| F15 | Compose: a Settings button on the Reconnect and writes-off banners; replace Close on the "unknown" send state with Copy text; remove Save draft until a draft can be reopened | `ComposeSheet.swift:71,184-190`; findings 19, 20 (067 JC-7 to JC-9; STORY-071, 072) | 2 to 3 taps; stops data loss | Duplicate send if the user retries | S | y |
+| F16 | Add a Compose button on the Inbox list, or delete the unreachable `.new` code | Finding 5; `InboxScreen.swift:29-51`, `InboxMessageScreen.swift:43-49` (067 JC-10) | New capability | Adds one control (AGENTS.md wants minimal UI) | M | y |
+| F17 | Prefill an approval rule from the card's "Always allow"; default the rule action sensibly; choose the rule name from known tools | Rule from scratch is about 6 taps (117 JD-1 to JD-3; `ApprovalRulesScreen.swift:158-164`; STORY-121). Note: catalog finding 48 is wrong, the kind is a Picker and the free-text field is Name | about 5 taps | Medium | M | y |
+| F18 | One name for the computer ("Computer"), drop the Home "Team computer" row that opens the first agent's computer | Four names; the row opens the first bot's computer (redundancy R-4; 111 JD-6; finding 56; STORY-115) | 1 duplicate path; fixes a wrong target | Low | S | y |
+| F19 | Unify "Ask the agent": one control and label on every page, hidden when no agent exists | Three labels on three pages, missing on Finance, Data room and Meetings (redundancy R-7) | Consistency | Low | S-M | n |
+| F20 | Hide or remove the "Read replies aloud" setting until something reads replies; drop the duplicate "Pinned" toggle in agent settings | Finding 36; redundancy R-8, R-11 | 2 controls | Low | S | n |
+| F21 | Headers for the eleven headerless Settings rows; move "Archived agents" out of its own section; differentiate the two gear icons on Home; drop the redundant "Account" caption | redundancy R-5, R-12; finding 56 | Orientation, no steps | Low | S | y |
+| F22 | Business pages polish: merge Allow and Scan on Legal into one button, use "Connect a model" instead of "OpenRouter key", Cap table shows sync status when Carta is connected but empty | 099 JD-3, JD-5, JD-6; finding 50 | 1 tap and clearer copy | Low | S-M | y |
+| F23 | Settings detail: delete the "Connected" value and the Status section on provider rows, Save key as a toolbar button, one name for the rules screen, drop the rules footer, warn when disconnecting the provider of the default model | 117 JD-4 to JD-8 | 5 elements | Low | S | n |
+| F24 | Meetings polish: whole to-do row tappable, to-dos above Decisions, one muted line when no summary arrives, spinner on "Summarizing", own alert title for a failed delete | 077 JC-2, JC-3, JC-5 to JC-7; finding 21 | Clarity | Low | S | y |
+| F25 | Accept `praci://open/agent/...` as the primary link and keep `rakazo://` and `bot/` as aliases | redundancy R-10 | One name for one product | Needs a decision on the SSO callback scheme | M | y |
 
-### 2. One label pair for the mail approval card
-- **Now:** one card reads "Send reply" with Deny/Allow on one board and "Re: Pilot timeline" with Save/Send on two others. "Allow" sounds like permission to run, not to send mail.
-- **Proposed:** Save and Send plus the subject-line title on every board; tool approvals stay a separate card.
-- **Saves:** one conflicting label set; affects every user who approves an email.
-- **Effort:** S.
-- **Evidence:** `docs/ios-native/ux/flow/redundancy.md` (F3, C1); `docs/ios-native/ux/flow/journeys/STORY-047.md`; F-thread-008.
-- **Phase issue:** #417.
+## Already minimal
 
-### 3. Edit a draft by telling the agent; skip the edit screen in the first release
-- **Now:** fixing a recipient list takes 7 steps and needs an edit-and-send screen with no board (Cc parsing, validation, discard rules).
-- **Proposed:** the user types "Add Jordan on Cc and make it 10:30" in the composer; the agent replaces the draft with a new card and the old card shows "Replaced". Direct editing, if wanted later, is a native sheet with one "Done".
-- **Saves:** 4 steps (7 to 3), one undrawn screen, the invalid-email and unsaved-edit cases.
-- **Effort:** S.
-- **Evidence:** `docs/ios-native/ux/flow/journeys/STORY-047.md`; F-thread-012.
-- **Phase issue:** #417.
+- Reaching an agent from Home: one tap (012).
+- Approval decisions: one tap, no re-entry, no confirmations (035).
+- Starting and stopping a recording: 3 taps and 1 (077).
+- Fixing a mistyped recipient (068).
+- Replacing a provider key (118) and switching the default model (117).
+- Reading Finance (099).
+- Naming: no visible "bot" or "Apps" strings (redundancy.md).
 
-### 4. Draw the outer-display route to Finance, Legal, Cap table and Data room
-- **Now:** no board reaches the four pages on the outer display (the one critical walker finding), although the README says every page keeps the same features on every display.
-- **Proposed:** the domain agent row opens its page first and chat second, as the inner sidebar does; show the glance value once.
-- **Saves:** one dead end across four pages and two of the three entries per domain.
-- **Effort:** S to M.
-- **Evidence:** `docs/ios-native/ux/flow/redundancy.md` (D3, F1, I3, H7); `docs/ios-native/ux/flow/journeys/STORY-085.md`; F-finance-settings-001.
-- **Phase issue:** #424 (Home row in #415).
+## Decisions needed from the owner
 
-### 5. Remove status chrome and repeated controls no journey uses
-- **Now:** "Carta is connected / Reconnect" while healthy; Legal scan card repeating the Deadlines tab; refresh buttons on all four pages; unlabeled "42"; Newsletter and Junk chips; Team/Private picker while holding control; "working" line while an approval is pending; second unread dot on the outer Inbox.
-- **Proposed:** remove each, or show it only in the state where it matters. Refresh on open and pull to refresh.
-- **Saves:** about 8 elements across 6 screens, no step added.
-- **Effort:** S.
-- **Evidence:** journeys STORY-085, 064, 076, 047; `docs/ios-native/ux/flow/redundancy.md` (I6, I7, C5); F-finance-settings-021, F-inbox-computer-012.
-- **Phase issue:** #424, #418, #420, #417.
+- Hosted origin as the release default (F1).
+- Whether Artifacts and Agent pages stay two surfaces (redundancy R-9, L if merged).
+- Deep link scheme (F25).
 
-### 6. Merge Release and "I'm done"; link the page to the routine
-- **Now:** after releasing Computer the user answers "Skip / I'm done", confirms, closes, then goes Back to the thread and Home to reach the routine (22 steps).
-- **Proposed:** while a handoff is pending, Release reads "I'm done" and releases in one tap, with "Skip" as a text button. One menu entry on the agent list opens Routines. Hide the Team/Private picker while holding control.
-- **Saves:** 8 steps (22 to 14) and the Back-then-Home detour.
-- **Effort:** M.
-- **Evidence:** `docs/ios-native/ux/flow/journeys/STORY-076.md`; F-duo-013, F-inbox-computer-015.
-- **Phase issue:** #420.
+## Limits
 
-### 7. Attach with one multi-select picker; disable Plus at the limit
-- **Now:** the Attach menu opens four times and asks "Photo library or File" each time; at four chips it opens and then says "(max 4 attachments)".
-- **Proposed:** menu offers Photos and Files, both multi-select; Plus is greyed at four chips; a progress ring on each chip; swipe-to-reply as an accelerator.
-- **Saves:** about 4 taps (24 to 20) and the late error.
-- **Effort:** M. Needs boards for the Attach menu, chip progress, disabled Plus, long-press menu.
-- **Evidence:** `docs/ios-native/ux/flow/journeys/STORY-043.md`; F-thread-003, F-thread-002.
-- **Phase issue:** #417.
-
-### 8. Ask the agent to draft new mail from an open message
-- **Now:** to email the payroll provider about an open message, the user opens the agent, abandons it, opens Compose and types three fields (steps 18 to 21).
-- **Proposed:** "Ask Inbox agent" carries the message as context and returns a prefilled card. Manual Compose stays for new mail. Define selection after Archive and Send as "next row down". Drop the Filter and "Important only" detour from this story.
-- **Saves:** 5 steps (24 to 19) and three typed fields.
-- **Effort:** M. Needs reply composer, compose, Archive control and two-pane "Inbox zero" boards.
-- **Evidence:** `docs/ios-native/ux/flow/journeys/STORY-064.md`; F-inbox-computer-001, F-duo-003.
-- **Phase issue:** #418.
-
-### 9. One name for each thing
-- **Now:** Rakazo/Praci; agent/bot; Integrations/Connect apps; "Chat settings"/"Bot settings"; Retry/Try again; "Other mail today"/"Today" and "Earlier".
-- **Proposed:** Praci, one of agent or bot, Integrations, Bot settings, Try again, one Inbox section naming.
-- **Saves:** 6 naming conflicts, cheap now and expensive after Swift strings exist.
-- **Effort:** S. Praci on sign-in, Bot settings and Try again are already applied; agent-or-bot and the Inbox section names remain.
-- **Evidence:** `docs/ios-native/ux/flow/redundancy.md` (H1, H2, H4); `docs/ios-native/ux/catalog.md` (Copy and naming conflicts); F-first-run-home-007, -024, -027.
-- **Phase issue:** #414, #415.
-
-### 10. One Runway source: one tile component, one artifact-or-page decision
-- **Now:** runway and cash are drawn five times with three label sets and different tile sizes; the artifact title appears twice on one screen; "Runway summary" is both an agent page and an artifact.
-- **Proposed:** one tile component, one label set ("Burn", not "Spend"); decide whether page and artifact are one object; remove the repeated heading and the sentence restating runway; link both to the Finance page.
-- **Saves:** 4 renderers, 2 repeated texts, and the Desk versus PG-B-Finance contradiction.
-- **Effort:** M.
-- **Evidence:** `docs/ios-native/ux/flow/redundancy.md` (I1, I2, I5, C6); journeys STORY-076, 085; F-duo-015, F-duo-016.
-- **Phase issue:** #420, #424.
-
-## Already Minimal
-
-- Sign-in, thread and New bot sheets: one prominent action each (STORY-019).
-- Composer: Plus, text field, and a mic that swaps to Send, so one trailing action; the failed bubble states "Not sent / Retry" once (STORY-043).
-- Inner-display Inbox (`Inner`, `Split`): follows the glass and prominent-action rules with Send as the one bright button (STORY-064, 085).
-- Routine, Agent list, Agent page: one prominent action each (STORY-076).
-- Finance, Legal, Cap table, Data room outer pages: glass only on the side strip; one chat bubble as the prominent action (STORY-085).
-- Bottom-left prominent action position is consistent (redundancy C10).
-- STORY-085 has zero forced steps on the happy path.
-
-## Where the evidence is thin
-
-- Every proposal that adds a screen depends on a board that does not exist; saved step counts are design targets, not measurements.
-- Step counts for STORY-043 and STORY-064 are approximate.
-- Sizes and spacing are screenshot estimates; measure in the design tool first.
+Everything is from code reading. Line numbers were checked by the critics but the app has not been run, so "walk: y" items are hypotheses about how the screens feel. The unreachable-code claims (F16) and the Routines claim (F8) are measured from code.

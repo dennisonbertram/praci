@@ -17,6 +17,7 @@ import {
   Check,
   Copy,
   Eraser,
+  EyeOff,
   Folder,
   FolderPlus,
   Pencil,
@@ -45,6 +46,7 @@ export function BotContextMenu({
   onDuplicate,
   onClear,
   onArchive,
+  onHide,
   onDelete,
 }: {
   bot: ChatMenuTarget;
@@ -64,6 +66,8 @@ export function BotContextMenu({
   /** Only for a group, which has no settings panel; a bot clears its conversation there. */
   onClear?: () => void;
   onArchive: () => void;
+  /** Bots only: leaves the chat out of the sidebar. */
+  onHide?: () => void;
   onDelete: () => void;
 }) {
   const { t } = useLingui();
@@ -152,6 +156,12 @@ export function BotContextMenu({
           <DropdownMenuItem onClick={onClear}>
             <Eraser />
             {t`Clear conversation`}
+          </DropdownMenuItem>
+        ) : null}
+        {onHide ? (
+          <DropdownMenuItem onClick={onHide}>
+            <EyeOff />
+            {t`Hide from sidebar`}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem onClick={onArchive}>

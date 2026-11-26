@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 interface ComposeService {
+  command?: unknown;
+  depends_on?: unknown;
   environment?: Record<string, unknown>;
   ports?: unknown[];
 }
@@ -42,7 +44,7 @@ describe("local and topology compose proxy passthrough", () => {
 });
 
 describe("source-checkout compose postgres hardening", () => {
-  it("keeps postgres network-internal and requires POSTGRES_PASSWORD from .env", () => {
+  it("keeps postgres network-internal and connects the app as its runtime login", () => {
     const compose = loadCompose("infra/compose/docker-compose.yml");
     const postgres = compose.services.postgres;
     expect(postgres?.ports).toBeUndefined();
@@ -53,9 +55,19 @@ describe("source-checkout compose postgres hardening", () => {
     expect(postgres?.environment?.POSTGRES_DB).toBe("${POSTGRES_DB:-rakazo}");
     for (const name of ["api", "worker"] as const) {
       expect(compose.services[name]?.environment?.DATABASE_URL).toBe(
-        "postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}",
+        "postgres://rakazo_app:${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}",
       );
     }
+    // Only the migrate container gets the owner login; the API starts once it has finished.
+    expect(compose.services.migrate?.environment?.DATABASE_MIGRATION_URL).toBe(
+      "postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}",
+    );
+    expect(compose.services.migrate?.command).toEqual(["pnpm", "db:migrate"]);
+    for (const name of ["api", "worker"] as const)
+      expect(compose.services[name]?.environment).not.toHaveProperty("DATABASE_MIGRATION_URL");
+    expect(compose.services.api?.depends_on).toMatchObject({
+      migrate: { condition: "service_completed_successfully" },
+    });
   });
 
   it("publishes loopback postgres only via the optional host overlay", () => {

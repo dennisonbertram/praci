@@ -183,6 +183,54 @@ describeRunsList("runs.list activity tracker", () => {
     expect(groupRun?.groupName).toBe("Ops");
     expect(groupRun?.botId).toBe(botA.id);
   });
+
+  it("caps quiet routine runs so they do not crowd out finished runs, and names routine runs", async () => {
+    const cookie = await signup(app, `runs-quiet-${stamp}@rakazo.test`, "Quiet User");
+    const bot = await rpc<{ id: string }>(app, cookie, "bots/create", {
+      name: "Chief",
+      title: "Chief",
+      description: "",
+      instructions: "",
+      notifyOnFinish: true,
+    });
+    const thread = await prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+    const routine = await prisma.routine.create({
+      data: {
+        spaceId: thread.spaceId,
+        userId: thread.userId,
+        botId: bot.id,
+        threadId: thread.id,
+        name: "Daily triage",
+        crons: [],
+        prompt: "routine prompt text",
+      },
+    });
+    await seedRun(prisma, bot.id, "completed", "user prompt", new Date(Date.now() - 86_400_000));
+    for (let i = 0; i < 25; i += 1) {
+      await seedRun(prisma, bot.id, "completed", `quiet ${i}`, new Date(Date.now() - i * 1_000), {
+        trigger: "routine",
+        routineId: routine.id,
+      });
+    }
+    const spoken = await seedRun(prisma, bot.id, "completed", "spoken", new Date(), {
+      trigger: "routine",
+      routineId: routine.id,
+    });
+    await prisma.message.create({
+      data: { threadId: thread.id, runId: spoken.id, role: "bot", seq: 1, blocks: [] },
+    });
+    await seedRun(prisma, bot.id, "completed", "orphan prompt", new Date(), {
+      trigger: "routine",
+    });
+
+    const recent = await rpc<{ runs: RunActivityRow[] }>(app, cookie, "runs/list", {
+      filter: "recent",
+    });
+    expect(recent.runs.some((run) => run.promptSnippet === "user prompt")).toBe(true);
+    expect(recent.runs.filter((run) => run.silent).length).toBeLessThanOrEqual(5);
+    expect(recent.runs.find((run) => run.runId === spoken.id)?.promptSnippet).toBe("Daily triage");
+    expect(recent.runs.some((run) => run.promptSnippet === "orphan prompt")).toBe(true);
+  });
 });
 
 async function seedRun(
@@ -191,6 +239,7 @@ async function seedRun(
   status: "queued" | "running" | "completed",
   prompt: string,
   completedAt?: Date | null,
+  extra: { trigger?: string; routineId?: string } = {},
 ) {
   const thread = await prisma.thread.findUniqueOrThrow({ where: { botId } });
   const task = await prisma.task.create({
@@ -211,7 +260,8 @@ async function seedRun(
       threadId: thread.id,
       taskId: task.id,
       status,
-      trigger: "user",
+      trigger: extra.trigger ?? "user",
+      routineId: extra.routineId,
       completedAt: status === "completed" ? (completedAt ?? new Date()) : null,
     },
   });

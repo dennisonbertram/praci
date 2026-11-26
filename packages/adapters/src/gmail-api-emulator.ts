@@ -8,7 +8,11 @@ import type {
 import type { PrismaClient } from "@rakazo/db";
 import type { GmailMailProviderDeps } from "./gmail-mail-provider.js";
 import { createMailProvider, GMAIL_FILTER_LIMIT } from "./gmail-mail-provider.js";
-import { GMAIL_SETTINGS_BASIC } from "./google-connector.js";
+import {
+  CONTACTS_OTHER_READONLY,
+  CONTACTS_READONLY,
+  GMAIL_SETTINGS_BASIC,
+} from "./google-connector.js";
 import { parseRawMime } from "./mime-parse.js";
 
 const PREFIX = "/gmail/v1/users/me/";
@@ -73,6 +77,12 @@ export interface EmulatedMessage {
   attachments?: Array<{ filename: string; mimeType: string; size: number; data?: string }>;
   /** Inline parts referenced as `cid:<contentId>`; `data` is standard base64 and is served as an attachment. */
   inlineImages?: Array<{ contentId: string; mimeType: string; data: string }>;
+}
+
+/** A person in the People API's address book; `photoUrl` null means Google's generated placeholder. */
+export interface EmulatedPerson {
+  emails: string[];
+  photoUrl: string | null;
 }
 
 export interface GmailSeed {
@@ -197,6 +207,46 @@ export class GmailApiEmulator {
 
   accountRefs(): string[] {
     return [...this.mailboxes.keys()];
+  }
+
+  private readonly people = new Map<string, { saved: EmulatedPerson[]; other: EmulatedPerson[] }>();
+
+  /** Fills the People API address book: saved contacts, and people the user has only emailed. */
+  setPeople(
+    accountRef: string,
+    book: { saved?: EmulatedPerson[]; other?: EmulatedPerson[] },
+  ): void {
+    this.people.set(accountRef, { saved: book.saved ?? [], other: book.other ?? [] });
+  }
+
+  private peopleApi(accountRef: string, mailbox: Mailbox, parsed: URL): ConnectorProxyResponse {
+    const saved = parsed.pathname === "/v1/people/me/connections";
+    if (!saved && parsed.pathname !== "/v1/otherContacts")
+      return fail(404, "notFound", "Not found");
+    if (!mailbox.scopes.has(saved ? CONTACTS_READONLY : CONTACTS_OTHER_READONLY))
+      return fail(
+        403,
+        "insufficientPermissions",
+        "Request had insufficient authentication scopes.",
+      );
+    const all = this.people.get(accountRef)?.[saved ? "saved" : "other"] ?? [];
+    const size = Math.min(Number(parsed.searchParams.get("pageSize")) || 100, 1000);
+    const start = Number(parsed.searchParams.get("pageToken") ?? 0);
+    const page = all.slice(start, start + size).map((person) => ({
+      emailAddresses: person.emails.map((value) => ({ value })),
+      photos: [
+        person.photoUrl
+          ? { url: person.photoUrl, metadata: { primary: true } }
+          : { url: "https://lh3.googleusercontent.com/placeholder", default: true },
+      ],
+    }));
+    return {
+      status: 200,
+      data: {
+        [saved ? "connections" : "otherContacts"]: page,
+        ...(start + size < all.length ? { nextPageToken: String(start + size) } : {}),
+      },
+    };
   }
 
   /** Serves `accountRef` from the mailbox seeded under `seededRef`, for refs minted after the seed. */
@@ -374,6 +424,8 @@ export class GmailApiEmulator {
     } catch {
       return fail(400, "invalidArgument", "Invalid URL");
     }
+    if (parsed.origin === "https://people.googleapis.com")
+      return this.peopleApi(accountRef, mailbox, parsed);
     if (parsed.origin !== "https://gmail.googleapis.com" || !parsed.pathname.startsWith(PREFIX))
       return fail(404, "notFound", "Not found");
     const path = parsed.pathname.slice(PREFIX.length);

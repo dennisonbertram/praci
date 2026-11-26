@@ -301,6 +301,28 @@ describe("refreshDevinConnection", () => {
     expect(fake.db.sessions.has("srv-1/old")).toBe(true);
   });
 
+  it("counts a failed later page as skipped", async () => {
+    const fake = fakeDb();
+    const devin = fakeDevin({
+      search: (args) => {
+        if (args.after) throw new Error("boom");
+        return fixture("search-page-1.txt");
+      },
+    });
+    await refresh(fake, devin);
+    expect(fake.db.states.get("srv-1")).toMatchObject({ complete: false, skipped: 1 });
+  });
+
+  it("caps a long listing without counting the cap as skipped", async () => {
+    const fake = fakeDb();
+    const devin = fakeDevin({
+      search: (args) => `next_cursor: ${String(args.after ?? "page-1")}\n`,
+    });
+    await refresh(fake, devin);
+    expect(fake.db.states.get("srv-1")).toMatchObject({ complete: false, skipped: 0 });
+    expect(devin.searchCalls()).toHaveLength(10);
+  });
+
   it("deletes nothing when lines were skipped, even from a complete listing", async () => {
     const stale = {
       serverId: "srv-1",
@@ -367,6 +389,66 @@ describe("refreshDevinConnection", () => {
     expect(await refresh(fake, devin)).toBe("refreshed");
     expect(fake.db.states.get("srv-1")).toMatchObject({ lastError: null, rejectedAt: null });
     expect(fake.db.sessions.get("srv-1/devin-0001")?.question).toBeNull();
+  });
+
+  it("one waiting session whose read fails keeps the refresh, alerts without a question, and a later read fills it in", async () => {
+    const fake = fakeDb();
+    fake.db.states.get("srv-1")!.lastSucceededAt = new Date(T0.getTime() - MIN);
+    const broken = fakeDevin({
+      search: () => line("a-1", "blocked"),
+      messages: () => {
+        throw new Error("Tool failed: session not found");
+      },
+    });
+    expect(await refresh(fake, broken)).toBe("refreshed");
+    expect(fake.db.states.get("srv-1")).toMatchObject({ lastError: null, backoffUntil: null });
+    expect(fake.db.sessions.get("srv-1/a-1")).toMatchObject({
+      kind: "needs_you",
+      question: null,
+      lastMessageId: null,
+    });
+    expect(createNotification).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ body: "Session a-1 is waiting for your answer." }),
+    );
+    const ok = fakeDevin({ search: () => line("a-1", "blocked") });
+    await refresh(fake, ok, new Date(T0.getTime() + 2 * MIN));
+    expect(ok.messageCalls()).toHaveLength(1);
+    expect(fake.db.sessions.get("srv-1/a-1")).toMatchObject({
+      lastMessageId: "ev-103",
+      notifiedMessageId: "ev-103",
+    });
+    expect(createNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("a second unreadable waiting session in one run fails the run with a 5 minute backoff", async () => {
+    const fake = fakeDb();
+    fake.db.states.get("srv-1")!.lastSucceededAt = new Date(T0.getTime() - MIN);
+    const down = fakeDevin({
+      search: () => line("a-1", "blocked") + line("a-2", "blocked"),
+      messages: () => {
+        throw new Error("The operation was aborted due to timeout");
+      },
+    });
+    expect(await refresh(fake, down)).toBe("failed");
+    const state = fake.db.states.get("srv-1");
+    expect(state?.lastError).toBe("unreachable");
+    expect(new Date(state?.backoffUntil as Date).getTime() - T0.getTime()).toBe(5 * MIN);
+    expect(fake.db.sessions.size).toBe(0);
+  });
+
+  it("a 429 on one session's read still fails the run as rate limited", async () => {
+    const fake = fakeDb();
+    fake.db.states.get("srv-1")!.lastSucceededAt = new Date(T0.getTime() - MIN);
+    const limited = fakeDevin({
+      search: () => line("a-1", "blocked"),
+      messages: () => {
+        throw new Error(errors["429"]);
+      },
+    });
+    expect(await refresh(fake, limited)).toBe("failed");
+    expect(fake.db.states.get("srv-1")?.lastError).toBe("rate_limited");
   });
 
   it("backs off 10, 20, then 40 minutes on 429 and 5 minutes on a timeout", async () => {
@@ -539,6 +621,30 @@ describe("runDevinRefreshJob", () => {
     await runDevinRefreshJob({ prisma: fake.prisma, callTool: devin.callTool, now: () => T0 }, {});
     const servers = devin.callTool.mock.calls.map((call) => call[0]);
     expect(new Set(servers)).toEqual(new Set(["srv-1", "srv-2"]));
+  });
+
+  it("refreshes servers in parallel, at most five at a time, and one failure does not stop the rest", async () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({
+      ...second,
+      serverId: `srv-${i + 1}`,
+      spaceId: `space-${i + 1}`,
+    }));
+    const fake = fakeDb({ states: many });
+    let inFlight = 0;
+    let peak = 0;
+    const seen = new Set<string>();
+    const callTool = vi.fn(async (id: string) => {
+      seen.add(id);
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      if (id === "srv-2") throw new Error("boom");
+      return "";
+    });
+    await runDevinRefreshJob({ prisma: fake.prisma, callTool, now: () => T0 }, {});
+    expect(seen.size).toBe(7);
+    expect(peak).toBe(5);
   });
 
   it("with a payload refreshes only the named server", async () => {

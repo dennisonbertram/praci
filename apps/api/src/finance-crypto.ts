@@ -55,6 +55,7 @@ const toHolding = (row: Prisma.FinanceCryptoHoldingGetPayload<object>): CryptoHo
   rawBalance: row.rawBalance,
   usdPrice: row.usdPrice,
   usdValueCents: row.usdValueCents === null ? null : Number(row.usdValueCents),
+  priceHistory: [],
   syncedAt: row.syncedAt.toISOString(),
 });
 
@@ -221,14 +222,55 @@ export async function financeWalletRemove(
   return { ok: true };
 }
 
+const HISTORY_DAYS = 30;
+/** Fewer daily prices than this draw no line. */
+const MIN_HISTORY_POINTS = 3;
+
+/** Each holding's daily prices (oldest first) from the shared price table; none when too few days are known. */
+export function withPriceHistory(
+  holdings: CryptoHolding[],
+  days: Array<{ chainId: number; tokenAddress: string; day: string; usdPrice: string }>,
+): CryptoHolding[] {
+  const byToken = new Map<string, Array<{ day: string; price: number }>>();
+  for (const d of days) {
+    const key = `${d.chainId}:${d.tokenAddress}`;
+    const list = byToken.get(key) ?? [];
+    list.push({ day: d.day, price: Number(d.usdPrice) });
+    byToken.set(key, list);
+  }
+  return holdings.map((h) => {
+    const list = (byToken.get(`${h.chainId}:${h.tokenAddress ?? ""}`) ?? []).sort((a, b) =>
+      a.day.localeCompare(b.day),
+    );
+    return {
+      ...h,
+      priceHistory:
+        h.usdPrice !== null && list.length >= MIN_HISTORY_POINTS ? list.map((x) => x.price) : [],
+    };
+  });
+}
+
+async function loadPriceDays(deps: FinanceDeps, holdings: CryptoHolding[]) {
+  if (holdings.length === 0) return [];
+  const since = new Date(Date.now() - (HISTORY_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
+  return deps.prisma.cryptoPriceDay.findMany({
+    where: {
+      day: { gte: since },
+      chainId: { in: [...new Set(holdings.map((h) => h.chainId))] },
+      tokenAddress: { in: [...new Set(holdings.map((h) => h.tokenAddress ?? ""))] },
+    },
+  });
+}
+
 export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<FinanceCryptoOutput> {
-  const [wallets, holdings, server, alchemyConnected, exchange] = await Promise.all([
+  const [wallets, rawHoldings, server, alchemyConnected, exchange] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
     cryptoServer(deps, actor),
     hasAlchemyKey(deps.prisma, actorScope(actor)),
     deps.prisma.financeExchangeBalance.findMany({ where: actorScope(actor) }),
   ]);
+  const holdings = withPriceHistory(rawHoldings, await loadPriceDays(deps, rawHoldings));
   const state = server
     ? await deps.prisma.financeSyncState.findFirst({
         where: { mcpServerId: server.id, ...actorScope(actor) },

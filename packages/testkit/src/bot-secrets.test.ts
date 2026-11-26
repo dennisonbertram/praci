@@ -90,8 +90,12 @@ describeIntegration("reusable credential lifecycle", () => {
           });
         }
         await handles.executor.continueRun(seeded.run.id, "test-worker");
-        const approve = async (runId: string, interruptBeforeCard = false) => {
-          if (!requireApproval) return;
+        const approve = async (
+          runId: string,
+          interruptBeforeCard = false,
+          evenWhenNoRule = false,
+        ) => {
+          if (!requireApproval && !evenWhenNoRule) return;
           const message = await handles.prisma.message.findFirstOrThrow({
             where: { runId, role: "bot" },
             orderBy: { createdAt: "desc" },
@@ -236,6 +240,7 @@ describeIntegration("reusable credential lifecycle", () => {
               threadId: seeded.thread.id,
               taskId: task.id,
               trigger: "user",
+              unattended: false,
               status: "queued",
             },
           });
@@ -254,7 +259,8 @@ describeIntegration("reusable credential lifecycle", () => {
           },
           request,
         ]);
-        await approve(useRun);
+        if (requireApproval) await approve(useRun);
+        await approve(useRun, false, true);
         expect(await handles.prisma.run.findUniqueOrThrow({ where: { id: useRun } })).toMatchObject(
           {
             status: "completed",
@@ -294,12 +300,18 @@ describeIntegration("reusable credential lifecycle", () => {
         expect(
           await handles.prisma.botSecret.findUniqueOrThrow({ where: { id: stored.id } }),
         ).not.toMatchObject({ ciphertext: stored.ciphertext });
-        await nextRun([request]);
+        const reuseRun = await nextRun([request]);
+        await approve(reuseRun, false, true);
         expect(new Headers(fetch.mock.calls.at(-1)?.[1]?.headers).get("Authorization")).toBe(
           `Bearer ${key}-rotated`,
         );
         const count = fetch.mock.calls.length;
-        await nextRun([{ name: "forget_secret", args: { name: destination.name } }, request]);
+        const revokeRun = await nextRun([
+          { name: "forget_secret", args: { name: destination.name } },
+          request,
+        ]);
+        await approve(revokeRun, false, true);
+        await approve(revokeRun, false, true);
         expect(await handles.prisma.botSecret.count({ where: { botId: seeded.bot.id } })).toBe(0);
         expect(fetch).toHaveBeenCalledTimes(count);
         const [messages, events, effects, tasks] = await Promise.all([
@@ -356,6 +368,7 @@ describeIntegration("reusable credential lifecycle", () => {
         userId: me.userId,
         status: runState.status ?? "queued",
         trigger: "user",
+        unattended: false,
         leaseOwner: runState.leaseOwner,
         leaseFence: runState.leaseFence,
         leaseExpiresAt: runState.leaseExpiresAt,

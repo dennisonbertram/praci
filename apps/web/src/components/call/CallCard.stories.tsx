@@ -20,6 +20,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Listening: Story = {};
 
+/** The browser refused microphone access; the collapsed card keeps the error visible. */
+export const MicrophoneError: Story = {};
+
 export const Elio: Story = {
   beforeEach: () => {
     startCall({ botId: "bot_elio", botName: "Elio" });

@@ -1,0 +1,15 @@
+{
+  "json": {
+    "userId": "user-placeholder",
+    "email": "user@example.test",
+    "name": "Placeholder User",
+    "spaceId": "space-placeholder",
+    "needsModel": true,
+    "hiddenPages": [
+      "legal"
+    ],
+    "hideAmounts": false,
+    "avatarStyle": "organic",
+    "tourSeen": false
+  }
+}

@@ -60,6 +60,7 @@ const ACTION_GLYPHS: Record<keyof ComputerActionLabels, string> = {
   attach_file: "✎",
   open_path: "↗",
   launch_app: "↗",
+  desktop_app: "↗",
 };
 
 /** Strip ESC/C0 controls from bot-controlled text so xterm cannot be steered by output. */

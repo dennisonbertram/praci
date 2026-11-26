@@ -178,9 +178,17 @@ export function classify(raw: FinanceRawTxn, ctx: ClassifyContext): FinanceClass
   return "spend";
 }
 
+// v1 is USD only: a live transaction in another currency never enters a sum.
+const isExcludedNonUsd = (t: FinanceTransaction): boolean =>
+  t.status !== "other" && t.currency !== "USD";
+
 /** How many live transactions are left out of every total because they are not in USD. */
 export const excludedNonUsdCount = (txns: FinanceTransaction[]): number =>
-  txns.filter((t) => t.status !== "other" && t.currency !== "USD").length;
+  txns.filter(isExcludedNonUsd).length;
+
+/** The transactions that count leaves out, newest first, so a notice can open them. */
+export const excludedNonUsd = (txns: FinanceTransaction[]): FinanceTransaction[] =>
+  txns.filter(isExcludedNonUsd).sort((x, y) => (x.postedAt < y.postedAt ? 1 : -1));
 
 // ---- Cash ----
 

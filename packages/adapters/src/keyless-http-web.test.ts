@@ -79,6 +79,41 @@ describe("keyless HTTP web provider", () => {
     expect(extracted.text).toContain("just text here");
   });
 
+  it("extracts an element-heavy page quickly and keeps its text", () => {
+    const html = `<html><head><title>Big</title></head><body><nav>Menu</nav>${"<div><span>row</span></div>".repeat(30_000)}<p>Closing paragraph</p></body></html>`;
+    const started = performance.now();
+    const page = extractReadableText(html, "https://example.test/");
+    const elapsed = performance.now() - started;
+    expect(page.title).toBe("Big");
+    expect(page.text).toContain("Menu");
+    expect(page.text).toContain("Closing paragraph");
+    expect(elapsed).toBeLessThan(1_500);
+  });
+
+  it("keeps the HTML strip fallback's output", () => {
+    const html = [
+      "<frameset><TITLE lang=en>A  <b>page</b></title><style>p{}</style>",
+      "<script type=x>var a = '<p>no</p>';</SCRIPT>keep 1 < 2 and <> too",
+      "<p>one</p>   \n\n\n\n<div>two</div><script>unclosed</frameset>",
+    ].join("");
+    expect(extractReadableText(html, "https://example.test/")).toEqual({
+      title: "A <b>page</b>",
+      text: "A page keep 1 too one\n\n two unclosed",
+    });
+  });
+
+  it.each([
+    ["unclosed tags", "<a".repeat(60_000)],
+    ["unclosed scripts", "<script>".repeat(40_000)],
+    ["unclosed titles", "<title>".repeat(40_000)],
+    ["unclosed styles", "<style>".repeat(40_000)],
+    ["whitespace runs", `<p>a${" ".repeat(60_000)}b</p>`],
+  ])("extracts a page full of %s in linear time", (_name, html) => {
+    const started = performance.now();
+    extractReadableText(html, "https://example.test/");
+    expect(performance.now() - started).toBeLessThan(1_500);
+  });
+
   it("parses HTML search results with a cap", () => {
     const html = Array.from({ length: 12 }, (_, i) => {
       return `<div class="result"><a class="result__a" href="https://example.test/${i}">T${i}</a><div class="result__snippet">S${i}</div></div>`;

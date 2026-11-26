@@ -1,8 +1,7 @@
-import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { FundraiseRound, Safe, SafeMarkInput, SafeStatus } from "@rakazo/contracts";
-import { needsAttention } from "@rakazo/core";
+import { isActiveSafe, needsAttention } from "@rakazo/core";
 import {
   Badge,
   Button,
@@ -24,17 +23,15 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { todayDay } from "../../lib/day-input";
-import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { SeeAll, useCappedRows } from "../CappedList";
 import { SectionCard } from "../SectionCard";
+import { isoShortDay, usd } from "./format";
 
 export type SafeStep = Exclude<SafeMarkInput["action"], "cancel">;
 
-const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
-const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), i18n.locale || "en");
-
-const statusNames = (): Record<SafeStatus, string> => ({
+const safeStatusNames = (): Record<SafeStatus, string> => ({
   draft: t`Draft`,
   sent: t`Sent`,
   signed: t`Signed`,
@@ -76,12 +73,15 @@ export function MarkDateDialog({
   step,
   onClose,
   onSave,
+  changeDay,
 }: {
   step: SafeStep;
   onClose: () => void;
   onSave: (day: string) => Promise<void>;
+  /** Change-date mode: the stored day the row shows. Omitted for a fresh mark. */
+  changeDay?: string;
 }) {
-  const [value, setValue] = useState(todayDay());
+  const [value, setValue] = useState(changeDay ?? todayDay());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(event: FormEvent) {
@@ -100,7 +100,9 @@ export function MarkDateDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{markNames()[step]}</DialogTitle>
+          <DialogTitle>
+            {changeDay === undefined ? markNames()[step] : <Trans>Change date</Trans>}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col gap-4">
           <DialogBody className="flex flex-col gap-3">
@@ -126,7 +128,7 @@ export function MarkDateDialog({
               <Trans>Cancel</Trans>
             </Button>
             <Button type="submit" disabled={busy || !value} className="pointer-coarse:h-11">
-              {markNames()[step]}
+              {changeDay === undefined ? markNames()[step] : <Trans>Save</Trans>}
             </Button>
           </DialogFooter>
         </form>
@@ -143,10 +145,12 @@ export function MarkDateDialog({
 export function AttentionStrip({
   safes,
   now = new Date(),
+  onOpen,
   onMark,
 }: {
   safes: readonly Safe[];
   now?: Date;
+  onOpen: (safe: Safe) => void;
   onMark: (safe: Safe, step: SafeStep) => void;
 }) {
   useHideAmounts();
@@ -164,13 +168,18 @@ export function AttentionStrip({
             className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-1.5 first:border-t-0"
           >
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium" title={safe.investorName}>
+              <button
+                type="button"
+                className="block w-full truncate rounded-sm text-start text-sm font-medium underline-offset-4 hover:underline pointer-coarse:min-h-11"
+                title={safe.investorName}
+                onClick={() => onOpen(safe)}
+              >
                 {safe.investorName}
-              </span>
+              </button>
               <span className="block text-xs text-muted-foreground">
                 {why === "deposit"
                   ? t`Awaiting deposit · ${usd(safe.amountCents)}`
-                  : t`Sent ${day(safe.sentAt ?? safe.createdAt)}, not signed`}
+                  : t`Sent ${isoShortDay(safe.sentAt ?? safe.createdAt)}, not signed`}
               </span>
             </div>
             {why === "deposit" ? (
@@ -208,6 +217,7 @@ function SafeRow({
   onDelete,
   onAssign,
   onUnassign,
+  onChangeDate,
 }: {
   safe: Safe;
   round: FundraiseRound | null;
@@ -218,12 +228,21 @@ function SafeRow({
   onDelete: () => void;
   onAssign?: () => void;
   onUnassign?: () => void;
+  onChangeDate?: (safe: Safe, step: SafeStep, at: string) => void;
 }) {
-  const names = statusNames();
+  const names = safeStatusNames();
   const next = safe.source === "native" ? NEXT[safe.status] : undefined;
   const native = safe.source === "native";
+  // A sent, signed or funded date can be corrected; only the current step's date shows on the row.
+  const changeStep: SafeStep | undefined =
+    native && (safe.status === "sent" || safe.status === "signed" || safe.status === "funded")
+      ? safe.status
+      : undefined;
   // Cap and source appear only when they differ from the round and the page's native default.
   const notes = [
+    round && isActiveSafe(safe.status) && safe.roundId !== round.id
+      ? t`Not in ${round.name}`
+      : null,
     safe.capCents != null && safe.capCents !== round?.capCents
       ? safe.valuationType === "pre_money_cap"
         ? t`Pre-money cap ${usd(safe.capCents)}`
@@ -244,7 +263,7 @@ function SafeRow({
             {safe.investorName}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {[day(statusDate(safe)), ...notes].join(" · ")}
+            {[isoShortDay(statusDate(safe)), ...notes].join(" · ")}
           </span>
         </button>
         {(!native && !safe.contactId && onAssign) || safe.financeTransactionId ? (
@@ -301,6 +320,11 @@ function SafeRow({
           {next ? (
             <DropdownMenuItem onClick={() => onMark(next)}>{markNames()[next]}</DropdownMenuItem>
           ) : null}
+          {changeStep && onChangeDate ? (
+            <DropdownMenuItem onClick={() => onChangeDate(safe, changeStep, statusDate(safe))}>
+              <Trans>Change date</Trans>
+            </DropdownMenuItem>
+          ) : null}
           {native && safe.status !== "funded" && safe.status !== "canceled" ? (
             <DropdownMenuItem onClick={onCancel}>
               <Trans>Cancel SAFE</Trans>
@@ -338,7 +362,11 @@ export function SafeList({
   onDelete,
   onAssign,
   onUnassign,
+  onChangeDate,
+  keepId,
 }: {
+  /** A SAFE just saved, which stays in view on a phone even past the third row. */
+  keepId?: string;
   safes: readonly Safe[];
   round: FundraiseRound | null;
   /** Names a Mercury row's assigned contact. */
@@ -350,6 +378,8 @@ export function SafeList({
   /** Mercury rows only: attach a SAFE that has no contact, or detach one with a contact. */
   onAssign?: (safe: Safe) => void;
   onUnassign?: (safe: Safe) => void;
+  /** Native rows only: change the current step's stored date, `at` as it shows on the row. */
+  onChangeDate?: (safe: Safe, step: SafeStep, at: string) => void;
 }) {
   useHideAmounts();
   const sorted = [...safes].sort(
@@ -357,22 +387,29 @@ export function SafeList({
       ORDER.indexOf(a.status) - ORDER.indexOf(b.status) ||
       statusDate(b).localeCompare(statusDate(a)),
   );
+  const list = useCappedRows(sorted, { keep: (safe) => safe.id === keepId });
   return (
-    <ul>
-      {sorted.map((safe) => (
-        <SafeRow
-          key={safe.id}
-          safe={safe}
-          round={round}
-          contactName={contacts.find((c) => c.id === safe.contactId)?.name}
-          onOpen={() => onOpen(safe)}
-          onMark={(step) => onMark(safe, step)}
-          onCancel={() => onCancel(safe)}
-          onDelete={() => onDelete(safe)}
-          onAssign={onAssign && (() => onAssign(safe))}
-          onUnassign={onUnassign && (() => onUnassign(safe))}
-        />
-      ))}
-    </ul>
+    <>
+      <ul>
+        {list.rows.map((safe) => (
+          <SafeRow
+            key={safe.id}
+            safe={safe}
+            round={round}
+            contactName={contacts.find((c) => c.id === safe.contactId)?.name}
+            onOpen={() => onOpen(safe)}
+            onMark={(step) => onMark(safe, step)}
+            onCancel={() => onCancel(safe)}
+            onDelete={() => onDelete(safe)}
+            onAssign={onAssign && (() => onAssign(safe))}
+            onUnassign={onUnassign && (() => onUnassign(safe))}
+            onChangeDate={onChangeDate}
+          />
+        ))}
+      </ul>
+      <div className="flex justify-end">
+        <SeeAll list={list} />
+      </div>
+    </>
   );
 }

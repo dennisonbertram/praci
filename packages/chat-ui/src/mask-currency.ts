@@ -15,7 +15,7 @@ const CURRENCY = new RegExp(
     // USD 1,200  usd1.5M  EUR -50  (not inside a word, as in invoiceUSD1234.pdf)
     String.raw`(?<![\p{L}\p{N}_])(?<s2>${SIGN})${CODES}\s?${SIGN}${NUM}${SCALE}?`,
     // 1,200 USD  1.234,56 EUR  1 234,56 €
-    String.raw`(?<![\p{L}\p{N}_$.,])(?<s3>${SIGN})${NUM}${SCALE}?\s?(?:${CODES}(?!${WORD})|${SC}(?!\d))`,
+    String.raw`(?<![\p{L}\p{N}_$.,])(?<s3>${SIGN})${NUM}${SCALE}?\s?(?:${CODES}(?!${WORD})|(?<y3>${SC})(?!\d))`,
     // Share and option counts: 600,000 options  4,000,000  (any number written with thousands groups)
     String.raw`(?<![\p{L}\p{N}_$.,/])(?<ct>${GROUPED})(?![\p{N}_]|[.,]\d)`,
   ].join("|"),
@@ -25,9 +25,10 @@ const CURRENCY = new RegExp(
 export type CurrencyMatch = { start: number; end: number; replacement: string };
 
 /**
- * Where amounts sit in `text`, each with its mask: currency keeps its symbol and sign (`$•••`), and
- * a count written with thousands groups becomes `•••`. Hide amounts covers money only: runway
- * months, run-out dates and ownership percentages stay readable everywhere.
+ * Where amounts sit in `text`, each with its mask: currency keeps its sign and symbol (`-$•••`,
+ * `€•••`), while a spelled-out code like USD masks as `$•••`. A count written with thousands
+ * groups becomes `•••`. Hide amounts covers money only: runway months, run-out dates and
+ * ownership percentages stay readable everywhere.
  */
 export function currencyMatches(text: string): CurrencyMatch[] {
   const out: CurrencyMatch[] = [];
@@ -40,7 +41,7 @@ export function currencyMatches(text: string): CurrencyMatch[] {
       continue;
     }
     const sign = g.s1 ?? g.s2 ?? g.s3 ?? "";
-    out.push({ start, end, replacement: `${sign}${g.y1 ?? "$"}•••` });
+    out.push({ start, end, replacement: `${sign}${g.y1 ?? g.y3 ?? "$"}•••` });
   }
   return out;
 }

@@ -28,6 +28,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { withRetryProgress } from "./google-api-request.js";
 import { inboxOverview } from "./inbox-overview.js";
+import { logMailAction } from "./mail-action-log.js";
 import { buildRawMessage, parseRecipients } from "./mail-compose.js";
 import { syncAfterSend } from "./mail-sync-job.js";
 
@@ -40,6 +41,7 @@ export const MAIL_TOOL_NAMES = new Set([
   "mail_draft",
   "mail_modify",
   "mail_send",
+  "mail_reply_batch",
 ]);
 
 const SEARCH_TTL_MS = 24 * 3_600_000;
@@ -64,6 +66,18 @@ export type MailToolDeps = {
   jobs: JobPublisher;
   /** Connected accounts of the bot owner. Memoized per run by the caller. */
   accounts: () => Promise<MailAccount[]>;
+  /**
+   * Every connected account of the owner, including ones this agent may not use. Only read to tell
+   * "not connected" from "not allowed" when the model names an account. Never offered for use.
+   */
+  ownerAccounts?: () => Promise<MailAccount[]>;
+  /** The accounts this agent may read, to tell "read only" from "no access" on a refused change. */
+  readableAccounts?: () => Promise<MailAccount[]>;
+  /**
+   * A firewalled agent's support label id for an account, from the grant. Searches of that account
+   * are filtered by it at the provider and any message without it is dropped.
+   */
+  scopeLabelIds?: (accountId: string) => string | undefined;
   /** From the run, never from model input. */
   scope: { spaceId: string; userId: string; botId: string };
   /** Puts blocks in the run's thread. Without it show_emails is unavailable. */
@@ -77,6 +91,15 @@ export type MailToolDeps = {
   writesDisabled?: boolean;
   /** Stable per tool call, from the run; mail_send keys its send record on it so a replay never sends twice. */
   idempotencyKey?: string;
+  /** The effect of this call, logged with an archive so its Undo is a signal for precedent. */
+  effectId?: string;
+  /**
+   * A reply batch's send: a failed record is never claimed (only the owner's Retry makes it sendable
+   * again), and every attempt overwrites the draft with the approved message right before the send,
+   * so a draft changed in the mailbox after a failed attempt is not what goes out. Nothing waits for
+   * a mail sync between rows.
+   */
+  sendOnce?: boolean;
   deadlineMs?: number;
   /** How long the inbox overview waits for the queued sync; defaults to 8 seconds. */
   syncWaitMs?: number;
@@ -146,6 +169,46 @@ function failureReason(error: unknown): string {
   return "Gmail did not answer";
 }
 
+const GMAIL_RECONNECT_PATH = "/app/integrations/app/google/gmail";
+
+/** The result field a mail tool adds when Gmail rejected an account's token. */
+function gmailReconnect(accounts: string[]) {
+  return {
+    accounts,
+    link: GMAIL_RECONNECT_PATH,
+    note: `Tell the owner this account needs reconnecting and give them the link as [Reconnect Gmail](${GMAIL_RECONNECT_PATH}).`,
+  };
+}
+
+/** Marks the account so the Inbox and Integrations pages offer their Reconnect buttons. */
+async function flagNeedsReconnect(
+  deps: Pick<MailToolDeps, "prisma">,
+  account: MailAccount,
+): Promise<void> {
+  const now = new Date();
+  await deps.prisma.mailSyncState
+    .upsert({
+      where: { connectionId: account.id },
+      create: {
+        connectionId: account.id,
+        lastErrorAt: now,
+        needsReconnect: true,
+        lastErrorKind: "auth",
+      },
+      update: { lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
+    })
+    .catch(() => undefined);
+}
+
+/** The account behind an auth error caught by the dispatcher, when the call identifies one. */
+async function authErrorAccount(
+  deps: MailToolDeps,
+  args: Record<string, unknown>,
+): Promise<MailAccount | undefined> {
+  const picked = await resolveAccount(deps, args).catch(() => undefined);
+  return picked && "account" in picked ? picked.account : undefined;
+}
+
 class WriteDenied extends Error {}
 
 /** The context for a provider write: its retries ask again before each attempt. */
@@ -179,6 +242,8 @@ export const OWNER_INITIATED_TRIGGERS = new Set([
   "routine",
   "skill",
   "call_end",
+  // A goal run continues the owner's own /goal request.
+  "goal",
 ]);
 
 /** Owner only: the bot's owner started the run, in a direct thread, outside a messaging channel. */
@@ -228,6 +293,14 @@ export async function mailToolFromTool(
   } catch (error) {
     if (error instanceof WriteDenied) return { error: error.message };
     deps.progress?.({ text: `Failed: ${failureReason(error)}`, failed: true });
+    if (error instanceof MailProviderError && error.kind === "auth") {
+      const account = await authErrorAccount(deps, args);
+      if (account) await flagNeedsReconnect(deps, account);
+      return {
+        error: error.message,
+        reconnect: gmailReconnect(account ? [accountName(account)] : []),
+      };
+    }
     // Provider errors carry sanitized text; anything else is not shown to the model.
     return { error: error instanceof MailProviderError ? error.message : "Mail tool failed" };
   }
@@ -267,8 +340,23 @@ export function findAccount(accounts: MailAccount[], wanted: string): MailAccoun
   return named.length === 1 ? named[0] : undefined;
 }
 
-function noAccount(wanted: string) {
-  return { error: `No connected mail account ${wanted.trim().slice(0, 200)}` };
+async function noAccount(
+  deps: Pick<MailToolDeps, "ownerAccounts" | "readableAccounts">,
+  usable: MailAccount[],
+  wanted: string,
+) {
+  const owned = deps.ownerAccounts ? await deps.ownerAccounts().catch(() => []) : [];
+  const forbidden = findAccount(owned, wanted);
+  if (!forbidden) return { error: `No connected mail account ${wanted.trim().slice(0, 200)}` };
+  const readable = deps.readableAccounts ? await deps.readableAccounts().catch(() => []) : [];
+  if (readable.some((account) => account.accountRef === forbidden.accountRef))
+    return {
+      error: `This agent can read but not change ${accountName(forbidden)}. Change that under Access on that account's Integrations page.`,
+    };
+  const can = usable.length > 0 ? ` It can use: ${usable.map(accountName).join(", ")}.` : "";
+  return {
+    error: `This agent isn't allowed to use ${accountName(forbidden)}.${can} Give it access on that account's Integrations page.`,
+  };
 }
 
 async function findOwnedSearch(deps: MailToolDeps, id: unknown) {
@@ -301,7 +389,7 @@ function parseResume(value: unknown): ResumeEntry[] {
   });
 }
 
-type Task = { account: MailAccount; query: string; start?: ResumeEntry };
+type Task = { account: MailAccount; query: string; start?: ResumeEntry; labelIds?: string[] };
 
 async function mailSearch(
   deps: MailToolDeps,
@@ -339,13 +427,17 @@ async function mailSearch(
     let chosen = accounts;
     if (typeof args.account === "string" && args.account.trim()) {
       const account = findAccount(accounts, args.account);
-      if (!account) return noAccount(args.account);
+      if (!account) return await noAccount(deps, accounts, args.account);
       chosen = [account];
     }
     if (chosen.length === 0) return { error: "No connected mail account" };
     tasks = chosen.flatMap((account) => queries.map((query) => ({ account, query })));
   }
 
+  tasks = tasks.map((task) => {
+    const labelId = deps.scopeLabelIds?.(task.account.id);
+    return labelId ? { ...task, labelIds: [labelId] } : task;
+  });
   const involved = [...new Map(tasks.map((task) => [task.account.id, task.account])).values()];
   const maxMessages = clampInt(args.maxMessages, 1, MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
   const share = Math.ceil(maxMessages / involved.length);
@@ -359,6 +451,7 @@ async function mailSearch(
   const outcomes: MailQueryOutcome[] = [];
   const resume: ResumeEntry[] = [];
   const failed = new Set<string>();
+  const authFailed = new Map<string, MailAccount>();
   // Queries of one account run one after another and share its budget; accounts run together.
   await Promise.all(
     involved.map(async (account) => {
@@ -379,6 +472,8 @@ async function mailSearch(
           deps.progress,
           () => left,
           (message) => {
+            const required = deps.scopeLabelIds?.(account.id);
+            if (required && !message.labelIds.includes(required)) return false;
             if (seen.has(message.id)) return false;
             seen.add(message.id);
             saved.push({ account, message });
@@ -389,6 +484,10 @@ async function mailSearch(
         outcomes.push(result.outcome);
         if (result.outcome.stoppedReason === "error") {
           failed.add(accountName(account));
+          if (result.auth) {
+            authFailed.set(account.id, account);
+            await flagNeedsReconnect(deps, account);
+          }
           deps.progress?.({
             text: `Could not finish this search: ${result.reason ?? "Gmail did not answer"}`,
             failed: true,
@@ -426,12 +525,25 @@ async function mailSearch(
     text: tasks.length > 1 ? `${found(rows.length)} in total` : found(rows.length),
     summary: `Searched mail · ${rows.length === 0 ? "none found" : `${rows.length} found`}${failed.size > 0 ? " · incomplete" : ""}`,
   });
-  const summary = summarizeResults({
-    rows,
-    accounts: involved.map(accountName),
-    queries: outcomes,
-    failedAccounts: [...failed],
-  });
+  const scopedLabels = Object.fromEntries(
+    involved.flatMap((account) => {
+      const labelId = deps.scopeLabelIds?.(account.id);
+      return labelId ? [[accountName(account), labelId]] : [];
+    }),
+  );
+  const summary = {
+    ...summarizeResults({
+      rows,
+      accounts: involved.map(accountName),
+      queries: outcomes,
+      failedAccounts: [...failed],
+    }),
+    // Which label filter each account's results went through; a firewalled mail_grep reads it.
+    ...(Object.keys(scopedLabels).length > 0 ? { scopedLabels } : {}),
+    ...(authFailed.size > 0
+      ? { reconnect: gmailReconnect([...authFailed.values()].map(accountName)) }
+      : {}),
+  };
 
   const createdAt = currentTime(deps);
   const expiresAt = new Date(createdAt.getTime() + SEARCH_TTL_MS);
@@ -467,17 +579,21 @@ async function runTask(
   progress: MailToolDeps["progress"],
   budget: () => number,
   save: (message: MailMessageSummary) => boolean,
-): Promise<{ outcome: MailQueryOutcome; resume?: ResumeEntry; reason?: string }> {
+): Promise<{ outcome: MailQueryOutcome; resume?: ResumeEntry; reason?: string; auth?: boolean }> {
   const { account, query } = task;
+  // Cached metadata keeps only some labels, so a label-scoped search always reads the provider.
+  const labelIds = task.labelIds ? { labelIds: task.labelIds, useCache: false } : {};
   let ids = task.start?.unhydratedIds ?? [];
   let token = task.start?.pageToken;
-  // A fresh query, or a resumed one that still has a page to list.
-  let more = !task.start || Boolean(token);
+  // A fresh query, or a resumed one that still has a page to list. An entry with neither ids
+  // nor a token stopped before its first page listed, so that page is still owed.
+  let more = !task.start || Boolean(token) || task.start.unhydratedIds.length === 0;
   // True until a list call that used the stored token has succeeded.
   let storedTokenUntried = Boolean(token);
   let oldest: string | null = null;
   let page = 0;
   let reason: string | undefined;
+  let auth = false;
 
   const stop = (stoppedReason: "cap" | "deadline" | "error", keep = true) => {
     const next: ResumeEntry | undefined =
@@ -500,6 +616,7 @@ async function runTask(
       },
       ...(next ? { resume: next } : {}),
       ...(reason ? { reason } : {}),
+      ...(auth ? { auth } : {}),
     };
   };
 
@@ -515,12 +632,17 @@ async function runTask(
       const listed = fromIds
         ? await mail.listMessages(
             account,
-            { query, pageSize: PAGE_SIZE, ids: ids.slice(0, room) },
+            { query, ...labelIds, pageSize: PAGE_SIZE, ids: ids.slice(0, room) },
             context,
           )
         : await mail.listMessages(
             account,
-            { query, pageSize: Math.min(PAGE_SIZE, room), ...(token ? { pageToken: token } : {}) },
+            {
+              query,
+              ...labelIds,
+              pageSize: Math.min(PAGE_SIZE, room),
+              ...(token ? { pageToken: token } : {}),
+            },
             context,
           );
       for (const message of listed.messages) {
@@ -536,6 +658,7 @@ async function runTask(
       if (listed.unhydratedIds?.length) return stop(context.signal.aborted ? "deadline" : "error");
     } catch (error) {
       reason = failureReason(error);
+      auth = error instanceof MailProviderError && error.kind === "auth";
       if (context.signal.aborted) return stop("deadline");
       // A stored token the provider rejects would be rejected again, so it is not offered twice.
       return stop("error", !(storedTokenUntried && !fromIds));
@@ -586,6 +709,12 @@ async function mailGrep(deps: MailToolDeps, args: Record<string, unknown>) {
   const search = await findOwnedSearch(deps, args.searchId);
   if (!search) return NO_SEARCH;
   if (search.expiresAt <= currentTime(deps)) return EXPIRED;
+  // Rows saved from an account the agent can no longer use are not readable: fail closed.
+  const allowed = new Set((await deps.accounts()).map(accountName));
+  const saved = (search.summary as { accounts?: unknown } | null)?.accounts;
+  if (Array.isArray(saved) && saved.some((name) => !allowed.has(String(name)))) {
+    return { error: "A mailbox in these results is no longer available to this agent." };
+  }
 
   const patterns = Array.isArray(args.patterns) ? args.patterns : undefined;
   const dateFrom = datePrefix(args.dateFrom);
@@ -685,14 +814,14 @@ export async function recoveryMailAccount(
 }
 
 /** The account named by `args.account`, the only connected one, or the one the message is in. */
-async function resolveAccount(
-  deps: MailToolDeps,
+export async function resolveAccount(
+  deps: Pick<MailToolDeps, "accounts" | "ownerAccounts" | "readableAccounts" | "prisma" | "scope">,
   args: Record<string, unknown>,
 ): Promise<{ account: MailAccount } | { error: string }> {
   const accounts = await deps.accounts();
   if (typeof args.account === "string" && args.account.trim()) {
     const account = findAccount(accounts, args.account);
-    return account ? { account } : noAccount(args.account);
+    return account ? { account } : await noAccount(deps, accounts, args.account);
   }
   const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
   const inferred = await inferMailAccount(deps.prisma, owner, accounts, args);
@@ -772,12 +901,15 @@ async function showEmails(
   args: Record<string, unknown>,
 ) {
   if (!deps.publish) return { error: "Cards are unavailable" };
-  const requested = new Map<string, EmailUrgency | undefined>();
+  const requested = new Map<string, { urgency?: EmailUrgency; note?: string }>();
   for (const entry of Array.isArray(args.emails) ? args.emails : []) {
     if (requested.size >= MAX_EMAIL_CARDS) break;
-    const { id, urgency } = (entry ?? {}) as Record<string, unknown>;
+    const { id, urgency, note } = (entry ?? {}) as Record<string, unknown>;
     if (typeof id === "string" && id.trim() && !requested.has(id.trim())) {
-      requested.set(id.trim(), EmailUrgency.safeParse(urgency).data);
+      requested.set(id.trim(), {
+        urgency: EmailUrgency.safeParse(urgency).data,
+        note: typeof note === "string" ? note.trim().slice(0, 80) || undefined : undefined,
+      });
     }
   }
   if (requested.size === 0) return { error: "emails is required" };
@@ -796,7 +928,7 @@ async function showEmails(
   // ponytail: up to 20 getMessage calls in parallel for attachment counts; the provider retries
   // rate limits. Cache the count at sync time if this is slow.
   const emails = await Promise.all(
-    [...requested].flatMap(([providerId, urgency]) => {
+    [...requested].flatMap(([providerId, { urgency, note }]) => {
       const row = found.get(providerId);
       if (!row) return [];
       return [
@@ -814,6 +946,7 @@ async function showEmails(
             snippet: row.snippet,
             receivedAt: row.receivedAt.toISOString(),
             ...(attachments === undefined ? {} : { attachments }),
+            ...(note ? { note } : {}),
           };
         })(),
       ];
@@ -826,7 +959,7 @@ async function showEmails(
     shown: emails.length,
     ...(notFound.length ? { notFound } : {}),
     // Models tended to list every card again as text below them.
-    note: "The user now sees these emails as cards with sender, subject and date. Do not list them again; answer in a sentence or two.",
+    note: "The user now sees these emails as a table with sender, subject, date and your notes. Do not list them again; answer in a sentence or two.",
   };
 }
 
@@ -871,6 +1004,11 @@ async function mailDraft(
     to: draft.to.map(addressText),
     subject: draft.subject,
   };
+}
+
+/** The mail_modify arguments that put a change back: what was added is removed and the reverse. */
+export function inverseModify(id: string, added: string[], removed: string[]) {
+  return { id, addLabels: removed, removeLabels: added };
 }
 
 /** Changes labels on a message, and on its conversation unless the change is marking it unread. */
@@ -942,12 +1080,32 @@ async function mailModify(
         select: { id: true },
       });
       await update({ connectionId: account.id, threadId });
-      return { ok: true, messages: Math.max(cached.length, 1) };
+      // An archive is listed with Undo in the inbox's action log.
+      if (remove.includes("INBOX") && !add.includes("INBOX")) {
+        await logMailAction(
+          deps.prisma,
+          { ...owner, connectionId: account.id },
+          {
+            batchId: crypto.randomUUID(),
+            kind: "archive",
+            source: "auto",
+            reason: "selection",
+            senders: [],
+            threadIds: [threadId],
+            effectId: deps.effectId,
+          },
+        ).catch(() => undefined);
+      }
+      return {
+        ok: true,
+        messages: Math.max(cached.length, 1),
+        undo: inverseModify(id, add, remove),
+      };
     }
     await allowWrite(deps, account);
     await deps.mail.modifyMessage(account, id, change, writeContext(deps, account, context));
     if (row) await update({ id: row.id });
-    return { ok: true, messages: 1 };
+    return { ok: true, messages: 1, undo: inverseModify(id, add, remove) };
   } catch (error) {
     // Deleted since the last sync: nothing left to change.
     if (error instanceof MailProviderError && error.kind === "not_found")
@@ -963,6 +1121,28 @@ const CHECK_SENT = "Check the Sent folder before trying again.";
  * replayed call reports the earlier outcome instead of sending again. A send whose outcome is unclear
  * is never repeated. Same record and states as the Inbox composer's send (`ComposeSend`).
  */
+/**
+ * True when no send of this call reached the provider (no record, or one still draft or failed),
+ * so an interrupted call can be run again. A pending, unknown or sent record is not retryable.
+ */
+export async function mailSendNotDispatched(
+  prisma: PrismaClient,
+  scope: { spaceId: string; userId: string },
+  idempotencyKey: string,
+): Promise<boolean> {
+  const row = await prisma.composeSend.findUnique({
+    where: {
+      spaceId_userId_clientId: {
+        spaceId: scope.spaceId,
+        userId: scope.userId,
+        clientId: `agent:${idempotencyKey}`,
+      },
+    },
+    select: { state: true },
+  });
+  return !row || row.state === "draft" || row.state === "failed";
+}
+
 async function mailSend(
   deps: MailToolDeps,
   context: AdapterContext,
@@ -995,7 +1175,7 @@ async function mailSend(
     select: { id: true, connectionId: true, draftId: true, state: true },
   });
   const claim = await table.updateMany({
-    where: { id: row.id, state: { in: ["draft", "failed"] } },
+    where: { id: row.id, state: { in: deps.sendOnce ? ["draft"] : ["draft", "failed"] } },
     data: { state: "pending" },
   });
   if (claim.count === 0) {
@@ -1004,11 +1184,27 @@ async function mailSend(
       : { error: `An earlier send of this message may or may not have gone out. ${CHECK_SENT}` };
   }
 
-  const record = (data: { state: string; providerMessageId?: string | null }) =>
-    table.update({ where: { id: row.id }, data }).catch(() => undefined);
+  const record = (data: {
+    state: string;
+    providerMessageId?: string | null;
+    threadId?: string | null;
+  }) => table.update({ where: { id: row.id }, data }).catch(() => undefined);
   let sending = false;
   try {
     let draftId = given || row.draftId;
+    if (deps.sendOnce && draftId) {
+      await allowWrite(deps, account);
+      draftId = await deps.mail
+        .updateDraft(account, draftId, draft, writeContext(deps, account, context))
+        .then(
+          (saved) => saved.draftId,
+          (error: unknown) => {
+            // Gone from the mailbox: a new draft below.
+            if (error instanceof MailProviderError && error.kind === "not_found") return null;
+            throw error;
+          },
+        );
+    }
     if (!draftId) {
       await allowWrite(deps, account);
       draftId = (await deps.mail.createDraft(account, draft, writeContext(deps, account, context)))
@@ -1019,18 +1215,29 @@ async function mailSend(
     sending = true;
     const sent = await deps.mail.sendDraft(account, draftId, writeContext(deps, account, context));
     sending = false;
-    await record({ state: "sent", providerMessageId: sent.messageId || null });
-    // So the Inbox shows the reply in its conversation, and the thread leaves Needs reply.
-    await syncAfterSend({ prisma: deps.prisma, jobs: deps.jobs }, account, {
-      ...context,
-      spaceId: deps.scope.spaceId,
-      userId: deps.scope.userId,
+    await record({
+      state: "sent",
+      providerMessageId: sent.messageId || null,
+      threadId: sent.threadId || null,
     });
+    // So the Inbox shows the reply in its conversation, and the thread leaves Needs reply.
+    await syncAfterSend(
+      { prisma: deps.prisma, jobs: deps.jobs },
+      account,
+      {
+        ...context,
+        spaceId: deps.scope.spaceId,
+        userId: deps.scope.userId,
+      },
+      deps.sendOnce ? 0 : undefined,
+    );
     return {
       ok: true,
       account: accountName(account),
       to: draft.to.map(addressText),
       subject: draft.subject,
+      ...(sent.messageId ? { messageId: sent.messageId } : {}),
+      ...(sent.threadId ? { threadId: sent.threadId } : {}),
       note: "The email was sent. Tell the user it was sent; do not offer it again.",
     };
   } catch (error) {
@@ -1042,20 +1249,11 @@ async function mailSend(
     }
     await record({ state: "failed" });
     if (error instanceof MailProviderError && error.kind === "auth") {
-      const now = new Date();
-      await deps.prisma.mailSyncState
-        .upsert({
-          where: { connectionId: account.id },
-          create: {
-            connectionId: account.id,
-            lastErrorAt: now,
-            needsReconnect: true,
-            lastErrorKind: "auth",
-          },
-          update: { lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
-        })
-        .catch(() => undefined);
-      return { error: "Mail needs to be reconnected in Praci before it can send." };
+      await flagNeedsReconnect(deps, account);
+      return {
+        error: "Mail needs to be reconnected in Praci before it can send.",
+        reconnect: gmailReconnect([accountName(account)]),
+      };
     }
     // The message being answered (or the draft) is gone: the composer can still send it.
     if (error instanceof MailProviderError && error.kind === "not_found")

@@ -204,6 +204,7 @@ test("routine history expands from the latest run and pages older executions", a
     botId,
     groupId: null,
     status,
+    error: status === "failed" ? "504: request timed out" : null,
     messageId: null,
     createdAt: `2026-01-02T${hour}:00:00Z`,
     startedAt: `2026-01-02T${hour}:00:00Z`,
@@ -232,6 +233,9 @@ test("routine history expands from the latest run and pages older executions", a
   await history.getByRole("button", { name: "Load older runs" }).click();
   await expect(history.getByTestId("routine-run-row")).toHaveCount(3);
   await expect(history.getByText("Failed", { exact: true })).toBeVisible();
+  // A reason the user can read as stored shows once, without a Details toggle.
+  await expect(history.getByText("504: request timed out", { exact: true })).toBeVisible();
+  await expect(history.getByText("Details", { exact: true })).toHaveCount(0);
   await expect(history.getByText("Cancelled", { exact: true })).toBeVisible();
   await expect(history.getByRole("button", { name: "Load older runs" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "routine-history-expanded");

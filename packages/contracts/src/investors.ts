@@ -1,11 +1,17 @@
 import * as z from "zod";
 import { Id, IsoDate } from "./ids.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
-/** The one place the Investors agent's spawn key is built. */
-export const investorsAgentSpawnKey = (userId: string) => `investors-agent:${userId}`;
+export const investorsAgentSpawnKey = (userId: string) => pageAgentSpawnKey("investors", userId);
+
+/**
+ * How a routed investor-call run's task starts. The executor never gives such a run
+ * cap_table_update, and the run is told not to read the meeting.
+ */
+export const MEETING_ROUTE_PROMPT_START = "Investor call routed from a meeting: ";
 
 export const isInvestorsAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(investorsAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "investors";
 
 /**
  * The only built-in tools the Investors agent is offered. It never gets mail_send (mail goes out
@@ -17,12 +23,16 @@ export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "cap_table_read",
   "cap_table_update",
   "fundraising_read",
+  "fundraising_round_save",
+  "pipeline_import_stage",
+  "pipeline_import_review",
   "contacts_list",
   "contacts_add",
   "contacts_save",
   "investor_update_draft",
   "audit_request_upsert",
   "skill_read",
+  "company_context_lookup",
   "finance_overview",
   "finance_breakdown",
   "search_data_room",
@@ -94,6 +104,8 @@ export const InvestorUpdateSaveInputSchema = z.object({
   body: z.string().max(100_000).optional(),
   recipientContactIds: z.array(Id).max(1000).optional(),
   fromConnectionId: Id.nullable().optional(),
+  /** The version this edit was made on. A draft changed since then is not overwritten. */
+  updatedAt: IsoDate.optional(),
 });
 export type InvestorUpdateSaveInput = z.infer<typeof InvestorUpdateSaveInputSchema>;
 
@@ -118,14 +130,28 @@ export const InvestorPostResultSchema = z.object({
 export const PortalLinkSchema = z.object({ contactId: Id, name: z.string(), link: z.string() });
 export type PortalLink = z.infer<typeof PortalLinkSchema>;
 
-/** Gives investor contacts a Data room document. `emailLink` sends each new one a fresh link. */
-export const InvestorShareInputSchema = z.object({
-  itemId: Id,
-  contactIds: z.array(Id).min(1).max(1000),
-  emailLink: z.boolean(),
+/**
+ * Gives investor contacts Data room documents: one `itemId`, or an `itemIds` batch of up to 100.
+ * `emailLink` sends each contact who gained a file one link listing them.
+ */
+export const InvestorShareInputSchema = z
+  .object({
+    itemId: Id.optional(),
+    itemIds: z.array(Id).min(1).max(100).optional(),
+    contactIds: z.array(Id).min(1).max(1000),
+    emailLink: z.boolean(),
+    /** Makes a retry after a lost response deliver nothing twice. */
+    requestKey: z.string().uuid().optional(),
+  })
+  .refine((input) => Boolean(input.itemId) || Boolean(input.itemIds?.length), {
+    message: "itemId or itemIds is required",
+  });
+export const InvestorShareResultSchema = z.object({
+  /** Links that could not be emailed (no email provider, or no address), for the founder to paste. */
+  links: z.array(PortalLinkSchema),
+  /** Per-file outcome of a batch share; older servers may omit it. */
+  items: z.array(z.object({ itemId: Id, shared: z.boolean() })).optional(),
 });
-/** Links that could not be emailed (no email provider, or no address), for the founder to paste. */
-export const InvestorShareResultSchema = z.object({ links: z.array(PortalLinkSchema) });
 export const InvestorUnshareInputSchema = z.object({ itemId: Id, contactId: Id });
 
 /** Resend: emails a fresh link. `copy`, or no email provider, returns the link instead. */

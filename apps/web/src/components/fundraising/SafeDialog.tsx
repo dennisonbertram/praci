@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { Contact, FundraiseRound, Safe, SafeSaveInput } from "@rakazo/contracts";
@@ -17,10 +16,9 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { isoFromDay, todayDay } from "../../lib/day-input";
 import { centsFromText } from "../../lib/dollars-input";
-import { shortDay, usdFigure } from "../../lib/finance-format";
 import { errorText } from "../../lib/user-error";
+import { isoShortDay, usd } from "./format";
 
-const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
 const YC_DOCUMENTS = "https://www.ycombinator.com/documents";
 
 /**
@@ -227,8 +225,6 @@ export function SafeCoverSummary({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const locale = i18n.locale || "en";
-  const day = (iso: string | null) => (iso ? shortDay(iso.slice(0, 10), new Date(), locale) : null);
   const rows = [
     [t`Investor`, safe.investorName],
     [t`Amount`, usd(safe.amountCents)],
@@ -245,7 +241,7 @@ export function SafeCoverSummary({
     ...(safe.mfn ? [[t`MFN`, t`Yes`] as const] : []),
     [t`Pro rata side letter`, safe.proRata ? t`Yes` : t`No`],
     [t`Governing state`, safe.governingState ?? "—"],
-    [t`Date`, day(safe.investmentDate) ?? "—"],
+    [t`Date`, safe.investmentDate ? isoShortDay(safe.investmentDate) : "—"],
   ] as const;
 
   async function markSent() {

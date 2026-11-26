@@ -10,6 +10,7 @@ const labels: Record<MessageMenuSymbol, string> = {
   speak: "Speak message",
   select: "Select text",
   remember: "Remember",
+  unread: "Mark as unread",
 };
 
 const reactions = ["👍", "👎", "❤️", "😂", "🎉", "😮"] as const;
@@ -66,6 +67,15 @@ describe("message context menu", () => {
   it("reads a reaction id back out of a menu event", () => {
     expect(messageMenuReaction("reaction:🎉")).toBe("🎉");
     expect(messageMenuReaction("reply")).toBeNull();
+  });
+
+  it("puts Mark as unread after Reply only when asked", () => {
+    const menu = buildMessageContextMenu({
+      labels,
+      reactions,
+      include: { quote: false, react: false, speak: false, select: false, unread: true },
+    });
+    expect(menu.map((entry) => entry.id)).toEqual(["reply", "unread", "copy"]);
   });
 
   it("adds Remember to the inline group only when asked", () => {

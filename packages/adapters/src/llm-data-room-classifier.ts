@@ -21,6 +21,7 @@ import type { UsageAttribution } from "@rakazo/db";
 import type { z } from "zod";
 import type { AutoSortItem } from "./data-room-autosort.js";
 import { AUTO_SORT_INSTRUCTIONS, autoSortPrompt } from "./data-room-autosort.js";
+import { OMI_SORT_INSTRUCTIONS, OmiSplitSchema, omiSortPrompt } from "./omi-sort-split.js";
 
 /** Characters of document text sent to the model: the head and tail halves of this budget. */
 export const DATA_ROOM_TEXT_LIMIT = 24_000;
@@ -175,6 +176,21 @@ export class LlmDataRoomClassifier implements DataRoomClassifier {
       AUTO_SORT_INSTRUCTIONS,
       autoSortPrompt(input),
       AutoSortProposalSchema,
+      (raw) => raw,
+      context,
+    );
+  }
+
+  /** One tool-less call that splits a transcribed Omi recording into labelled stretches. */
+  splitRecording(
+    input: { name: string; duration: number; transcript: string },
+    context: AdapterContext,
+  ): Promise<z.infer<typeof OmiSplitSchema>> {
+    return this.ask(
+      "omi-sort",
+      OMI_SORT_INSTRUCTIONS,
+      omiSortPrompt(input.name, input.duration, input.transcript),
+      OmiSplitSchema,
       (raw) => raw,
       context,
     );

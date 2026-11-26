@@ -159,6 +159,21 @@ it("reads the held safe file when its pathname changes after open", async () => 
   expect(race.opened[0]!.fd).toBe(-1);
 });
 
+it("readFile rejects a file whose opened descriptor is outside the home", async () => {
+  const root = await fs.mkdtemp(path.join(tmpdir(), "rakazo-home-race-"));
+  dirs.push(root);
+  const store = new LocalAgentHomeStore(root);
+  const home = store.pathFor("bot-1");
+  await fs.mkdir(home, { recursive: true });
+  await fs.writeFile(path.join(home, "result.txt"), "safe content");
+  race.target = await fs.realpath(path.join(home, "result.txt"));
+  vi.mocked(fileHandlePath).mockResolvedValueOnce(path.join(root, "outside", "result.txt"));
+
+  await expect(store.readFile("bot-1", "result.txt", context)).rejects.toThrow(/escapes/);
+  expect(race.opened[0]!.readFile).not.toHaveBeenCalled();
+  expect(race.opened[0]!.fd).toBe(-1);
+});
+
 it("fails before reading when descriptor containment cannot be established", async () => {
   const root = await fs.mkdtemp(path.join(tmpdir(), "rakazo-home-race-"));
   dirs.push(root);

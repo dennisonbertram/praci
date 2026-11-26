@@ -4,6 +4,7 @@ import type { Actor, FundraisingOverview, MercurySafeState } from "@rakazo/contr
 import { actorScope, financeProviderForEndpoint } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { getFundraisingOverview, listSafes } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 
 export interface FundraisingDeps {
   prisma: PrismaClient;
@@ -14,6 +15,8 @@ export interface FundraisingDeps {
 
 /** Waits at most this long for Mercury before the page loads with what is already stored. */
 const PAGE_SYNC_MS = 20_000;
+/** The owner chose a faster Fundraising page; a new SAFE may then appear on the next refresh. */
+const OVERVIEW_SYNC_MS = 4_000;
 
 /** The Fundraising header's Mercury state, read from the connection and the last sync. */
 async function mercuryState(deps: FundraisingDeps, actor: Actor): Promise<MercurySafeState> {
@@ -47,11 +50,17 @@ async function syncQuietly(
 ) {
   if (!deps.safeCallToolFor) return;
   // The outcome is recorded on the sync state row; a database error must not hide the page.
+  // Log the error name only: Prisma messages carry query values.
   const sync = syncSafesForUser(
     { prisma: deps.prisma, callToolFor: deps.safeCallToolFor },
     actorScope(actor),
     { force, signal },
-  ).catch(() => undefined);
+  ).catch((error) => {
+    getLogger().warn("fundraising page sync failed", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return undefined;
+  });
   // The page stops waiting after a while; the sync keeps running and records its own result.
   await (waitMs
     ? Promise.race([sync, new Promise((resolve) => setTimeout(resolve, waitMs).unref?.())])
@@ -63,7 +72,7 @@ export async function fundraisingOverview(
   deps: FundraisingDeps,
   actor: Actor,
 ): Promise<FundraisingOverview> {
-  await syncQuietly(deps, actor, false, undefined, PAGE_SYNC_MS);
+  await syncQuietly(deps, actor, false, undefined, OVERVIEW_SYNC_MS);
   const overview = await getFundraisingOverview(deps.prisma, actorScope(actor));
   return { ...overview, mercury: await mercuryState(deps, actor) };
 }

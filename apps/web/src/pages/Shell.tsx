@@ -23,7 +23,6 @@ import type {
   VoiceStatus,
 } from "@rakazo/contracts";
 import {
-  ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
@@ -32,7 +31,9 @@ import {
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
+  NEW_PAGE_INSTRUCTIONS,
   RunPhaseSchema,
+  WatchSpecSchema,
 } from "@rakazo/contracts";
 import type { ComposerMention } from "@rakazo/core";
 import {
@@ -42,14 +43,15 @@ import {
   DEFAULT_BOT_COLOR,
   inferAttachmentMimeType,
   isActive,
-  isApprovalAskBlock,
+  isGoalWaitingOnOwner,
   isRunTerminalEvent,
   latestAnswerableAskMessageId,
-  matchesArtifactQuery,
   nestRosterByParent,
   newClientId,
+  ownerOnlyCredentialAskMessageIds,
   planSidebarMove,
   resolveComposerSendPlan,
+  runErrorAction,
   runThreadSubscription,
   searchHitThreadTarget,
   speechFromBlocks,
@@ -66,43 +68,33 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  enqueueNotificationToast,
   GroupAvatar,
   Spinner,
 } from "@rakazo/ui-web";
 import {
   ArrowLeft,
   BookUser,
-  Building2,
   CalendarClock,
-  ChartColumn,
-  CodeXml,
   Files,
   FileText,
-  FolderOpen,
   FolderPlus,
-  HandCoins,
-  LayoutGrid,
   ListTodo,
-  Mail,
   Maximize2,
-  Megaphone,
   Menu,
   MessageSquare,
   PanelLeftOpen,
   PanelRightClose,
   Pencil,
-  PieChart,
   Plus,
-  Scale,
   Search,
   Settings,
-  SquareKanban,
   Trash2,
   Users,
   WandSparkles,
   X,
 } from "lucide-react";
-import type { DragEvent, MutableRefObject } from "react";
+import type { DragEvent, MutableRefObject, ReactNode } from "react";
 import {
   lazy,
   Suspense,
@@ -126,9 +118,9 @@ import {
 } from "react-router-dom";
 import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { BotAudienceTag } from "../components/BotAudienceTag";
+import { BotFirewallMark } from "../components/BotFirewallMark";
 import type { BotToolControls, ComposerDraft } from "../components/BotToolControls";
 import { BotToolControlsContext } from "../components/BotToolControls";
-import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
 import {
   ComputersUnavailableHint,
@@ -136,12 +128,15 @@ import {
 } from "../components/ComputersUnavailableHint";
 import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { CallCard } from "../components/call/CallCard";
+import { NEW_MESSAGE } from "../components/compose-email-constants";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
+import { InstructionsUpgradeNotice } from "../components/InstructionsUpgradeNotice";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { RecordingPillHost } from "../components/meeting-capture/RecordingPillHost";
+import { PageAgentIntro, pageAgentIntroKind, pageAgentKind } from "../components/PageAgentIntro";
 import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
@@ -152,7 +147,11 @@ import { ROOT_CONTAINER } from "../components/sidebar-folders/drop-target";
 import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNotice";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
-import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
+import {
+  TeachCancelButton,
+  TeachRecordingChrome,
+  TeachStopButton,
+} from "../components/teach/TeachRecordingChrome";
 import { focusQuestionOpen } from "../components/tour/connect-cards";
 import { tourInProgress } from "../components/tour/TourPopover";
 import { useAgentApp } from "../lib/agent-app";
@@ -192,12 +191,15 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
-import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
-import { delegateWaitTarget, pendingDelegateAgents } from "../lib/delegate-wait";
+import { findDataRoomAgent } from "../lib/data-room-agent";
+import { delegateWaitTarget, pendingDelegateAgents, pendingSentBlocks } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
+import { useDeviceSpeech } from "../lib/device-speech";
 import { setDockedAgentBotId } from "../lib/docked-agent";
-import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
+import { findFinanceAgent } from "../lib/finance-agent";
+import { deleteFolderWithUndo } from "../lib/folder-delete";
 import { findGtmAgent } from "../lib/gtm-agent";
+import { useHexSync } from "../lib/hex/useHexSync";
 import {
   maskCurrencyWhenHidden,
   setHideAmounts,
@@ -206,11 +208,11 @@ import {
 } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
-import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
+import { findInvestorsAgent } from "../lib/investors-agent";
 import { findLegalAgent } from "../lib/legal-agent";
 import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
-import { createAgentSendWatch } from "../lib/outbox";
+import { createAgentSendWatch, UNDO_SEND_MS } from "../lib/outbox";
 import {
   isUnclaimedFileDrag,
   readFileAsBase64,
@@ -218,23 +220,26 @@ import {
 } from "../lib/pending-attachments";
 import { markAfterPaint, markOnce } from "../lib/performance";
 import { getResponseStreamingEnabled, subscribeResponseStreaming } from "../lib/response-streaming";
+import { retryPayload } from "../lib/retry-payload";
 import type { Panel, RightPanelState } from "../lib/right-panel-state";
 import {
   readRightPanelState,
   rightPanelStorageKey,
   writeRightPanelState,
 } from "../lib/right-panel-state";
-import {
-  needsAnswerLabel,
-  rosterStatusChanged,
-  waitingForApprovalLabel,
-} from "../lib/roster-status";
+import { rosterStatusChanged, waitingForApprovalLabel } from "../lib/roster-status";
 import type { MissingBotSeen } from "../lib/route-bot";
 import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
+import { findScannerAgent } from "../lib/scanner-agent";
 import type { DataRoomRef } from "../lib/send-to-agent";
-import { planSendToAgent, sendTargets } from "../lib/send-to-agent";
+import {
+  acceptAttachments,
+  fetchMessageFiles,
+  planSendToAgent,
+  sendTargets,
+} from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
   PANEL_DOCKED_QUERY,
@@ -244,6 +249,7 @@ import {
   useDrawerFocus,
   useSidebarDocked,
 } from "../lib/shell-layout";
+import { SIDEBAR_PAGES_CHANGED_EVENT } from "../lib/sidebar-pages-event";
 import { rememberThread } from "../lib/thread-cache";
 import {
   activeThreadRuns,
@@ -269,40 +275,30 @@ import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activ
 import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { useNotificationsOff } from "../lib/use-notifications-off";
+import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
 import { useRememberedMessages } from "../lib/use-remembered-messages";
 import { useRunResumedAt } from "../lib/use-run-resumed-at";
-import { useSidebarGlance } from "../lib/use-sidebar-glance";
+import { useScannerDelivery } from "../lib/use-scanner-delivery";
+import { NOTIFICATIONS_CHANGED_EVENT, useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
 import type { ContextMenuPosition } from "./BotContextMenu";
-import { CompanyPage } from "./Company";
-import { CompanyImportPage } from "./CompanyImport";
-import { ContactsPage } from "./Contacts";
-import { DataRoomPage } from "./DataRoom";
-import { DevinPage } from "./Devin";
-import { FinancePage } from "./Finance";
-import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
-import { GtmPage } from "./Gtm";
 import { InboxPage } from "./Inbox";
-import { IntegrationsPage } from "./Integrations";
-import { InvestorsPage } from "./Investors";
-import { UpdateEditor } from "./investors/UpdateEditor";
-import { LegalPage } from "./Legal";
-import { NotFoundPage } from "./NotFound";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
+  defaultRoutineName,
   draftFromRoutine,
   emptyRoutineDraft,
   RoutineEditor,
   RoutineListHeader,
   RoutineListRow,
   routineNeedsOneShotArm,
+  routineRunAtDate,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import type { PageRemoteUpdate } from "./shell/bot-page-panel";
-import { BotPagePanel } from "./shell/bot-page-panel";
+import type { PageDataUpdate, PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
 import type { PaletteEntry } from "./shell/command-palette";
@@ -312,6 +308,7 @@ import { Composer } from "./shell/composer";
 import { isStalePendingAskError } from "./shell/composer-error";
 import { DelegateWaitNotice } from "./shell/DelegateWaitNotice";
 import {
+  ArchiveBotsDialog,
   ClearConversationDialog,
   DeleteBotDialog,
   DeleteItemDialog,
@@ -322,6 +319,10 @@ import {
   RenameSpaceDialog,
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
+import { GoalLine, GoalNotice, isGoalReply, snapshotWithGoal } from "./shell/goal";
+import { pagePanelFor } from "./shell/page-agent-panels";
+import type { AppPage } from "./shell/pages";
+import { matchPage, pagesOnOffer } from "./shell/pages";
 import { TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -329,14 +330,80 @@ import {
   SpaceSidebar,
   sidebarGroupsForSpaces,
   spaceHoldingChat,
+  spaceSwitchTargets,
 } from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
+import { usePageAgent } from "./shell/use-page-agent";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
   import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
 );
 const BoardPage = lazy(() => import("./Board").then((module) => ({ default: module.BoardPage })));
+const BrexPage = lazy(() =>
+  import("../components/brex/BrexPage").then((module) => ({ default: module.BrexPage })),
+);
+const BotPageView = lazy(() =>
+  import("./BotPageView").then((module) => ({ default: module.BotPageView })),
+);
+const CalendarPage = lazy(() =>
+  import("./Calendar").then((module) => ({ default: module.CalendarPage })),
+);
+const CompanyPage = lazy(() =>
+  import("./Company").then((module) => ({ default: module.CompanyPage })),
+);
+const CompanyImportPage = lazy(() =>
+  import("./CompanyImport").then((module) => ({ default: module.CompanyImportPage })),
+);
+const ContactDetailPage = lazy(() =>
+  import("./ContactDetail").then((module) => ({ default: module.ContactDetailPage })),
+);
+const ContactsPage = lazy(() =>
+  import("./Contacts").then((module) => ({ default: module.ContactsPage })),
+);
+const DataRoomPage = lazy(() =>
+  import("./DataRoom").then((module) => ({ default: module.DataRoomPage })),
+);
+const DevinPage = lazy(() => import("./Devin").then((module) => ({ default: module.DevinPage })));
+const FinancePage = lazy(() =>
+  import("./Finance").then((module) => ({ default: module.FinancePage })),
+);
+const FundraisingPage = lazy(() =>
+  import("./Fundraising").then((module) => ({ default: module.FundraisingPage })),
+);
+// cap table area: the page and its tabs.
+const CapTablePage = lazy(() =>
+  import("./cap-table/CapTablePage").then((module) => ({ default: module.CapTablePage })),
+);
+const GtmPage = lazy(() => import("./Gtm").then((module) => ({ default: module.GtmPage })));
+const IntegrationsPage = lazy(() =>
+  import("./Integrations").then((module) => ({ default: module.IntegrationsPage })),
+);
+const InvestorsPage = lazy(() =>
+  import("./Investors").then((module) => ({ default: module.InvestorsPage })),
+);
+const UpdateEditor = lazy(() =>
+  import("./investors/UpdateEditor").then((module) => ({ default: module.UpdateEditor })),
+);
+const LegalPage = lazy(() => import("./Legal").then((module) => ({ default: module.LegalPage })));
+const MeetingDetailPage = lazy(() =>
+  import("./MeetingDetail").then((module) => ({ default: module.MeetingDetailPage })),
+);
+const MeetingsPage = lazy(() =>
+  import("./Meetings").then((module) => ({ default: module.MeetingsPage })),
+);
+const NotFoundPage = lazy(() =>
+  import("./NotFound").then((module) => ({ default: module.NotFoundPage })),
+);
+const ScannerPage = lazy(() =>
+  import("./Scanner").then((module) => ({ default: module.ScannerPage })),
+);
+const ComposeEmail = lazy(() =>
+  import("../components/ComposeEmail").then((module) => ({ default: module.ComposeEmail })),
+);
+const BotPagePanel = lazy(() =>
+  import("./shell/bot-page-panel").then((module) => ({ default: module.BotPagePanel })),
+);
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -352,6 +419,27 @@ const PeerMessagesOverlay = lazyOverlay(() =>
 
 export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
+
+/**
+ * Submits an approval answer, then refreshes the thread. The refresh never fails a committed
+ * answer; when the answer itself fails, one background refresh shows a card the server had
+ * already settled, and the original error still reaches the card.
+ */
+export async function answerThenRefresh({
+  answer,
+  refresh,
+}: {
+  answer: () => Promise<unknown>;
+  refresh: () => Promise<unknown> | undefined;
+}) {
+  try {
+    await answer();
+  } catch (err) {
+    void Promise.resolve(refresh()).catch(() => undefined);
+    throw err;
+  }
+  await Promise.resolve(refresh()).catch(() => undefined);
+}
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
 /**
@@ -471,14 +559,49 @@ type SearchLink = { id: string; label: string; detail?: string };
 
 const maskOptional = (text: string | null) => (text ? maskCurrencyWhenHidden(text) : null);
 
+/**
+ * What one palette search loads once and reuses for the searches that follow: the folder list behind
+ * a document's folder line, and the contacts. `null` until first asked for, and again after a failure.
+ */
+export type PaletteLookupCache = {
+  folders: { current: Promise<Awaited<ReturnType<typeof rpc.dataRoom.folders>>> | null };
+  contacts: { current: Promise<Awaited<ReturnType<typeof rpc.contacts.list>>> | null };
+};
+
+export function createPaletteLookupCache(): PaletteLookupCache {
+  return { folders: { current: null }, contacts: { current: null } };
+}
+
+/** Opening the palette or switching space starts these lookups over. */
+export function resetPaletteLookups(cache: PaletteLookupCache) {
+  cache.folders.current = null;
+  cache.contacts.current = null;
+}
+
+function paletteFolders(cache: PaletteLookupCache) {
+  // Only for the folder line; a failure just leaves it off, and the next open tries again.
+  cache.folders.current ??= rpc.dataRoom.folders().catch(() => {
+    cache.folders.current = null;
+    return [];
+  });
+  return cache.folders.current;
+}
+
+function paletteContacts(cache: PaletteLookupCache) {
+  cache.contacts.current ??= rpc.contacts.list({}).catch(() => {
+    cache.contacts.current = null;
+    return [];
+  });
+  return cache.contacts.current;
+}
+
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
-export async function findDocumentsAndArtifacts(query: string) {
+export async function findDocumentsAndArtifacts(
+  query: string,
+  lookups: PaletteLookupCache = createPaletteLookupCache(),
+) {
   const [documents, artifacts] = await Promise.all([
-    Promise.all([
-      rpc.dataRoom.search({ query, limit: 6 }),
-      // Only for the folder line; a failure just leaves it off.
-      rpc.dataRoom.folders().catch(() => []),
-    ])
+    Promise.all([rpc.dataRoom.search({ query, limit: 6 }), paletteFolders(lookups)])
       .then(([result, folders]): SearchLink[] => {
         const byId = new Map(folders.map((folder) => [folder.id, folder]));
         const folderPath = (id: string | null) => {
@@ -503,22 +626,19 @@ export async function findDocumentsAndArtifacts(query: string) {
         }));
       })
       .catch((): SearchLink[] => []),
-    // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+    // The server searches every artifact in the space, newest first; one more than is listed, so
+    // the palette knows whether Artifacts holds more.
     rpc.artifacts
-      .listSpace({ limit: 60 })
+      .listSpace({ q: query, limit: 6 })
       .then((result): SearchLink[] =>
-        result.items
-          .filter((item) => matchesArtifactQuery(item, query))
-          // One more than is listed, to know whether Artifacts holds more.
-          .slice(0, 6)
-          .map((item) => ({
-            id: item.id,
-            label: artifactDisplayName(item.name),
-            // A description hit shows why the artifact matched.
-            detail: item.name.toLowerCase().includes(query.toLowerCase())
-              ? undefined
-              : (maskOptional(item.description ?? null) ?? undefined),
-          })),
+        result.items.slice(0, 6).map((item) => ({
+          id: item.id,
+          label: artifactDisplayName(item.name),
+          // A description hit shows why the artifact matched.
+          detail: item.name.toLowerCase().includes(query.toLowerCase())
+            ? undefined
+            : (maskOptional(item.description ?? null) ?? undefined),
+        })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -526,10 +646,12 @@ export async function findDocumentsAndArtifacts(query: string) {
 }
 
 /** Contacts whose name, email or organization contain the text. */
-function findContacts(query: string): Promise<SearchLink[]> {
+export function findContacts(
+  query: string,
+  lookups: PaletteLookupCache = createPaletteLookupCache(),
+): Promise<SearchLink[]> {
   const needle = query.toLowerCase();
-  return rpc.contacts
-    .list({})
+  return paletteContacts(lookups)
     .then((list) =>
       list
         .filter((c) =>
@@ -542,7 +664,7 @@ function findContacts(query: string): Promise<SearchLink[]> {
         )
         .slice(0, 5)
         .map((c) => ({
-          id: c.name,
+          id: c.id,
           label: c.name,
           // The field that matched, so a hit on "halcyon" shows why; else the usual second line.
           detail:
@@ -555,42 +677,93 @@ function findContacts(query: string): Promise<SearchLink[]> {
     .catch((): SearchLink[] => []);
 }
 
-/** Chats with a matching message, once per chat: the newest match and its date. */
-function findChats(query: string) {
-  return rpc.search
-    .query({ q: query })
-    .then(({ hits }) => {
-      const seen = new Set<string>();
-      const entries: PaletteEntry[] = [];
-      for (const hit of hits) {
-        const chatId = hit.groupId ?? hit.botId;
-        const name = hit.groupName ?? hit.botName ?? hit.title;
-        if (!chatId || seen.has(chatId)) continue;
-        seen.add(chatId);
-        const params = new URLSearchParams();
-        if (hit.messageId) params.set("m", hit.messageId);
-        if (hit.routineId) params.set("routine", hit.routineId);
-        const search = params.toString();
-        const isChatText = hit.kind === "conversation" || hit.kind === "message";
-        entries.push({
-          id: `${hit.groupId ? `/app/g/${chatId}` : `/app/${chatId}`}${search ? `?${search}` : ""}`,
-          label: name,
-          detail: isChatText ? plainSnippet(hit.snippet) : hit.title,
-          date: hit.createdAt
-            ? new Date(hit.createdAt).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })
-            : undefined,
-        });
+/**
+ * Chats with a matching message, once per chat: the newest match and its date. Routine hits are
+ * listed apart, once per routine. A group or a bot found only by its description is not a chat hit:
+ * Groups and Bots list those already.
+ */
+export function findChats(query: string) {
+  const needle = query.toLowerCase();
+  return rpc.search.query({ q: query }).then(({ hits }) => {
+    const seen = new Set<string>();
+    const entries: PaletteEntry[] = [];
+    const routines: PaletteEntry[] = [];
+    for (const hit of hits) {
+      if (hit.routineId && hit.botId) {
+        const id = `/app/${hit.botId}?routine=${hit.routineId}`;
+        if (!routines.some((entry) => entry.id === id)) {
+          routines.push({ id, label: hit.title, detail: hit.botName ?? undefined });
+        }
+        continue;
       }
-      return entries.slice(0, 5);
-    })
-    .catch((): PaletteEntry[] => []);
+      if (hit.kind === "conversation") {
+        if (hit.groupId || !hit.botName?.toLowerCase().includes(needle)) continue;
+      }
+      const chatId = hit.groupId ?? hit.botId;
+      const name = hit.groupName ?? hit.botName ?? hit.title;
+      if (!chatId || seen.has(chatId)) continue;
+      seen.add(chatId);
+      const params = new URLSearchParams();
+      if (hit.messageId) params.set("m", hit.messageId);
+      if (hit.routineId) params.set("routine", hit.routineId);
+      const search = params.toString();
+      const isChatText = hit.kind === "conversation" || hit.kind === "message";
+      entries.push({
+        id: `${hit.groupId ? `/app/g/${chatId}` : `/app/${chatId}`}${search ? `?${search}` : ""}`,
+        label: name,
+        detail: isChatText ? plainSnippet(hit.snippet) : hit.title,
+        date: hit.createdAt
+          ? new Date(hit.createdAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })
+          : undefined,
+      });
+    }
+    return { chats: entries.slice(0, 5), routines: routines.slice(0, 5) };
+  });
+}
+
+export type ScratchpadFocusRequest = { botId: string; itemId: string; nonce: number };
+
+/** One open-work row to bring into view; `consume` forgets it once the row has been shown. */
+export function useScratchpadFocus() {
+  const [focus, setFocus] = useState<ScratchpadFocusRequest | null>(null);
+  const nonce = useRef(0);
+  return {
+    focus,
+    request(botId: string, itemId: string) {
+      nonce.current += 1;
+      setFocus({ botId, itemId, nonce: nonce.current });
+    },
+    clear() {
+      setFocus(null);
+    },
+    consume() {
+      setFocus(null);
+    },
+  };
+}
+
+export function catchBotMenuRequest<T>(request: Promise<T>, chatId: string): Promise<void> {
+  return request
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      enqueueNotificationToast({ id: `chat-menu-${chatId}`, title: errorText(error) });
+    });
+}
+
+/** One boundary and loading state for every page, so a page that fails to load leaves the sidebar usable. */
+function PageFrame({ children }: { children: ReactNode }) {
+  return (
+    <ErrorBoundary fallback={<SectionLoadFailed />}>
+      <Suspense fallback={<RowsSkeleton className="p-6" />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export function ShellPage() {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const { botId, groupId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -601,6 +774,8 @@ export function ShellPage() {
   searchParamsRef.current = searchParams;
   const session = authClient.useSession();
   const userId = session.data?.user.id;
+  // Pulls Hex meetings in the macOS desktop app once the user connected Hex.
+  useHexSync();
   const [groups, setGroups] = useState<Group[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
   const sendToAgentTargets = useMemo(() => sendTargets(bots), [bots]);
@@ -618,6 +793,26 @@ export function ShellPage() {
   const savingBotOrderRef = useRef(0);
   const [botSections, setBotSections] = useState<BotSection[]>([]);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [hideUndo, setHideUndo] = useState<{ id: string; name: string } | null>(null);
+  /**
+   * The chat just archived, so the notice can put it back. wasOpen says it was the open chat at
+   * archive time and landedPath is where the archive's own redirect left the view, so Undo only
+   * returns there if the person has not opened something else since. seq names this archive, so
+   * a later notice or a pending restore is never confused with another.
+   */
+  const [archiveUndo, setArchiveUndo] = useState<{
+    kind: "bot" | "group";
+    id: string;
+    name: string;
+    wasOpen: boolean;
+    landedPath: string;
+    seq: number;
+    /** A restore is in flight, so the notice stays until it settles. */
+    pending?: boolean;
+    error?: string;
+  } | null>(null);
+  /** Only the latest archive may show its notice; a slower earlier one must not replace it. */
+  const archiveSequence = useRef(0);
   const [folderUndo, setFolderUndo] = useState<SidebarSnapshot | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [archivedBots, setArchivedBots] = useState<Bot[]>([]);
@@ -640,32 +835,10 @@ export function ShellPage() {
   const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(true);
   // With no Inbox agent the panel only holds a Create button, so it stays closed until asked for.
   const [showEmptyInboxAgent, setShowEmptyInboxAgent] = useState(false);
-  const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
-  const [inboxAgentError, setInboxAgentError] = useState("");
-  // The Finance agent panel starts closed on every visit; "Ask agent" opens it.
-  const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
-  const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
-  const [financeAgentError, setFinanceAgentError] = useState("");
-  const [dataRoomAgentOpen, setDataRoomAgentOpen] = useState(false);
-  const [creatingDataRoomAgent, setCreatingDataRoomAgent] = useState(false);
-  const [dataRoomAgentError, setDataRoomAgentError] = useState("");
-  const [legalAgentOpen, setLegalAgentOpen] = useState(false);
-  const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
-  const [legalAgentError, setLegalAgentError] = useState("");
-  const [gtmAgentOpen, setGtmAgentOpen] = useState(false);
-  const [creatingGtmAgent, setCreatingGtmAgent] = useState(false);
-  const [gtmAgentError, setGtmAgentError] = useState("");
-  const [companyAgentOpen, setCompanyAgentOpen] = useState(false);
-  const [creatingCompanyAgents, setCreatingCompanyAgents] = useState({
-    agent: false,
-    importer: false,
-  });
-  const [companyAgentErrors, setCompanyAgentErrors] = useState({ agent: "", importer: "" });
-  // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
-  const [legalConsentMissing, setLegalConsentMissing] = useState(false);
-  const [devinAgentOpen, setDevinAgentOpen] = useState(false);
-  const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
-  const [devinAgentError, setDevinAgentError] = useState("");
+  // The Legal page reports why its agent must wait: no model, or its Allow. Its Allow is the only one.
+  const [legalConsentWaitsFor, setLegalConsentWaitsFor] = useState<"consent" | "model" | null>(
+    null,
+  );
   /** The connector's Devin agent: undefined until asked, null for everyone else. */
   const [devinAgentId, setDevinAgentId] = useState<string | null | undefined>(undefined);
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
@@ -673,12 +846,8 @@ export function ShellPage() {
   const [devinPageKey, setDevinPageKey] = useState(0);
   // The Carta agent panel starts closed, like the other pages' agents, and remembers an explicit open.
   const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(true);
-  const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
-  const [cartaAgentError, setCartaAgentError] = useState("");
-  const [creatingInvestorsAgent, setCreatingInvestorsAgent] = useState(false);
-  const [investorsAgentError, setInvestorsAgentError] = useState("");
   useEffect(() => {
     const phone = !wideScreen();
     setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
@@ -711,6 +880,8 @@ export function ShellPage() {
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // The server's answer to a bare /goal or /goal clear: a status line, not a failure.
+  const [goalNotice, setGoalNotice] = useState<string | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   // A message that @mentioned a group went to that group; the person stays where they wrote it.
   const [forwarded, setForwarded] = useState<{ groupId: string; threadKey: string } | null>(null);
@@ -728,6 +899,7 @@ export function ShellPage() {
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
   const [pageBotId, setPageBotId] = useState<string | null>(null);
   const [pageRemote, setPageRemote] = useState<PageRemoteUpdate | null>(null);
+  const [pageDataRemote, setPageDataRemote] = useState<PageDataUpdate | null>(null);
   const [pinsSeq, setPinsSeq] = useState(0);
   const [restoredPanelKey, setRestoredPanelKey] = useState<string | null>(null);
   const panelStorageKeyRef = useRef<string | null>(null);
@@ -761,6 +933,7 @@ export function ShellPage() {
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
   // Bumped when a run ends, so the Skills settings list picks up a skill the agent just created.
   const [skillsRefreshKey, setSkillsRefreshKey] = useState(0);
+  const scratchpadFocus = useScratchpadFocus();
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<
     Array<{
@@ -872,9 +1045,26 @@ export function ShellPage() {
   const [memoryProviderConfig, setMemoryProviderConfig] = useState<
     SpaceMemoryConfig | null | undefined
   >(undefined);
+  const [memoryProviderConfigLoadFailed, setMemoryProviderConfigLoadFailed] = useState(false);
   const memoryProviderConfigRevision = useRef(0);
+  const retryMemoryProviderConfigLoad = useCallback(async () => {
+    const revision = memoryProviderConfigRevision.current;
+    try {
+      const providerConfig = await rpc.memory.providerConfig();
+      if (memoryProviderConfigRevision.current === revision) {
+        setMemoryProviderConfig(providerConfig);
+        setMemoryProviderConfigLoadFailed(false);
+      }
+    } catch {
+      if (memoryProviderConfigRevision.current === revision) {
+        setMemoryProviderConfig(undefined);
+        setMemoryProviderConfigLoadFailed(true);
+      }
+    }
+  }, []);
   const call = useCallSession();
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  const deviceSpeech = useDeviceSpeech();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [dismissedRunErrorIds, setDismissedRunErrorIds] =
     useState<ReadonlySet<string>>(readSeenRunErrorIds);
@@ -916,8 +1106,12 @@ export function ShellPage() {
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [pickerInfoTopic, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  // Folders and contacts load once per open and space, not once per keystroke.
+  const paletteLookupsRef = useRef<PaletteLookupCache>(createPaletteLookupCache());
   // The bot just made with "New bot", whose settings open with its name selected.
   const [namingBotId, setNamingBotId] = useState<string | null>(null);
+  // What the user chose for each bot's More settings toggle; survives the panel being rebuilt.
+  const [manualFold, setManualFold] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const desktop = window.matchMedia(SIDEBAR_DOCKED_QUERY);
@@ -947,6 +1141,7 @@ export function ShellPage() {
     botMenuAnchor.current = null;
   }, [botMenu]);
   const [deleteTarget, setDeleteTarget] = useState<Bot | null>(null);
+  const [archiveEmailTarget, setArchiveEmailTarget] = useState<string[] | null>(null);
   const [deleteGroupTarget, setDeleteGroupTarget] = useState<Group | null>(null);
   const [deleteSpaceTarget, setDeleteSpaceTarget] = useState<Space | null>(null);
   const [renameSpaceTarget, setRenameSpaceTarget] = useState<Space | null>(null);
@@ -991,6 +1186,13 @@ export function ShellPage() {
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
   const firstQuestionOpen = focusQuestionOpen(snapshot?.messages ?? []);
   const activeSpaceId = bootstrapMe?.spaceId;
+  useEffect(() => {
+    if (commandPaletteOpen) resetPaletteLookups(paletteLookupsRef.current);
+  }, [commandPaletteOpen]);
+  // Another space holds other folders and contacts.
+  useEffect(() => {
+    resetPaletteLookups(paletteLookupsRef.current);
+  }, [activeSpaceId]);
   const agentAppFor = useAgentApp(
     userId,
     spaces.length > 0 ? spaces.map((space) => space.id) : activeSpaceId ? [activeSpaceId] : [],
@@ -998,8 +1200,8 @@ export function ShellPage() {
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
   const notificationsOff = useNotificationsOff(panel === "settings");
-  const showComputerRecoveryHint =
-    computersAreUnavailable(bootstrapMe?.sandboxProvider) || keepComputerRecovery;
+  const computersOff = computersAreUnavailable(bootstrapMe?.sandboxProvider);
+  const showComputerRecoveryHint = computersOff || keepComputerRecovery;
   const releaseComputerRecovery = useCallback(() => {
     window.clearTimeout(recoveryHoldTimer.current);
     recoveryHoldTimer.current = undefined;
@@ -1018,6 +1220,9 @@ export function ShellPage() {
   }, [panel, releaseComputerRecovery]);
   useEffect(() => () => window.clearTimeout(recoveryHoldTimer.current), []);
   const [routineDraft, setRoutineDraft] = useState<RoutineDraftState>(emptyRoutineDraft());
+  const [routineTaughtSkills, setRoutineTaughtSkills] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [routineWebhookSecret, setRoutineWebhookSecret] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [deleteRoutineTarget, setDeleteRoutineTarget] = useState<Routine | null>(null);
@@ -1125,60 +1330,35 @@ export function ShellPage() {
   const autoSpokenBotId = useRef<string | null>(null);
 
   const inGroup = Boolean(groupId);
-  const inboxMode = useMatch("/app/inbox") != null;
-  const integrationsMode = useMatch("/app/integrations/*") != null;
-  const financeMode = useMatch("/app/finance/*") != null;
-  const dataRoomMode = useMatch("/app/data-room") != null;
-  const legalMode = useMatch("/app/legal") != null;
-  const gtmMode = useMatch("/app/gtm") != null;
-  const companyMode = useMatch("/app/company/*") != null;
+  const pageKey = matchPage(pathname)?.key;
+  const inboxMode = pageKey === "inbox";
+  const integrationsMode = pageKey === "integrations";
+  const financeMode = pageKey === "finance";
+  const brexMode = pageKey === "brex";
+  const dataRoomMode = pageKey === "data-room";
+  const scannerMode = pageKey === "scanner";
+  useScannerDelivery(userId, bootstrapMe?.spaceId);
+  const legalMode = pageKey === "legal";
+  const gtmMode = pageKey === "gtm";
+  const companyMode = pageKey === "company";
   const companyImportMode = useMatch("/app/company/import") != null;
-  const devinMode = useMatch("/app/devin") != null;
-  const companyRole = companyImportMode ? "importer" : "agent";
-  const creatingCompanyAgent = creatingCompanyAgents[companyRole];
-  const companyAgentError = companyAgentErrors[companyRole];
-  const artifactsMode = useMatch("/app/artifacts/*") != null;
+  const devinMode = pageKey === "devin";
+  const artifactsMode = pageKey === "artifacts";
   // The route exists only while bootstrap enables the board (see App).
-  const boardMode = useMatch("/app/board") != null;
-  const investorsMode = useMatch("/app/investors/*") != null;
+  const boardMode = pageKey === "board";
+  const investorsMode = pageKey === "investors";
   const investorUpdateMatch = useMatch("/app/investors/updates/:id");
-  const fundraisingMode = useMatch("/app/fundraising") != null;
-  const contactsMode = useMatch("/app/contacts") != null;
+  const capTableMode = pageKey === "cap-table";
+  const fundraisingMode = pageKey === "fundraising";
+  const calendarMode = pageKey === "calendar";
+  const meetingMatch = useMatch("/app/meetings/:meetingId");
+  const meetingsMode = pageKey === "meetings";
+  const contactMatch = useMatch("/app/contacts/:contactId");
+  const contactsMode = pageKey === "contacts";
+  const botPageMatch = useMatch("/app/pages/:botId/:pageId");
   // Inbox, Finance, Legal, Data room, Investors and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Investors keep their agent in a side panel.
-  const pageMode =
-    inboxMode ||
-    financeMode ||
-    legalMode ||
-    gtmMode ||
-    companyMode ||
-    devinMode ||
-    investorsMode ||
-    fundraisingMode ||
-    integrationsMode ||
-    dataRoomMode ||
-    artifactsMode ||
-    contactsMode ||
-    boardMode;
-  useEffect(() => {
-    if (!financeMode) setFinanceAgentOpen(false);
-  }, [financeMode]);
-  useEffect(() => {
-    if (!dataRoomMode) setDataRoomAgentOpen(false);
-  }, [dataRoomMode]);
-  useEffect(() => {
-    if (!legalMode) setLegalAgentOpen(false);
-  }, [legalMode]);
-  useEffect(() => {
-    if (!gtmMode) setGtmAgentOpen(false);
-  }, [gtmMode]);
-  useEffect(() => {
-    setCompanyAgentOpen(false);
-    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
-  }, [companyMode, companyRole]);
-  useEffect(() => {
-    if (!devinMode) setDevinAgentOpen(false);
-  }, [devinMode]);
+  const pageMode = pageKey !== undefined || botPageMatch != null;
   // Pages that name the workspace beside their title show it only when the user has several.
   const pageSpaceName =
     spaces.length > 1 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name : undefined;
@@ -1191,7 +1371,14 @@ export function ShellPage() {
     namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
+    inGroup ||
+    integrationsMode ||
+    artifactsMode ||
+    contactsMode ||
+    meetingsMode ||
+    calendarMode ||
+    boardMode ||
+    botPageMatch != null
       ? undefined
       : companyMode
         ? findCompanyAgent(bots, userId, companyImportMode)
@@ -1199,17 +1386,19 @@ export function ShellPage() {
           ? findInboxAgent(bots, userId)
           : financeMode
             ? findFinanceAgent(bots, userId)
-            : dataRoomMode
-              ? findDataRoomAgent(bots, userId)
-              : legalMode
-                ? findLegalAgent(bots, userId)
-                : gtmMode
-                  ? findGtmAgent(bots, userId)
-                  : devinMode
-                    ? bots.find((bot) => bot.id === devinAgentId)
-                    : investorsMode || fundraisingMode
-                      ? findInvestorsAgent(bots, userId)
-                      : routeBot.bot;
+            : scannerMode
+              ? findScannerAgent(bots, userId)
+              : dataRoomMode
+                ? findDataRoomAgent(bots, userId)
+                : legalMode
+                  ? findLegalAgent(bots, userId)
+                  : gtmMode
+                    ? findGtmAgent(bots, userId)
+                    : devinMode
+                      ? bots.find((bot) => bot.id === devinAgentId)
+                      : investorsMode || fundraisingMode
+                        ? findInvestorsAgent(bots, userId)
+                        : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
     // The snapshot can still be the previous thread's for a render after the bot opens.
@@ -1253,6 +1442,18 @@ export function ShellPage() {
     [active?.id, groupId, inGroup, pendingAttachments],
   );
   const activeRoutines = !inGroup && routinesBotId === active?.id ? routines : [];
+  const reloadRoutines = (botId: string) =>
+    void rpc.routines
+      .list({ botId })
+      .then((next) => {
+        if (activeBotId.current !== botId) return;
+        setRoutines(next);
+        setRoutinesBotId(botId);
+      })
+      .catch(() => undefined);
+  useRefetchWhileOpen(!inGroup && Boolean(active?.id), () => {
+    if (active?.id) reloadRoutines(active.id);
+  });
   const panelTarget = inGroup ? activeGroup?.id : active?.id;
   const panelStorageKey =
     // A page agent panel is not a saved bot panel: never restore or write one for it.
@@ -1266,6 +1467,8 @@ export function ShellPage() {
   routePageMode.current = pageMode;
   const routeBotId = useRef<string | undefined>(botId);
   routeBotId.current = botId;
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const routeGroupId = useRef<string | undefined>(groupId);
   routeGroupId.current = groupId;
   const activeBotId = useRef<string | undefined>(inGroup ? undefined : active?.id);
@@ -1296,11 +1499,17 @@ export function ShellPage() {
     },
     [updateBotUnread],
   );
+  const markBotsRead = useCallback(
+    async (ids: string[]) => {
+      await Promise.all(ids.map((id) => markBotRead(id)));
+    },
+    [markBotRead],
+  );
   const markBotUnread = useCallback(
-    async (id: string) => {
+    async (id: string, messageId?: string) => {
       manuallyUnread.current.add(id);
       try {
-        await rpc.threads.markUnread({ botId: id });
+        await rpc.threads.markUnread({ botId: id, ...(messageId ? { messageId } : {}) });
       } catch (err) {
         manuallyUnread.current.delete(id);
         throw err;
@@ -1309,6 +1518,28 @@ export function ShellPage() {
     },
     [updateBotUnread],
   );
+
+  // "Mark as unread" on a message: the chat stays unread until reopened, and the next open puts
+  // the New divider at the first reply from that message. The server holds the boundary.
+  const markMessageUnread = (message: ThreadMessage) => {
+    if (groupId) {
+      manuallyUnread.current.add(groupId);
+      rpc.threads
+        .markUnread({ groupId, messageId: message.id })
+        .then(() => {
+          setGroups((current) =>
+            current.map((group) => (group.id === groupId ? { ...group, unread: true } : group)),
+          );
+          // The cached thread carries the old boundary; refresh it so the next open reads the new one.
+          return refreshActiveThread();
+        })
+        .catch(() => manuallyUnread.current.delete(groupId));
+    } else if (active) {
+      void markBotUnread(active.id, message.id)
+        .then(() => refreshActiveThread())
+        .catch(() => undefined);
+    }
+  };
 
   const refreshBots = useCallback(
     async (includeArchived = false, replaceBotOrder = false) => {
@@ -1470,6 +1701,11 @@ export function ShellPage() {
     markOnce("rk:renderer:thread-request-start");
     const epoch = historyEpoch.current;
     const request = ++threadRefreshEpoch.current;
+    const sideRequests = Promise.all([
+      rpc.routines.list({ botId: id }).catch(() => null),
+      rpc.skills.list({ botId: id }).catch(() => null),
+      refreshComputerScreen(id).catch(() => null),
+    ]);
     // Apply threads.get as soon as it returns so stop/takeover status is not held behind
     // routines/skills/screen fetches (progress can advance the cursor meanwhile).
     const snap = await rpc.threads.get({ botId: id }, signal ? { signal } : undefined);
@@ -1497,27 +1733,22 @@ export function ShellPage() {
     ) {
       snapTranscriptToEndAfterFrame();
     }
-    void Promise.all([
-      rpc.routines.list({ botId: id }).catch(() => null),
-      rpc.skills.list({ botId: id }).catch(() => null),
-      refreshComputerScreen(id).catch(() => null),
-    ]).then(([routines, skills]) => {
-      if (
-        activeBotId.current !== id ||
-        epoch !== historyEpoch.current ||
-        request !== threadRefreshEpoch.current
-      ) {
-        return;
-      }
-      if (routines) {
-        setRoutines(routines);
-        setRoutinesBotId(id);
-      }
-      if (skills) {
-        setTaughtSkills(skills);
-        setTaughtSkillsBotId(id);
-      }
-    });
+    const [routines, skills] = await sideRequests;
+    if (
+      activeBotId.current !== id ||
+      epoch !== historyEpoch.current ||
+      request !== threadRefreshEpoch.current
+    ) {
+      return snap;
+    }
+    if (routines) {
+      setRoutines(routines);
+      setRoutinesBotId(id);
+    }
+    if (skills) {
+      setTaughtSkills(skills);
+      setTaughtSkillsBotId(id);
+    }
     return snap;
   }
 
@@ -1589,11 +1820,13 @@ export function ShellPage() {
       .then((providerConfig) => {
         if (!cancelled && memoryProviderConfigRevision.current === providerConfigRevision) {
           setMemoryProviderConfig(providerConfig);
+          setMemoryProviderConfigLoadFailed(false);
         }
       })
       .catch(() => {
         if (!cancelled && memoryProviderConfigRevision.current === providerConfigRevision) {
-          setMemoryProviderConfig(null);
+          setMemoryProviderConfig(undefined);
+          setMemoryProviderConfigLoadFailed(true);
         }
       });
     const appliedAtStart = botsRefreshApplied.current;
@@ -1654,7 +1887,7 @@ export function ShellPage() {
           groupId ?? botId ?? "",
         );
         if (otherSpaceId && selectSpace(otherSpaceId)) {
-          window.location.assign(window.location.pathname);
+          window.location.assign(window.location.pathname + window.location.search);
           return;
         }
         if (groupId) {
@@ -1699,6 +1932,7 @@ export function ShellPage() {
     };
     window.addEventListener("focus", refreshVisibleBots);
     document.addEventListener("visibilitychange", refreshVisibleBots);
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshVisibleBots);
     // Poll skips while a refresh is in flight; focus/visibility and event-driven
     // callers still bump botsRefreshEpoch so only the latest response applies.
     const poll = window.setInterval(() => {
@@ -1711,6 +1945,7 @@ export function ShellPage() {
       window.clearInterval(poll);
       window.removeEventListener("focus", refreshVisibleBots);
       document.removeEventListener("visibilitychange", refreshVisibleBots);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshVisibleBots);
     };
   }, []);
 
@@ -1744,6 +1979,13 @@ export function ShellPage() {
   useEffect(() => {
     if (panel === "routine") refreshAgentSkills();
   }, [panel, refreshAgentSkills]);
+  useEffect(() => {
+    if (panel !== "routine" || !slashBotId) return;
+    void rpc.taughtSkills
+      .list({ botId: slashBotId })
+      .then((list) => setRoutineTaughtSkills(list.map(({ id, name }) => ({ id, name }))))
+      .catch(() => setRoutineTaughtSkills([]));
+  }, [panel, slashBotId]);
 
   useEffect(() => {
     void rpc.voice
@@ -1845,11 +2087,19 @@ export function ShellPage() {
         applyThreadEvent(event, commitSnapshot, commitComputer, snapshotRef, computerRef),
       onEvent: (event, _initial) => {
         if (event.type === "page.updated") {
-          const { revision, updatedBy } = event.payload as PageRemoteUpdate;
+          const { pageId, revision, updatedBy } = event.payload as PageRemoteUpdate;
           setPageBotId(active.id);
-          setPageRemote({ revision, updatedBy, seq: event.seq });
+          setPageRemote({ pageId, revision, updatedBy, seq: event.seq });
+        }
+        if (event.type === "page.data") {
+          const { pageId } = event.payload as { pageId?: string };
+          setPageBotId(active.id);
+          setPageDataRemote({ pageId, seq: event.seq });
         }
         if (event.type === "pins.updated") setPinsSeq(event.seq);
+        if (event.type === "thread.goal.updated") {
+          updateSnapshot((prev) => snapshotWithGoal(prev, event.payload));
+        }
         if (event.type === "thread.cleared") {
           expandedHistoryThread.current = null;
           pinnedAroundRef.current = null;
@@ -1874,10 +2124,22 @@ export function ShellPage() {
         ) {
           void refreshBots().catch(() => undefined);
         }
+        if (
+          event.type === "routine.created" ||
+          event.type === "routine.updated" ||
+          event.type === "routine.fired" ||
+          isRunTerminalEvent(event)
+        ) {
+          reloadRoutines(active.id);
+        }
         if (event.type === "thread.message.created") {
           const blocks = (event.payload.blocks as Array<{ kind?: string }>) ?? [];
           if (blocks.some((block) => block.kind === "child_bot")) {
             void refreshBots().catch(() => undefined);
+          }
+          // An agent-created page is already in the sidebar; the card's message tells it to re-list.
+          if (blocks.some((block) => block.kind === "page")) {
+            window.dispatchEvent(new Event(SIDEBAR_PAGES_CHANGED_EVENT));
           }
         }
         if (
@@ -2066,14 +2328,15 @@ export function ShellPage() {
     document.querySelector("[data-sidebar-current]")?.scrollIntoView?.({ block: "nearest" });
   }, [bootstrapMe?.spaceId]);
 
-  // A bot just made or opened from elsewhere can sit under "+N more"; bring its row into view.
+  // A bot or group just made or opened from elsewhere can sit under "+N more"; bring its row into view.
   // biome-ignore lint/correctness/useExhaustiveDependencies: also when the row first appears
   useEffect(() => {
-    if (!botId) return;
+    const chatId = botId ?? groupId;
+    if (!chatId) return;
     sidebarRef.current
-      ?.querySelector(`[data-roster-bot-id="${CSS.escape(botId)}"]`)
+      ?.querySelector(`[data-roster-chat][data-roster-row="${CSS.escape(chatId)}"]`)
       ?.scrollIntoView?.({ block: "nearest" });
-  }, [botId, listedBots.length]);
+  }, [botId, groupId, listedBots.length, groups.length]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -2198,7 +2461,11 @@ export function ShellPage() {
       const created = await rpc.botSections.add({ name });
       setBotSections((sections) => [...sections, created]);
       setEditingFolderId(created.id);
-    } catch {
+    } catch (error) {
+      enqueueNotificationToast({
+        id: `create-folder-${Date.now()}`,
+        title: errorText(error, t`Could not create folder`),
+      });
       await refreshBots().catch(() => undefined);
     }
   }, [botSections, refreshBots, t]);
@@ -2213,19 +2480,47 @@ export function ShellPage() {
     [changeFolders],
   );
   const deleteFolder = useCallback(
-    async (sectionId: string) => {
-      try {
-        await rpc.botSections.remove({ sectionId });
-      } finally {
-        await refreshBots().catch(() => undefined);
-      }
+    (sectionId: string) => {
+      const folder = botSections.find((section) => section.id === sectionId);
+      if (!folder) return Promise.resolve();
+      const items = [
+        ...botsRef.current.map((bot) => ({ ...bot, kind: "bot" as const })),
+        ...groupsRef.current.map((group) => ({ ...group, kind: "group" as const })),
+      ]
+        .filter((entry) => entry.sectionId === sectionId)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map(({ kind, id }) => ({ kind, id }));
+      return deleteFolderWithUndo({
+        folder,
+        items,
+        api: {
+          remove: rpc.botSections.remove,
+          add: rpc.botSections.add,
+          setCollapsed: rpc.botSections.setCollapsed,
+          move: rpc.sidebar.move,
+        },
+        hide: () => setBotSections((sections) => sections.filter((item) => item.id !== sectionId)),
+        refresh: () => refreshBots(),
+        notify: (title, action) =>
+          enqueueNotificationToast({
+            id: `folder-${Date.now()}`,
+            title,
+            ...(action ? { action, timeout: UNDO_SEND_MS } : {}),
+          }),
+        fail: (error) => setSendError(errorText(error, t`Failed to delete folder`)),
+      });
     },
-    [refreshBots],
+    [botSections, refreshBots, t],
   );
   const autoGroupSidebar = useCallback(async () => {
     try {
       const snapshot = await rpc.sidebar.autoGroup();
-      if (snapshot.placements.length > 0) setFolderUndo(snapshot);
+      if (snapshot.placements.length > 0) {
+        // Only one undo notice may be on screen, so this one replaces any other.
+        setArchiveUndo(null);
+        setHideUndo(null);
+        setFolderUndo(snapshot);
+      }
     } finally {
       await refreshBots(false, true).catch(() => undefined);
     }
@@ -2279,56 +2574,31 @@ export function ShellPage() {
   // App pages that search and the command palette can open (route under /app/).
   const appPages = useMemo(() => {
     const icon = { size: 15, strokeWidth: 1.8, "aria-hidden": true } as const;
-    return [
-      { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
-      { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
-      {
-        id: "legal",
-        label: t`Legal`,
-        keywords: t`contracts, NDA, deadlines`,
-        icon: <Scale {...icon} />,
-      },
-      { id: "gtm", label: t`GTM`, icon: <Megaphone {...icon} /> },
-      // Only once Devin is connected; before that its Integrations card is the way in.
-      ...(glance.devinConnected
-        ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
-        : []),
-      {
-        id: "investors",
-        label: t`Investors`,
-        // Words a founder may type for this page; matched along with the label.
-        keywords: t`cap table, equity, ownership, Carta`,
-        icon: <PieChart {...icon} />,
-      },
-      {
-        id: "fundraising",
-        label: t`Fundraising`,
-        keywords: t`safe, round, raise`,
-        icon: <HandCoins {...icon} />,
-      },
-      { id: "company", label: t`Company`, icon: <Building2 {...icon} /> },
-      { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
-      { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
-      ...(bootstrapMe?.ticketBoardEnabled && glance.hasTickets
-        ? [
-            {
-              id: "board",
-              label: t`Task board`,
-              keywords: t`tasks, tickets`,
-              icon: <SquareKanban {...icon} />,
-            },
-          ]
-        : []),
-      {
-        id: "integrations",
-        label: t`Integrations`,
-        keywords: t`apps, connections`,
-        icon: <LayoutGrid {...icon} />,
-      },
-      { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
-    ];
-  }, [t, bootstrapMe?.ticketBoardEnabled, glance.hasTickets, glance.devinConnected]);
+    const gate = { glance, ticketBoardEnabled: bootstrapMe?.ticketBoardEnabled === true };
+    const entry = (page: AppPage) => {
+      const Icon = page.paletteIcon ?? page.icon;
+      return {
+        id: page.key,
+        label: i18n._(page.label),
+        ...(page.keywords ? { keywords: i18n._(page.keywords) } : {}),
+        icon: <Icon {...icon} />,
+      };
+    };
+    const settings = {
+      id: "settings",
+      label: t`Settings`,
+      keywords: t`theme, dark mode, appearance, notifications, time zone`,
+      icon: <Settings {...icon} />,
+    };
+    return [...pagesOnOffer(gate).map(entry), settings];
+  }, [
+    t,
+    i18n,
+    bootstrapMe?.ticketBoardEnabled,
+    glance.hasTickets,
+    glance.devinConnected,
+    glance.brexConnected,
+  ]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2336,17 +2606,18 @@ export function ShellPage() {
   );
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const [found, contacts, chats] = await Promise.all([
-        findDocumentsAndArtifacts(q),
-        findContacts(q),
-        findChats(q),
+      const [found, contacts, chatResults] = await Promise.all([
+        findDocumentsAndArtifacts(q, paletteLookupsRef.current),
+        findContacts(q, paletteLookupsRef.current),
+        // A failed chat search is shown as one, without losing the other groups or mail search.
+        findChats(q).catch(() => null),
       ]);
       return [
         {
           heading: t`Contacts`,
           icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
-            id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
+            id: `/app/contacts/${encodeURIComponent(c.id)}`,
             label: c.label,
             detail: c.detail,
           })),
@@ -2368,7 +2639,13 @@ export function ShellPage() {
         {
           heading: t`Chats`,
           icon: <MessageSquare size={16} strokeWidth={1.75} />,
-          entries: chats,
+          entries: chatResults?.chats ?? [],
+          failed: !chatResults,
+        },
+        {
+          heading: t`Routines`,
+          icon: <CalendarClock size={16} strokeWidth={1.75} />,
+          entries: chatResults?.routines ?? [],
         },
         {
           heading: t`Artifacts`,
@@ -2410,6 +2687,26 @@ export function ShellPage() {
     ],
     [paletteBots],
   );
+
+  // Settings tabs found only by typing; Computer and Connections are left out (see Integrations).
+  const settingsJumps = (
+    [
+      { label: t`Model settings`, keywords: t`models, providers, API key`, section: "models" },
+      { label: t`Voice settings`, keywords: t`voice, speech`, section: "voice" },
+      { label: t`Memory settings`, keywords: t`memory`, section: "memory" },
+      { label: t`Privacy and approvals`, keywords: t`privacy, approvals`, section: "privacy" },
+      ...(bootstrapMe?.billingEnabled === true
+        ? [{ label: t`Billing`, section: "billing" as const }]
+        : []),
+    ] satisfies { label: string; keywords?: string; section: SettingsSection }[]
+  ).map(({ label, keywords, section }) => ({
+    label,
+    keywords,
+    run: () => {
+      setMobileSidebarOpen(false);
+      openSettings(section);
+    },
+  }));
 
   function openSearchResult(path: string) {
     setMobileSidebarOpen(false);
@@ -2535,8 +2832,6 @@ export function ShellPage() {
         setRoutineWebhookSecret(null);
         setEditingRoutine(routine);
         setPanel("routine");
-      } else {
-        setPanel("computer");
       }
       const next = new URLSearchParams(searchParams);
       next.delete("routine");
@@ -2605,12 +2900,9 @@ export function ShellPage() {
   }, []);
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
-  const waitingOnApproval = Boolean(
-    activeSnapshot?.delegatePending?.length ||
-      (answerableAskMessageId &&
-        activeSnapshot?.messages
-          .find((message) => message.id === answerableAskMessageId)
-          ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block))),
+  const ownerOnlyAskMessageIds = useMemo(
+    () => ownerOnlyCredentialAskMessageIds(activeSnapshot, userId),
+    [activeSnapshot, userId],
   );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
@@ -2639,6 +2931,10 @@ export function ShellPage() {
         includePeerReceipts: true,
         collapseHandoffs: true,
       }),
+    [activeSnapshot?.messages],
+  );
+  const transcriptDelegateStates = useMemo(
+    () => pendingSentBlocks(activeSnapshot?.messages ?? [], Date.now()),
     [activeSnapshot?.messages],
   );
   const transcriptArtifactTarget = useMemo<ArtifactTarget>(
@@ -2900,22 +3196,28 @@ export function ShellPage() {
         message.blocks.some((block) => block.kind === "ask" && block.mail?.tool === "mail_send")
       )
         agentSendWatch.current.sendApproved();
-      await rpc.threads.answer({
-        ...(groupId ? { groupId } : { botId: botId! }),
-        runId: message.runId ?? "",
-        messageId: message.id,
-        answer: text,
-        ...(username ? { username } : {}),
-        ...(mail ? { mail } : {}),
+      const refresh = () => {
+        if (groupId && activeGroupId.current === groupId) {
+          return refreshGroupThreadRef.current(groupId);
+        }
+        if (botId && activeBotId.current === botId) return refreshThreadRef.current(botId);
+      };
+      await answerThenRefresh({
+        answer: async () => {
+          await rpc.threads.answer({
+            ...(groupId ? { groupId } : { botId: botId! }),
+            runId: message.runId ?? "",
+            messageId: message.id,
+            answer: text,
+            ...(username ? { username } : {}),
+            ...(mail ? { mail } : {}),
+          });
+          dismissApprovalToasts(
+            groupId ? { href: `/app/g/${groupId}` } : { href: `/app/${botId}`, botId },
+          );
+        },
+        refresh,
       });
-      dismissApprovalToasts(
-        groupId ? { href: `/app/g/${groupId}` } : { href: `/app/${botId}`, botId },
-      );
-      if (groupId && activeGroupId.current === groupId) {
-        await refreshGroupThreadRef.current(groupId);
-      } else if (botId && activeBotId.current === botId) {
-        await refreshThreadRef.current(botId);
-      }
     },
     [],
   );
@@ -2960,7 +3262,37 @@ export function ShellPage() {
           setComposerDraft(recovered.draft);
         });
       },
+      clearConversation: () => {
+        const groupId = activeGroupId.current;
+        const group = groupId ? groupsRef.current.find((item) => item.id === groupId) : undefined;
+        const bot = botsRef.current.find((item) => item.id === activeBotId.current);
+        if (group) setClearTarget({ kind: "group", chat: group });
+        else if (bot) setClearTarget({ kind: "bot", chat: bot });
+      },
+      openApprovalSettings: () => openSettings("privacy"),
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
+      canSend: (botId) => {
+        const bot = botsRef.current.find((item) => item.id === botId);
+        return Boolean(bot) && !bot?.disabledBuiltinTools.includes("mail_send");
+      },
+      sendDraft: async (message) => {
+        const botId = activeBotId.current;
+        const groupId = activeGroupId.current;
+        if (!botId && !groupId) return;
+        const result = await rpc.threads.sendDraft({
+          ...(groupId ? { groupId } : { botId: botId! }),
+          runId: message.runId ?? "",
+          messageId: message.id,
+        });
+        if (result.status !== "sent" && result.status !== "unknown") {
+          throw new Error(t`Could not submit this answer`);
+        }
+        if (groupId && activeGroupId.current === groupId) {
+          await refreshGroupThreadRef.current(groupId);
+        } else if (botId && activeBotId.current === botId) {
+          await refreshThreadRef.current(botId);
+        }
+      },
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
         if (!bot) return;
@@ -2999,50 +3331,66 @@ export function ShellPage() {
     { botId: inGroup ? undefined : active?.id, groupId },
     useCallback((error: unknown) => setSendError(errorText(error, t`Could not remember`)), [t]),
   );
+  const pendingAttachmentsRef = useRef(pendingAttachments);
+  pendingAttachmentsRef.current = pendingAttachments;
+  const pendingItemsRef = useRef(pendingItems);
+  pendingItemsRef.current = pendingItems;
   const onAttachmentPick = useCallback(
-    (files: ArrayLike<File> | null, targetThreadKey?: string) => {
+    (files: ArrayLike<File> | null, targetThreadKey?: string, priorSkipped: string[] = []) => {
       const threadKey = targetThreadKey ?? activeGroupId.current ?? activeBotId.current;
-      if (!threadKey || !files?.length) return false;
-      const existing = attachmentsForThread(pendingAttachments, threadKey);
-      const next: PendingAttachment[] = [];
-      const skipped: string[] = [];
-      for (const file of Array.from(files)) {
-        if (existing.length + next.length >= ATTACHMENT_MAX_COUNT) {
-          skipped.push(t`${file.name} (max ${ATTACHMENT_MAX_COUNT} attachments)`);
-          continue;
-        }
-        if (file.size > ATTACHMENT_MAX_BYTES) {
-          skipped.push(t`${file.name} (over 10 MB)`);
-          continue;
-        }
-        const mimeType = inferAttachmentMimeType(file.name, file.type);
-        if (!mimeType) {
-          skipped.push(file.name);
-          continue;
-        }
-        next.push({
-          id: `${file.name}-${file.size}-${file.lastModified}-${next.length}`,
-          threadKey,
-          file,
-          previewUrl: mimeType.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-        });
-      }
+      if (!threadKey || (!files?.length && !priorSkipped.length)) return false;
+      // Read the attachments as they are now: a forward finishes long after it started.
+      const existing = attachmentsForThread(pendingAttachmentsRef.current, threadKey);
+      const { accepted, skipped } = acceptAttachments(existing.length, files ?? [], {
+        count: (name) => t`${name} (max ${ATTACHMENT_MAX_COUNT} attachments)`,
+        size: (name) => t`${name} (over 10 MB)`,
+      });
+      const next: PendingAttachment[] = accepted.map((file, index) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+        threadKey,
+        file,
+        previewUrl: inferAttachmentMimeType(file.name, file.type)?.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined,
+      }));
       if (next.length) setPendingAttachments((current) => [...current, ...next]);
-      setAttachmentNotice(skipped.length ? t`Skipped ${skipped.join(", ")}` : null);
+      const notSent = [...priorSkipped, ...skipped];
+      setAttachmentNotice(notSent.length ? t`Skipped ${notSent.join(", ")}` : null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return next.length > 0;
     },
-    [pendingAttachments, t],
+    [t],
   );
   const removeAttachment = useCallback((attachment: PendingAttachment) => {
     revokePendingAttachmentPreviews([attachment]);
     setPendingAttachments((current) => current.filter((item) => item.id !== attachment.id));
   }, []);
+  // The stored file is fetched through the same scoped artifact read the Download button uses,
+  // then attached to the other agent's composer as the owner's own upload.
+  const sendMessageFilesToAgent = useCallback(
+    async (message: ThreadMessage, agent: SendTarget) => {
+      const bot = botsRef.current.find((candidate) => candidate.id === agent.id);
+      if (!bot) return;
+      // Read the files first and stay in this chat: opening the other one early would let the
+      // owner send before the files arrive.
+      const { files, failed } = await fetchMessageFiles(transcriptArtifactTarget, message.blocks);
+      keepNoticeFor.current = bot.id;
+      navigate(`/app/${bot.id}`);
+      onAttachmentPick(files, bot.id, failed);
+    },
+    [navigate, onAttachmentPick, transcriptArtifactTarget],
+  );
   const sendFilesToAgent = useCallback(
     async (items: DataRoomApiItem[], agent: SendTarget) => {
       const bot = botsRef.current.find((candidate) => candidate.id === agent.id);
       if (!bot) return;
-      const { refs, copies } = planSendToAgent(bot, items);
+      const held = pendingItemsRef.current
+        .filter((ref) => ref.threadKey === bot.id)
+        .map((ref) => ref.id);
+      const { refs, copies, skipped } = planSendToAgent(bot, items, held);
+      const skippedLabels = skipped.map(
+        ({ name }) => t`${name} (max ${ATTACHMENT_MAX_COUNT} attachments)`,
+      );
       if (refs.length) {
         setPendingItems((current) => [
           ...current.filter(
@@ -3054,7 +3402,10 @@ export function ShellPage() {
       // The attachment notice belongs to the thread that opens next.
       keepNoticeFor.current = bot.id;
       navigate(`/app/${bot.id}`);
-      if (!copies.length) return;
+      if (!copies.length) {
+        if (skippedLabels.length) onAttachmentPick([], bot.id, skippedLabels);
+        return;
+      }
       const files: File[] = [];
       const failed: string[] = [];
       for (const item of copies) {
@@ -3064,8 +3415,8 @@ export function ShellPage() {
           failed.push(item.name);
         }
       }
-      onAttachmentPick(files, bot.id);
-      if (failed.length) setAttachmentNotice(t`Skipped ${failed.join(", ")}`);
+      // One notice for everything that did not arrive, each with its reason.
+      onAttachmentPick(files, bot.id, [...failed, ...skippedLabels]);
     },
     [navigate, onAttachmentPick, t],
   );
@@ -3101,6 +3452,7 @@ export function ShellPage() {
       sendingRef.current = true;
       setSending(true);
       setSendError(null);
+      setGoalNotice(null);
       setForwarded(null);
       // Keep the draft cleared once any part of the submission is confirmed accepted.
       let accepted = false;
@@ -3208,6 +3560,12 @@ export function ShellPage() {
         return true;
       } catch (error) {
         sentHere.current = false;
+        if (isGoalReply(error)) {
+          if (botTarget && activeBotId.current === botTarget) {
+            setGoalNotice(errorText(error, t`Failed to send message`));
+          }
+          return true;
+        }
         if (reroutedToGroup && groupTarget) {
           setSendError(errorText(error, t`Failed to send message`));
         } else if (groupTarget && activeGroupId.current === groupTarget) {
@@ -3303,6 +3661,23 @@ export function ShellPage() {
       setTeachBusy(false);
     }
   }, [teachBusy, taughtSkills, taughtSkillsBotId]);
+  const cancelTeaching = useCallback(async () => {
+    const id = activeBotId.current;
+    if (!id || teachBusy) return;
+    const recording = taughtSkills.find(
+      (skill) => skill.status === "recording" && taughtSkillsBotId === id,
+    );
+    if (!recording) return;
+    setTeachBusy(true);
+    try {
+      await rpc.taughtSkills.cancel({ skillId: recording.id });
+      await refreshThreadRef.current(id);
+      const skills = await rpc.skills.list({ botId: id });
+      if (activeBotId.current === id) setTaughtSkills(skills);
+    } finally {
+      setTeachBusy(false);
+    }
+  }, [teachBusy, taughtSkills, taughtSkillsBotId]);
   // Transcript and MessageView are memoized; these must stay referentially stable or every
   // Shell state change re-renders the whole transcript.
   const refreshActiveThread = useCallback(async () => {
@@ -3327,8 +3702,8 @@ export function ShellPage() {
     setTaughtSkills(skills);
     setTaughtSkillsBotId(id);
   }, []);
-  const addSkillRoutine = useCallback((name: string, prompt: string) => {
-    setRoutineDraft({ ...emptyRoutineDraft(), name, prompt });
+  const addSkillRoutine = useCallback((skill: { id: string; name: string }) => {
+    setRoutineDraft({ ...emptyRoutineDraft(), name: skill.name, taughtSkill: skill });
     setRoutineWebhookSecret(null);
     setEditingRoutine(null);
     setPanel("routine");
@@ -3365,90 +3740,106 @@ export function ShellPage() {
     writeCartaAgentCollapsed(userId, collapsed);
   }
 
-  async function createFinanceAgent() {
-    setCreatingFinanceAgent(true);
-    setFinanceAgentError("");
-    try {
-      await rpc.finance.agent();
-      await refreshBots();
-    } catch (error) {
-      setFinanceAgentError(errorText(error, t`Could not create the Finance agent`));
-    } finally {
-      setCreatingFinanceAgent(false);
-    }
-  }
-
-  async function createDataRoomAgent() {
-    setCreatingDataRoomAgent(true);
-    setDataRoomAgentError("");
-    try {
-      await rpc.dataRoom.agent();
-      await refreshBots();
-    } catch (error) {
-      setDataRoomAgentError(errorText(error, t`Could not create the Data room agent`));
-    } finally {
-      setCreatingDataRoomAgent(false);
-    }
-  }
-
-  function askDataRoomAgent() {
-    setDataRoomAgentOpen(true);
-    if (!active && !creatingDataRoomAgent) void createDataRoomAgent();
-  }
-
-  async function createLegalAgent() {
-    setCreatingLegalAgent(true);
-    setLegalAgentError("");
-    try {
-      await rpc.legal.agent();
-      await refreshBots();
-    } catch (error) {
-      setLegalAgentError(errorText(error, t`Could not create the Legal agent`));
-    } finally {
-      setCreatingLegalAgent(false);
-    }
-  }
-
-  async function createDevinAgent() {
-    setCreatingDevinAgent(true);
-    setDevinAgentError("");
-    try {
+  const pageScope = JSON.stringify([userId, bootstrapMe?.spaceId]);
+  const pageAgentContext = { hasAgent: Boolean(active), refreshBots, scope: pageScope };
+  const inboxAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.inbox.agent(),
+    errorLabel: t`Could not create the Inbox agent`,
+    onPage: inboxMode,
+  });
+  const financeAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.finance.agent(),
+    errorLabel: t`Could not create the Finance agent`,
+    onPage: financeMode,
+  });
+  const dataRoomAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.dataRoom.agent(),
+    errorLabel: t`Could not create the Data room agent`,
+    onPage: dataRoomMode,
+  });
+  // Scanner's Ask only opens the panel; its agent is made on every visit.
+  const scannerAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.scanner.agent(),
+    errorLabel: t`Could not create the Scanner agent`,
+    onPage: scannerMode,
+    createOnAsk: false,
+  });
+  const scannerCreate = scannerAgent.create;
+  const scannerSetOpen = scannerAgent.setOpen;
+  useEffect(() => {
+    scannerSetOpen(false);
+    if (scannerMode && userId && bootstrapMe?.spaceId) void scannerCreate();
+  }, [scannerMode, userId, bootstrapMe?.spaceId, scannerCreate, scannerSetOpen]);
+  const legalAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.legal.agent(),
+    errorLabel: t`Could not create the Legal agent`,
+    onPage: legalMode,
+  });
+  const devinAgent = usePageAgent({
+    ...pageAgentContext,
+    create: async () => {
       const agent = await rpc.devin.agent();
       setDevinAgentId(agent?.bot.id ?? null);
-      await refreshBots();
-    } catch (error) {
-      setDevinAgentError(errorText(error, t`Could not create the Devin agent`));
-    } finally {
-      setCreatingDevinAgent(false);
-    }
+    },
+    errorLabel: t`Could not create the Devin agent`,
+    onPage: devinMode,
+  });
+  const gtmAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.gtm.agent(),
+    errorLabel: t`Could not create the GTM agent`,
+    onPage: gtmMode,
+  });
+  const companyAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.company.agent(),
+    errorLabel: t`Could not create the Company agent`,
+    onPage: companyMode && !companyImportMode,
+    clearErrorOnVisit: true,
+  });
+  const companyImporter = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.companyImport.agent(),
+    errorLabel: t`Could not create the Company agent`,
+    onPage: companyImportMode,
+    clearErrorOnVisit: true,
+  });
+  const cartaAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.carta.agent(),
+    errorLabel: t`Could not create the Carta agent`,
+    onPage: investorsMode,
+  });
+  const investorsAgent = usePageAgent({
+    ...pageAgentContext,
+    create: () => rpc.investors.agent(),
+    errorLabel: t`Could not create the Investors agent`,
+    onPage: investorsMode || fundraisingMode,
+  });
+  const createGtmAgent = gtmAgent.create;
+  const createInvestorsAgent = investorsAgent.create;
+
+  /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
+  function askLegalAgentAbout(question: string) {
+    legalAgent.ask();
+    if (active) void sendMessage(question, [], newClientId());
   }
 
-  function askDevinAgent() {
-    setDevinAgentOpen(true);
-    if (!active && !creatingDevinAgent) void createDevinAgent();
+  function askInvestorsAgent() {
+    setCartaAgentCollapsedPref(false);
+    // The agent may have been archived since the page opened.
+    if (!active && !investorsAgent.creating) void createInvestorsAgent();
   }
 
-  function askLegalAgent() {
-    setLegalAgentOpen(true);
-    if (!active && !creatingLegalAgent) void createLegalAgent();
-  }
-
-  async function createGtmAgent() {
-    setCreatingGtmAgent(true);
-    setGtmAgentError("");
-    try {
-      await rpc.gtm.agent();
-      await refreshBots();
-    } catch (error) {
-      setGtmAgentError(errorText(error, t`Could not create the GTM agent`));
-    } finally {
-      setCreatingGtmAgent(false);
-    }
-  }
-
-  function askGtmAgent() {
-    setGtmAgentOpen(true);
-    if (!active && !creatingGtmAgent) void createGtmAgent();
+  /** A row's Prep outreach: opens the panel and sends the question. Before the agent exists it only creates it. */
+  function askInvestorsAgentAbout(question: string) {
+    askInvestorsAgent();
+    if (active) void sendMessage(question, [], newClientId());
   }
 
   const gtmAgentAsked = useRef<string | null>(null);
@@ -3464,89 +3855,11 @@ export function ShellPage() {
     void createGtmAgent();
   });
 
-  async function createCompanyAgent() {
-    setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: true }));
-    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
-    try {
-      await (companyImportMode ? rpc.companyImport.agent() : rpc.company.agent());
-      await refreshBots();
-    } catch (error) {
-      setCompanyAgentErrors((errors) => ({
-        ...errors,
-        [companyRole]: errorText(error, t`Could not create the Company agent`),
-      }));
-    } finally {
-      setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: false }));
-    }
-  }
-
-  function askCompanyAgent() {
-    setCompanyAgentOpen(true);
-    if (!active && !creatingCompanyAgent) void createCompanyAgent();
-  }
-
-  /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
-  function askLegalAgentAbout(question: string) {
-    askLegalAgent();
-    if (active) void sendMessage(question, [], newClientId());
-  }
-
-  async function createCartaAgent() {
-    setCreatingCartaAgent(true);
-    setCartaAgentError("");
-    try {
-      await rpc.carta.agent();
-      await refreshBots();
-    } catch (error) {
-      setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
-      return false;
-    } finally {
-      setCreatingCartaAgent(false);
-    }
-  }
-
-  function askInvestorsAgent() {
-    setCartaAgentCollapsedPref(false);
-    // The agent may have been archived since the page opened.
-    if (!active && !creatingInvestorsAgent) void createInvestorsAgent();
-  }
-
-  async function createInvestorsAgent() {
-    setCreatingInvestorsAgent(true);
-    setInvestorsAgentError("");
-    try {
-      await rpc.investors.agent();
-      await refreshBots();
-    } catch (error) {
-      setInvestorsAgentError(errorText(error, t`Could not create the Investors agent`));
-    } finally {
-      setCreatingInvestorsAgent(false);
-    }
-  }
-
-  function askFinanceAgent() {
-    setFinanceAgentOpen(true);
-    if (!active && !creatingFinanceAgent) void createFinanceAgent();
-  }
-
-  async function createInboxAgent() {
-    setCreatingInboxAgent(true);
-    setInboxAgentError("");
-    try {
-      await rpc.inbox.agent();
-      await refreshBots();
-    } catch (error) {
-      setInboxAgentError(errorText(error, t`Could not create the Inbox agent`));
-    } finally {
-      setCreatingInboxAgent(false);
-    }
-  }
-
   // Carta needs no Create click: the agent appears once Carta is connected.
   useAutoCreateCartaAgent(
     investorsMode && cartaConnected && initialBotsLoaded && Boolean(userId),
     findCartaAgent(bots, userId) !== undefined,
-    createCartaAgent,
+    cartaAgent.create,
     bots,
   );
 
@@ -3569,8 +3882,8 @@ export function ShellPage() {
     connected: true,
     collapsed: cartaAgentCollapsed,
     hasAgent: Boolean(active),
-    creating: creatingInvestorsAgent,
-    error: investorsAgentError,
+    creating: investorsAgent.creating,
+    error: investorsAgent.error,
   });
   // A window dragged down to phone width would leave a remembered-open panel covering the page.
   // Only the view collapses; the saved preference comes back when the window is wide again.
@@ -3578,7 +3891,7 @@ export function ShellPage() {
     () => {
       setCartaAgentCollapsed(true);
       setInboxAgentCollapsed(true);
-      setGtmAgentOpen(false);
+      gtmAgent.setOpen(false);
     },
     () => {
       setCartaAgentCollapsed(readCartaAgentCollapsed(userId));
@@ -3617,115 +3930,46 @@ export function ShellPage() {
     };
   }, [devinMode, bootstrapMe?.spaceId, refreshBots]);
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
-  const agentPanel = companyMode
-    ? {
-        name: companyImportMode ? "company-importer" : "company-agent",
-        testId: companyImportMode ? "company-importer-panel" : "company-agent-panel",
-        open: companyAgentOpen,
-        collapse: () => setCompanyAgentOpen(false),
-        collapseLabel: companyImportMode ? t`Collapse Company importer` : t`Collapse Company agent`,
-        create: createCompanyAgent,
-        createLabel: companyImportMode ? t`Create Company importer` : t`Create Company agent`,
-        creating: creatingCompanyAgent,
-        error: companyAgentError,
-        suggestions: companyImportMode
-          ? [t`Show my import plan`, t`How is my import going?`]
-          : [t`Who works here?`, t`What dates are coming up?`],
-      }
-    : inboxMode
-      ? {
-          name: "inbox-agent",
-          testId: "inbox-agent-panel",
-          open: !inboxAgentHidden,
-          collapse: () => setInboxAgentCollapsedPref(true),
-          collapseLabel: t`Collapse Inbox agent`,
-          create: createInboxAgent,
-          createLabel: t`Create Inbox agent`,
-          creating: creatingInboxAgent,
-          error: inboxAgentError,
-          // InboxAgentIntro is its empty thread, with its own questions.
-          suggestions: [],
-        }
-      : financeMode
-        ? {
-            name: "finance-agent",
-            testId: "finance-agent-panel",
-            open: financeAgentOpen,
-            collapse: () => setFinanceAgentOpen(false),
-            collapseLabel: t`Collapse Finance agent`,
-            create: createFinanceAgent,
-            createLabel: t`Create Finance agent`,
-            creating: creatingFinanceAgent,
-            error: financeAgentError,
-            suggestions: financeAgentSuggestions(),
-          }
-        : dataRoomMode
-          ? {
-              name: "data-room-agent",
-              testId: "data-room-agent-panel",
-              open: dataRoomAgentOpen,
-              collapse: () => setDataRoomAgentOpen(false),
-              collapseLabel: t`Collapse Data room agent`,
-              create: createDataRoomAgent,
-              createLabel: t`Create Data room agent`,
-              creating: creatingDataRoomAgent,
-              error: dataRoomAgentError,
-              suggestions: dataRoomAgentSuggestions(),
-            }
-          : devinMode
-            ? {
-                name: "devin-agent",
-                testId: "devin-agent-panel",
-                open: devinAgentOpen,
-                collapse: () => setDevinAgentOpen(false),
-                collapseLabel: t`Collapse Devin agent`,
-                create: createDevinAgent,
-                createLabel: t`Create Devin agent`,
-                creating: creatingDevinAgent,
-                error: devinAgentError,
-                suggestions: [t`Anything merged today?`, t`What did Devin do this week?`],
-              }
-            : legalMode
-              ? {
-                  name: "legal-agent",
-                  testId: "legal-agent-panel",
-                  open: legalAgentOpen,
-                  collapse: () => setLegalAgentOpen(false),
-                  collapseLabel: t`Collapse Legal agent`,
-                  create: createLegalAgent,
-                  createLabel: t`Create Legal agent`,
-                  creating: creatingLegalAgent,
-                  error: legalAgentError,
-                }
-              : gtmMode
-                ? {
-                    name: "gtm-agent",
-                    testId: "gtm-agent-panel",
-                    open: gtmAgentOpen,
-                    collapse: () => setGtmAgentOpen(false),
-                    collapseLabel: t`Collapse GTM agent`,
-                    create: createGtmAgent,
-                    createLabel: t`Create GTM agent`,
-                    creating: creatingGtmAgent,
-                    error: gtmAgentError,
-                    suggestions: [t`Help me find our first 50 design partners`],
-                  }
-                : investorsAgentPage
-                  ? {
-                      name: "investors-agent",
-                      testId: "investors-agent-panel",
-                      // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                      open: investorsPanel.open,
-                      collapse: () => setCartaAgentCollapsedPref(true),
-                      collapseLabel: t`Collapse Investors agent`,
-                      // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                      create: investorsAgentError ? createInvestorsAgent : undefined,
-                      createLabel: t`Try again`,
-                      creating: creatingInvestorsAgent,
-                      error: investorsAgentError,
-                      suggestions: investorsAgentSuggestions(),
-                    }
-                  : null;
+  const company = companyImportMode ? companyImporter : companyAgent;
+  // The agent panel of the current page; null on bot and group routes, which have their own panels.
+  const agentPanel = pagePanelFor({
+    kind: companyMode
+      ? companyImportMode
+        ? "company-importer"
+        : "company"
+      : inboxMode
+        ? "inbox"
+        : financeMode
+          ? "finance"
+          : scannerMode
+            ? "scanner"
+            : dataRoomMode
+              ? "data-room"
+              : devinMode
+                ? "devin"
+                : legalMode
+                  ? "legal"
+                  : gtmMode
+                    ? "gtm"
+                    : investorsAgentPage
+                      ? "investors"
+                      : null,
+    agents: {
+      inbox: inboxAgent,
+      finance: financeAgent,
+      scanner: scannerAgent,
+      "data-room": dataRoomAgent,
+      devin: devinAgent,
+      legal: legalAgent,
+      gtm: gtmAgent,
+      company,
+      "company-importer": companyImporter,
+      investors: investorsAgent,
+    },
+    // The Inbox and Investors panels open from their saved collapsed preference, not from the hook.
+    inbox: { open: !inboxAgentHidden, collapse: () => setInboxAgentCollapsedPref(true) },
+    investors: { open: investorsPanel.open, collapse: () => setCartaAgentCollapsedPref(true) },
+  });
   // The toaster skips an approval toast for the agent whose panel is open.
   const dockedAgentId = agentPanel?.open ? active?.id : undefined;
   useEffect(() => {
@@ -3745,6 +3989,29 @@ export function ShellPage() {
   }
 
   /** `modelProvider` opens Models on that provider with its own-key form open. */
+  /** Opens a bot's settings panel (where Open work is), even on a narrow screen or for the bot already open. */
+  function openBotSettings(botId: string, itemId?: string) {
+    if (itemId) {
+      scratchpadFocus.request(botId, itemId);
+      // The row sits under More settings, so a folded panel would hide it.
+      setManualFold((current) =>
+        current[botId] === false ? current : { ...current, [botId]: false },
+      );
+    } else {
+      scratchpadFocus.clear();
+    }
+    const destKey =
+      userId && bootstrapMe?.spaceId
+        ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", botId)
+        : null;
+    explicitPanelTarget.current = destKey;
+    pendingPanelRestore.current = null;
+    navigate(`/app/${botId}`);
+    setPanelState("settings");
+    setRestoredPanelKey(destKey);
+    closeMobileSidebar();
+  }
+
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
@@ -3778,6 +4045,39 @@ export function ShellPage() {
       setNamingBotId(bot.id);
       navigate(`/app/${bot.id}`);
       setPanelState("settings");
+      setRestoredPanelKey(destKey);
+      await refreshBots().catch(() => undefined);
+    } catch (error) {
+      setSendError(errorText(error, t`Failed to create bot`));
+    }
+  }
+
+  /** A new agent whose job is to build and keep its own page; it opens with the page showing. */
+  async function createPage() {
+    try {
+      const bot = await rpc.bots.create({
+        name: uniqueBotName(
+          t`New page`,
+          bots.map((item) => item.name),
+        ),
+        title: "",
+        description: "",
+        instructions: NEW_PAGE_INSTRUCTIONS,
+        notifyOnFinish: true,
+        computerMode: "team",
+        page: true,
+      });
+      setBots((current) =>
+        current.some((item) => item.id === bot.id) ? current : [bot, ...current],
+      );
+      const destKey =
+        userId && bootstrapMe?.spaceId
+          ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", bot.id)
+          : null;
+      explicitPanelTarget.current = destKey;
+      pendingPanelRestore.current = null;
+      navigate(`/app/${bot.id}`);
+      setPanelState("page");
       setRestoredPanelKey(destKey);
       await refreshBots().catch(() => undefined);
     } catch (error) {
@@ -3821,7 +4121,9 @@ export function ShellPage() {
       await refreshComputerFor(targetBotId);
     } catch (error) {
       if (!stillThisBoot() || !stillThisBot()) return;
-      setComputerError(errorText(error, t`Could not take control`));
+      setComputerError(
+        errorText(error, takeControl ? t`Could not take control` : t`Could not start the computer`),
+      );
       setComputerErrorFromScreen(false);
       throw error;
     } finally {
@@ -3847,7 +4149,7 @@ export function ShellPage() {
       autoBooted.current = null;
       return;
     }
-    if (!active) return;
+    if (!active || bootstrapMe === undefined) return;
     const botId = active.id;
     let cancelled = false;
     void (async () => {
@@ -3858,7 +4160,7 @@ export function ShellPage() {
       const state = snap?.computer?.state;
       const screen = state === "running" ? await refreshComputerScreen(botId) : null;
       if (cancelled || activeBotId.current !== botId) return;
-      const action = computerPanelAutoBoot(state, screen);
+      const action = computerPanelAutoBoot(state, screen, computersOff);
       if (action === "wait") {
         if (state === "running") autoBooted.current = botId;
         return;
@@ -3876,7 +4178,7 @@ export function ShellPage() {
     return () => {
       cancelled = true;
     };
-  }, [panel, active?.id]);
+  }, [panel, active?.id, bootstrapMe?.sandboxProvider]);
 
   useEffect(() => {
     setComputerOpen(false);
@@ -3970,6 +4272,7 @@ export function ShellPage() {
     if (keepNoticeFor.current === threadKey) keepNoticeFor.current = null;
     else setAttachmentNotice(null);
     setSendError(null);
+    setGoalNotice(null);
   }, [active?.id, clearReply, groupId, inGroup]);
 
   useEffect(() => {
@@ -4072,12 +4375,58 @@ export function ShellPage() {
   }
 
   function retryFailedRun() {
+    const groupTarget = activeGroupId.current;
+    const botTarget = activeBotId.current;
+    if (sendingRef.current || (!groupTarget && !botTarget)) return;
     const last = activeSnapshot?.messages.findLast((message) => message.role === "user");
-    const text = last?.blocks
-      .flatMap((block) => (block.kind === "text" ? [block.text] : []))
-      .join("\n");
-    dismissComposerError();
-    if (text?.trim()) void sendMessage(text, [], newClientId());
+    const payload = last && retryPayload(last);
+    if (!payload) return;
+
+    sendingRef.current = true;
+    setSending(true);
+    sentHere.current = true;
+    void (async () => {
+      try {
+        if (groupTarget) {
+          await rpc.threads.send({ groupId: groupTarget, ...payload, clientNonce: newClientId() });
+        } else if (botTarget) {
+          const sent = await rpc.threads.send({
+            botId: botTarget,
+            ...payload,
+            clientNonce: newClientId(),
+          });
+          if (activeBotId.current === botTarget) {
+            updateSnapshot((current) =>
+              applyThreadSendReceipt(
+                current,
+                { botId: botTarget, runId: sent.runId, taskId: sent.taskId },
+                terminalRunReceipts.current,
+              ),
+            );
+          }
+        }
+        if (
+          (groupTarget && activeGroupId.current === groupTarget) ||
+          (botTarget && activeBotId.current === botTarget)
+        ) {
+          dismissComposerError();
+        }
+        void refreshBots().catch(() => undefined);
+        if (groupTarget) void refreshGroupThreadRef.current(groupTarget).catch(() => undefined);
+        else if (botTarget) void refreshThreadRef.current(botTarget).catch(() => undefined);
+      } catch (error) {
+        sentHere.current = false;
+        if (
+          (groupTarget && activeGroupId.current === groupTarget) ||
+          (botTarget && activeBotId.current === botTarget)
+        ) {
+          setSendError(errorText(error, t`Failed to send message`));
+        }
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+    })();
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
@@ -4140,7 +4489,7 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const legalWaitsForConsent = legalMode && legalConsentMissing;
+  const legalWaitsForConsent = legalMode && legalConsentWaitsFor !== null;
   const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel || legalWaitsForConsent;
   // A "needs your permission" error from before the page's Allow no longer applies once it is given.
   const staleConsentError =
@@ -4195,6 +4544,15 @@ export function ShellPage() {
   }, [active?.id, focusComposerBotId, sendMessage, t]);
   const threadView = (
     <>
+      {active && !inGroup ? (
+        <InstructionsUpgradeNotice
+          botId={active.id}
+          instructions={active.instructions}
+          onUpgraded={(updated) =>
+            setBots((current) => current.map((bot) => (bot.id === updated.id ? updated : bot)))
+          }
+        />
+      ) : null}
       {cartaAgentPage ? (
         <div className="shrink-0 px-4 pt-2 md:px-7">
           <Link
@@ -4247,13 +4605,13 @@ export function ShellPage() {
             ) : !inGroup &&
               !pageMode &&
               activeSnapshot &&
-              pageAgentKind(active?.spawnKey) &&
+              pageAgentIntroKind(active?.spawnKey) &&
               transcriptMessages.length === 0 &&
               activeSnapshot.olderCursor == null &&
               !transcriptRunning &&
               !sending ? (
               <PageAgentIntro
-                kind={pageAgentKind(active?.spawnKey) ?? "inbox"}
+                kind={pageAgentIntroKind(active?.spawnKey) ?? "inbox"}
                 onAsk={(text) => void sendMessage(text, [], newClientId())}
               />
             ) : inGroup &&
@@ -4273,6 +4631,7 @@ export function ShellPage() {
               <Transcript
                 key={activeSnapshot?.threadId}
                 scrollRef={messageScroll}
+                delegateStates={transcriptDelegateStates}
                 sentHere={sentHere}
                 scrollRequest={scrollRequest}
                 onScrollRequestHandled={clearScrollRequest}
@@ -4283,6 +4642,7 @@ export function ShellPage() {
                 olderCursor={activeSnapshot?.olderCursor ?? null}
                 loadingOlder={loadingOlder}
                 answerableAskMessageId={answerableAskMessageId}
+                ownerOnlyAskMessageIds={ownerOnlyAskMessageIds}
                 running={transcriptRunning}
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
@@ -4308,6 +4668,9 @@ export function ShellPage() {
                   setReplyTarget(message);
                   setReplyQuote(null);
                 }}
+                onMarkUnread={markMessageUnread}
+                sendTargets={sendToAgentTargets}
+                onSendFiles={(message, agent) => void sendMessageFilesToAgent(message, agent)}
                 onQuote={(message, quote) => {
                   setReplyTarget(message);
                   setReplyQuote(quote);
@@ -4334,36 +4697,39 @@ export function ShellPage() {
             )}
           </BotToolControlsContext.Provider>
           {composerDraft ? (
-            <ComposeEmail
-              seed={NEW_MESSAGE}
-              accounts={
-                composerAccounts ?? [
-                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
-                ]
-              }
-              connectionId={composerDraft.connectionId}
-              spaceId={composerSpaceId}
-              restore={{
-                seed: NEW_MESSAGE,
-                clientId: crypto.randomUUID().replaceAll("-", ""),
-                fields: {
-                  connectionId: composerDraft.connectionId,
-                  to: composerDraft.to,
-                  cc: composerDraft.cc,
-                  bcc: composerDraft.bcc,
-                  subject: composerDraft.subject,
-                  html: "",
-                  text: composerDraft.body,
-                },
-                forwarded: [],
-                files: [],
-                saved: false,
-                accounts: composerAccounts ?? [
-                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
-                ],
-              }}
-              onClose={() => setComposerDraft(null)}
-            />
+            <Suspense fallback={null}>
+              <ComposeEmail
+                seed={NEW_MESSAGE}
+                accounts={
+                  composerAccounts ?? [
+                    { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                  ]
+                }
+                connectionId={composerDraft.connectionId}
+                spaceId={composerSpaceId}
+                restore={{
+                  seed: NEW_MESSAGE,
+                  clientId: crypto.randomUUID().replaceAll("-", ""),
+                  fields: {
+                    connectionId: composerDraft.connectionId,
+                    to: composerDraft.to,
+                    cc: composerDraft.cc,
+                    bcc: composerDraft.bcc,
+                    subject: composerDraft.subject,
+                    html: "",
+                    text: composerDraft.body,
+                  },
+                  ...(composerDraft.replyToId ? { replyToId: composerDraft.replyToId } : {}),
+                  forwarded: [],
+                  files: [],
+                  saved: false,
+                  accounts: composerAccounts ?? [
+                    { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                  ],
+                }}
+                onClose={() => setComposerDraft(null)}
+              />
+            </Suspense>
           ) : null}
           {forwarded && forwarded.threadKey === (inGroup ? groupId : active?.id) ? (
             <div
@@ -4408,8 +4774,18 @@ export function ShellPage() {
             </div>
           ))}
           {recordingSkill ? (
-            <div className="px-6 pb-2 text-center text-[13px] text-destructive">
+            <div className="flex flex-wrap items-center justify-center gap-2 px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
+              {computerOpen ? null : (
+                <>
+                  <TeachStopButton busy={teachBusy} onStop={stopTeaching} />
+                  <TeachCancelButton
+                    recording={recordingSkill}
+                    busy={teachBusy}
+                    onCancel={cancelTeaching}
+                  />
+                </>
+              )}
             </div>
           ) : null}
           {active || activeGroup ? (
@@ -4419,8 +4795,17 @@ export function ShellPage() {
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerShowsStop(currentRuns)}
               disabled={composerDisabled}
+              canDictate={
+                deviceSpeech?.state === "ready" ||
+                Boolean(voiceStatus?.transcribe || voiceStatus?.transcriptionReady)
+              }
+              deviceDictation={deviceSpeech?.state === "ready"}
               disabledPlaceholder={
-                legalWaitsForConsent ? t`Allow access on the page to ask` : undefined
+                legalWaitsForConsent
+                  ? legalConsentWaitsFor === "model"
+                    ? t`Add a model to ask`
+                    : t`Allow access on the page to ask`
+                  : undefined
               }
               pendingAttachments={activePendingAttachments}
               dataRoomItems={activeDataRoomItems}
@@ -4428,14 +4813,11 @@ export function ShellPage() {
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
               placeholder={
-                activeSnapshot?.delegatePending?.length
-                  ? waitingForApprovalLabel()
-                  : waitingOnApproval
-                    ? needsAnswerLabel()
-                    : undefined
+                activeSnapshot?.delegatePending?.length ? waitingForApprovalLabel() : undefined
               }
               sendError={sendError}
               runError={displayedRunError}
+              runErrorFix={runErrorAction(activeSnapshot?.run?.error)}
               runErrorId={displayedRunErrorId}
               onRunErrorPresented={handleRunErrorPresented}
               onDismissError={dismissComposerError}
@@ -4444,6 +4826,7 @@ export function ShellPage() {
                 // "" is a rejected key: open the provider the failed run used.
                 openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
               }
+              onOpenBotSettings={() => setPanel("settings")}
               onNavigate={navigate}
               sending={sending}
               fileInputRef={fileInputRef}
@@ -4464,7 +4847,7 @@ export function ShellPage() {
               onStop={async () => {
                 await stopRun();
               }}
-              onVoice={!inGroup && active ? () => void startElioCall() : undefined}
+              onVoice={!inGroup && active && !call ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
               replyQuote={activeReplyQuote}
@@ -4477,6 +4860,32 @@ export function ShellPage() {
               }}
               agentSkills={agentSkills}
               onSlashOpen={refreshAgentSkills}
+              goalSlot={
+                <>
+                  {!inGroup && active && activeSnapshot?.goal ? (
+                    <GoalLine
+                      goal={activeSnapshot.goal}
+                      waiting={isGoalWaitingOnOwner(
+                        activeSnapshot.activeRuns ?? [activeSnapshot.run],
+                      )}
+                      onClear={() => {
+                        const botId = active.id;
+                        void rpc.threads
+                          .clearGoal({ botId })
+                          .then(() =>
+                            updateSnapshot((prev) => snapshotWithGoal(prev, { goal: null })),
+                          )
+                          .catch((error: unknown) =>
+                            setSendError(errorText(error, t`Could not clear the goal`)),
+                          );
+                      }}
+                    />
+                  ) : null}
+                  {goalNotice ? (
+                    <GoalNotice message={goalNotice} onDismiss={() => setGoalNotice(null)} />
+                  ) : null}
+                </>
+              }
               sentHistory={sentHistory}
               onSlashAction={(action) => {
                 if (action === "chat-settings") {
@@ -4485,13 +4894,7 @@ export function ShellPage() {
                   if (pageMode && active) openBot(active.id);
                   return;
                 }
-                if (action === "settings-general") {
-                  openSettings("general");
-                  return;
-                }
-                if (action === "settings-usage") {
-                  openSettings("general");
-                }
+                openSettings("general");
               }}
             />
           ) : null}
@@ -4508,6 +4911,274 @@ export function ShellPage() {
       </div>
     </>
   );
+
+  /** The page the route names, or null for a chat. Each page sits in one boundary. */
+  function renderPage(): ReactNode {
+    if (integrationsMode) {
+      return (
+        <PageFrame>
+          <IntegrationsPage
+            activeBotId={activeBotId.current}
+            onOpenMessaging={() => setMessagingSettingsOpen(true)}
+            onOpenAiDataSharing={() => openSettings("privacy")}
+            onOpenVoiceSettings={() => openSettings("voice")}
+          />
+        </PageFrame>
+      );
+    }
+    if (scannerMode) {
+      return (
+        <PageFrame>
+          <ScannerPage
+            spaceName={pageSpaceName}
+            onAskAgent={scannerAgent.open ? undefined : scannerAgent.ask}
+          />
+        </PageFrame>
+      );
+    }
+    if (dataRoomMode) {
+      return (
+        <PageFrame>
+          <DataRoomPage
+            onAskAgent={dataRoomAgent.open ? undefined : dataRoomAgent.ask}
+            onOpenModelSettings={() => openSettings("models")}
+            agents={sendToAgentTargets}
+            onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
+        </PageFrame>
+      );
+    }
+    if (meetingMatch?.params.meetingId) {
+      return (
+        <PageFrame>
+          <MeetingDetailPage meetingId={meetingMatch.params.meetingId} spaceName={pageSpaceName} />
+        </PageFrame>
+      );
+    }
+    if (meetingsMode) {
+      return (
+        <PageFrame>
+          <MeetingsPage spaceName={pageSpaceName} onAddSpeech={() => openSettings("voice")} />
+        </PageFrame>
+      );
+    }
+    if (contactMatch?.params.contactId) {
+      return (
+        <PageFrame>
+          <ContactDetailPage id={contactMatch.params.contactId} spaceName={pageSpaceName} />
+        </PageFrame>
+      );
+    }
+    if (botPageMatch?.params.botId && botPageMatch.params.pageId) {
+      return (
+        <PageFrame>
+          <BotPageView botId={botPageMatch.params.botId} pageId={botPageMatch.params.pageId} />
+        </PageFrame>
+      );
+    }
+    if (calendarMode) {
+      return (
+        <PageFrame>
+          <CalendarPage spaceName={pageSpaceName} bots={bots} onOpenBot={openBotSettings} />
+        </PageFrame>
+      );
+    }
+    if (contactsMode) {
+      return (
+        <PageFrame>
+          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+        </PageFrame>
+      );
+    }
+    if (artifactsMode) {
+      return (
+        <PageFrame>
+          <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} bots={bots} />
+        </PageFrame>
+      );
+    }
+    if (boardMode) {
+      return (
+        <PageFrame>
+          <BoardPage embedded />
+        </PageFrame>
+      );
+    }
+    if (brexMode) {
+      return (
+        <PageFrame>
+          <BrexPage spaceName={pageSpaceName} />
+        </PageFrame>
+      );
+    }
+    if (financeMode) {
+      return (
+        <PageFrame>
+          <FinancePage
+            onAskAgent={financeAgent.open ? undefined : financeAgent.ask}
+            spaces={spaces}
+            spaceId={bootstrapMe?.spaceId}
+            onSwitchSpace={(spaceId) => {
+              // Like opening another space's chat: the auth boundary changes, so reload. A detail
+              // page belongs to this space, so the other space opens on its dashboard.
+              if (selectSpace(spaceId)) window.location.assign("/app/finance");
+            }}
+          />
+        </PageFrame>
+      );
+    }
+    if (companyMode) {
+      return (
+        <PageFrame>
+          {pathname === "/app/company/import" ? (
+            <CompanyImportPage
+              onOpenSettings={() => openSettings("models")}
+              settingsOpen={settingsOpen}
+              onAskAgent={company.open ? undefined : company.ask}
+            />
+          ) : (
+            <CompanyPage onAskAgent={company.open ? undefined : company.ask} />
+          )}
+        </PageFrame>
+      );
+    }
+    if (legalMode) {
+      return (
+        <PageFrame>
+          <LegalPage
+            onAskAgent={legalAgent.open ? undefined : legalAgent.ask}
+            onAskAbout={askLegalAgentAbout}
+            onConsentChange={setLegalConsentWaitsFor}
+            onOpenSettings={() => openSettings("models")}
+            settingsOpen={settingsOpen}
+            agentBusy={transcriptRunning}
+            spaces={spaces}
+            spaceId={bootstrapMe?.spaceId}
+            onSwitchSpace={(spaceId) => {
+              // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
+              if (selectSpace(spaceId)) window.location.assign("/app/legal");
+            }}
+          />
+        </PageFrame>
+      );
+    }
+    if (gtmMode) {
+      return (
+        <PageFrame>
+          <GtmPage
+            key={bootstrapMe?.spaceId}
+            botId={active?.id}
+            remote={pageRemote}
+            onAskAgent={gtmAgent.ask}
+            agentOpen={gtmAgent.open}
+          />
+        </PageFrame>
+      );
+    }
+    if (devinMode) {
+      return (
+        <PageFrame>
+          <DevinPage
+            key={devinPageKey}
+            onAskAgent={devinAgent.open ? undefined : devinAgent.ask}
+            onConnect={() => setDevinDialog("connect")}
+            onReconnect={() => setDevinDialog("replace")}
+          />
+        </PageFrame>
+      );
+    }
+    if (investorsMode && investorUpdateMatch?.params.id) {
+      return (
+        <PageFrame>
+          <UpdateEditor
+            key={investorUpdateMatch.params.id}
+            updateId={investorUpdateMatch.params.id}
+            agentBusy={transcriptRunning}
+          />
+        </PageFrame>
+      );
+    }
+    if (capTableMode) {
+      return (
+        <PageFrame>
+          <CapTablePage />
+        </PageFrame>
+      );
+    }
+    if (fundraisingMode) {
+      return (
+        <PageFrame>
+          <FundraisingPage
+            spaceName={pageSpaceName}
+            onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
+            onAskAbout={askInvestorsAgentAbout}
+            agentBusy={transcriptRunning}
+          />
+        </PageFrame>
+      );
+    }
+    if (investorsMode) {
+      return (
+        <PageFrame>
+          <InvestorsPage
+            onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
+            onCartaStatus={setCartaConnected}
+            onOpenModelSettings={() => openSettings("models")}
+            needsModel={bootstrapMe?.needsModel === true}
+            agentBusy={transcriptRunning}
+          />
+        </PageFrame>
+      );
+    }
+    if (inboxMode) {
+      return (
+        <InboxPage
+          paused={false}
+          onShowAgent={
+            inboxAgentHidden
+              ? () => {
+                  setInboxAgentCollapsedPref(false);
+                  setShowEmptyInboxAgent(true);
+                }
+              : undefined
+          }
+          onRefreshed={refreshInboxUnread}
+          consentScope={userId && activeSpaceId ? `${userId}:${activeSpaceId}` : undefined}
+          onOpenAgent={async (bot) => {
+            await refreshBots();
+            setFocusComposerBotId(bot.id);
+            openBot(bot.id);
+          }}
+          onConnectMail={() =>
+            navigate("/app/integrations?connect=gmail&returnTo=/app/inbox", {
+              state: { connectNow: true },
+            })
+          }
+          onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+          onAllowMailRules={(connectionId) =>
+            navigate(
+              appPath(
+                { connectorId: "google", slug: "gmail" },
+                { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+              ),
+            )
+          }
+          spaceName={
+            spaces.length > 1
+              ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+              : undefined
+          }
+        />
+      );
+    }
+    return null;
+  }
+  const pageBody = renderPage();
 
   const shell = (
     <div
@@ -4587,6 +5258,9 @@ export function ShellPage() {
         bots={bots}
         initialBotsLoaded={initialBotsLoaded}
         createBot={createBot}
+        createPage={createPage}
+        markBotsRead={markBotsRead}
+        askArchiveBots={setArchiveEmailTarget}
         navigate={navigate}
         setPanel={setPanel}
         setNewSpaceOpen={setNewSpaceOpen}
@@ -4595,20 +5269,10 @@ export function ShellPage() {
         sidebarScrollRef={sidebarScrollRef}
         collapsedSidebarSections={collapsedSidebarSections}
         toggleSidebarSection={toggleSidebarSection}
-        inboxMode={inboxMode}
         unseen={unseen}
         inboxUnread={inboxUnread}
-        financeMode={financeMode}
         glance={glance}
-        legalMode={legalMode}
-        gtmMode={gtmMode}
-        devinMode={devinMode}
-        investorsMode={investorsMode}
-        fundraisingMode={fundraisingMode}
-        contactsMode={contactsMode}
-        companyMode={companyMode}
-        dataRoomMode={dataRoomMode}
-        artifactsMode={artifactsMode}
+        currentPage={pageKey ?? null}
         hiddenPages={hiddenPages}
         addedPages={addedPages}
         toggleHiddenPage={toggleHiddenPage}
@@ -4644,6 +5308,7 @@ export function ShellPage() {
         onAttachmentPick={onAttachmentPick}
         setFocusComposerBotId={setFocusComposerBotId}
         openBot={openBot}
+        openBotSettings={openBotSettings}
         moveSidebarItem={moveSidebarItem}
         botMenuAnchor={botMenuAnchor}
         setBotMenu={setBotMenu}
@@ -4747,6 +5412,7 @@ export function ShellPage() {
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
+          <RecordingPillHost />
           {/* Pages carry their own h1; a chat's title is inside a button, so it is named here. */}
           {pageMode ? null : (
             <h1 className="sr-only">
@@ -4830,6 +5496,7 @@ export function ShellPage() {
                           (opening ? "" : noChatBots ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
+                  {!inGroup && active?.firewall ? <BotFirewallMark /> : null}
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
                 </button>
               )}
@@ -4877,6 +5544,7 @@ export function ShellPage() {
                 <button
                   type="button"
                   data-testid="computer-routines-button"
+                  data-tour="routines"
                   title={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   aria-label={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   onClick={() => {
@@ -4896,160 +5564,19 @@ export function ShellPage() {
               ) : null}
             </div>
           </div>
-          {integrationsMode ? (
-            <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <IntegrationsPage
-                activeBotId={activeBotId.current}
-                onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                onOpenAiDataSharing={() => openSettings("general")}
-              />
-            </ErrorBoundary>
-          ) : dataRoomMode ? (
-            <DataRoomPage
-              onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
-              onOpenModelSettings={() => openSettings("models")}
-              agents={sendToAgentTargets}
-              onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
-              spaceName={
-                spaces.length > 1
-                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                  : undefined
-              }
-            />
-          ) : contactsMode ? (
-            <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
-          ) : artifactsMode ? (
-            <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} bots={bots} />
-              </Suspense>
-            </ErrorBoundary>
-          ) : boardMode ? (
-            <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <BoardPage embedded />
-              </Suspense>
-            </ErrorBoundary>
-          ) : financeMode ? (
-            <FinancePage
-              onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
-              spaces={spaces}
-              spaceId={bootstrapMe?.spaceId}
-              onSwitchSpace={(spaceId) => {
-                // Like opening another space's chat: the auth boundary changes, so reload. A detail
-                // page belongs to this space, so the other space opens on its dashboard.
-                if (selectSpace(spaceId)) window.location.assign("/app/finance");
-              }}
-            />
-          ) : companyMode ? (
-            pathname === "/app/company/import" ? (
-              <CompanyImportPage
-                onOpenSettings={() => openSettings("models")}
-                settingsOpen={settingsOpen}
-                onAskAgent={companyAgentOpen ? undefined : askCompanyAgent}
-              />
+          {pageBody ??
+            (opening ? (
+              <OpeningSpace />
+            ) : !active && !activeGroup ? (
+              <div className="grid flex-1 place-items-center">
+                <Button onClick={() => void createBot()}>
+                  <Plus size={16} aria-hidden="true" />
+                  <Trans>New bot</Trans>
+                </Button>
+              </div>
             ) : (
-              <CompanyPage onAskAgent={companyAgentOpen ? undefined : askCompanyAgent} />
-            )
-          ) : legalMode ? (
-            <LegalPage
-              onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
-              onAskAbout={askLegalAgentAbout}
-              onConsentChange={setLegalConsentMissing}
-              onOpenSettings={() => openSettings("models")}
-              settingsOpen={settingsOpen}
-              agentBusy={transcriptRunning}
-              spaces={spaces}
-              spaceId={bootstrapMe?.spaceId}
-              onSwitchSpace={(spaceId) => {
-                // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
-                if (selectSpace(spaceId)) window.location.assign("/app/legal");
-              }}
-            />
-          ) : gtmMode ? (
-            <GtmPage
-              key={bootstrapMe?.spaceId}
-              botId={active?.id}
-              remote={pageRemote}
-              onAskAgent={askGtmAgent}
-              agentOpen={gtmAgentOpen}
-            />
-          ) : devinMode ? (
-            <DevinPage
-              key={devinPageKey}
-              onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
-              onConnect={() => setDevinDialog("connect")}
-              onReconnect={() => setDevinDialog("replace")}
-            />
-          ) : investorsMode && investorUpdateMatch?.params.id ? (
-            <UpdateEditor
-              key={investorUpdateMatch.params.id}
-              updateId={investorUpdateMatch.params.id}
-            />
-          ) : fundraisingMode ? (
-            <FundraisingPage
-              spaceName={pageSpaceName}
-              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
-              agentBusy={transcriptRunning}
-            />
-          ) : investorsMode ? (
-            <InvestorsPage
-              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
-              onCartaStatus={setCartaConnected}
-              onOpenModelSettings={() => openSettings("models")}
-              needsModel={bootstrapMe?.needsModel === true}
-              agentBusy={transcriptRunning}
-            />
-          ) : inboxMode ? (
-            <InboxPage
-              paused={false}
-              onShowAgent={
-                inboxAgentHidden
-                  ? () => {
-                      setInboxAgentCollapsedPref(false);
-                      setShowEmptyInboxAgent(true);
-                    }
-                  : undefined
-              }
-              onRefreshed={refreshInboxUnread}
-              consentScope={userId && activeSpaceId ? `${userId}:${activeSpaceId}` : undefined}
-              onOpenAgent={async (bot) => {
-                await refreshBots();
-                setFocusComposerBotId(bot.id);
-                openBot(bot.id);
-              }}
-              onConnectMail={() =>
-                navigate("/app/integrations?connect=gmail&returnTo=/app/inbox", {
-                  state: { connectNow: true },
-                })
-              }
-              onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
-              onAllowMailRules={(connectionId) =>
-                navigate(
-                  appPath(
-                    { connectorId: "google", slug: "gmail" },
-                    { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
-                  ),
-                )
-              }
-              spaceName={
-                spaces.length > 1
-                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                  : undefined
-              }
-            />
-          ) : opening ? (
-            <OpeningSpace />
-          ) : !active && !activeGroup ? (
-            <div className="grid flex-1 place-items-center">
-              <Button onClick={() => void createBot()}>
-                <Plus size={16} aria-hidden="true" />
-                <Trans>New bot</Trans>
-              </Button>
-            </div>
-          ) : (
-            threadView
-          )}
+              threadView
+            ))}
         </main>
       </PageNavContext.Provider>
 
@@ -5138,19 +5665,19 @@ export function ShellPage() {
             </div>
           ) : null
         ) : panel && (active || activeGroup) ? (
-          <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
+          <div className="rk-scroll h-full w-full overflow-y-auto px-5 pt-[17px] pb-[calc(17px+var(--toast-panel-reserve,0px))]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div
                 className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 ${TOP_BAR_HEIGHT}`}
               >
-                {/* On a phone this panel covers the chat header, so it carries the way to the sidebar. */}
+                {/* Between phone and desktop this panel covers the chat header, so it carries the way to the sidebar. A phone panel is a full sheet that closes back to the chat. */}
                 <div className="flex min-w-0 items-center gap-2">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     aria-label={t`Open navigation`}
                     onClick={() => setMobileSidebarOpen(true)}
-                    className="-ms-1.5 text-foreground/75 lg:hidden"
+                    className="-ms-1.5 text-foreground/75 max-sm:hidden lg:hidden"
                   >
                     <Menu size={19} strokeWidth={1.7} />
                   </Button>
@@ -5169,7 +5696,7 @@ export function ShellPage() {
                     ) : panel === "list" ? (
                       <Trans>List</Trans>
                     ) : active ? (
-                      computerScreenError || noComputerScreen ? null : (
+                      computerScreenError || noComputerScreen || computersOff ? null : (
                         computerStateLabel(computer?.state)
                       )
                     ) : (
@@ -5181,7 +5708,7 @@ export function ShellPage() {
                   {active &&
                   panel === "computer" &&
                   !computerOpen &&
-                  computerPanelNeedsMaintenance(computer?.state, booting) ? (
+                  computerPanelNeedsMaintenance(computer?.state, booting, computersOff) ? (
                     <ComputerMaintenanceActions
                       botId={active.id}
                       computer={computer}
@@ -5214,7 +5741,14 @@ export function ShellPage() {
               </div>
             ) : null}
             {panel === "page" && active ? (
-              <BotPagePanel key={active.id} botId={active.id} remote={pageRemote} />
+              <Suspense fallback={null}>
+                <BotPagePanel
+                  key={active.id}
+                  botId={active.id}
+                  remote={pageRemote}
+                  dataRemote={pageDataRemote}
+                />
+              </Suspense>
             ) : null}
             {panel === "list" && botPins?.list ? (
               <PinsList pins={botPins} onPins={setBotPins} />
@@ -5222,6 +5756,7 @@ export function ShellPage() {
             {panel === "computer" && active ? (
               <div>
                 <RoutineListHeader
+                  empty={activeRoutines.every((r) => r.managedKind !== null)}
                   onCreate={() => {
                     setRoutineDraft(emptyRoutineDraft());
                     setRoutineWebhookSecret(null);
@@ -5246,6 +5781,17 @@ export function ShellPage() {
                         setPanel("routine");
                       }}
                       onStop={() => void stopRun()}
+                      onToggleActive={(next) => {
+                        const botId = active.id;
+                        void rpc.routines
+                          .update({ routineId: routine.id, active: next })
+                          .then((saved) =>
+                            setRoutines((current) =>
+                              current.map((entry) => (entry.id === saved.id ? saved : entry)),
+                            ),
+                          )
+                          .catch(() => reloadRoutines(botId));
+                      }}
                     />
                   );
                 })}
@@ -5281,6 +5827,7 @@ export function ShellPage() {
                             (showComputerRecoveryHint ? (
                               <ComputersUnavailableHint
                                 sandboxProvider={bootstrapMe?.sandboxProvider}
+                                deploymentOwner={bootstrapMe?.isDeploymentOwner === true}
                                 onRecovered={(sandboxProvider) => {
                                   setBootstrapMe((prev) =>
                                     prev ? { ...prev, sandboxProvider } : prev,
@@ -5372,7 +5919,11 @@ export function ShellPage() {
               <BotSettings
                 key={active.id}
                 bot={active}
-                focusName={namingBotId === active.id}
+                focusName={manualFold[active.id] ?? namingBotId === active.id}
+                foldable={active.id in manualFold || namingBotId === active.id}
+                onFoldedChange={(folded) =>
+                  setManualFold((current) => ({ ...current, [active.id]: folded }))
+                }
                 notificationsOff={notificationsOff}
                 onOpenNotificationSettings={() => openSettings("general")}
                 memoryProviderConfigured={memoryProviderConfig != null}
@@ -5392,6 +5943,18 @@ export function ShellPage() {
                   .map(({ id, name }) => ({ id, name }))}
                 onSkillsChange={setAgentSkills}
                 skillsRefreshKey={skillsRefreshKey}
+                focusScratchpadItemId={
+                  scratchpadFocus.focus?.botId === active.id
+                    ? scratchpadFocus.focus.itemId
+                    : undefined
+                }
+                focusScratchpadNonce={
+                  scratchpadFocus.focus?.botId === active.id
+                    ? scratchpadFocus.focus.nonce
+                    : undefined
+                }
+                onScratchpadFocusHandled={scratchpadFocus.consume}
+                onCheckInChange={() => reloadRoutines(active.id)}
                 onSave={async ({ computerMode, ...patch }) => {
                   if (computerMode !== active.computerMode) {
                     await rpc.bots.setComputer({
@@ -5442,6 +6005,7 @@ export function ShellPage() {
                 }
                 messageProviders={messagingProviders}
                 skills={agentSkills}
+                taughtSkills={routineTaughtSkills}
                 saving={savingRoutine}
                 // Stays on until the run itself finishes, not just until the request returns.
                 running={
@@ -5455,6 +6019,13 @@ export function ShellPage() {
                 error={routineError}
                 onBack={() => setPanel("computer")}
                 onClose={() => setPanel(null)}
+                onOpenModelSettings={() => openSettings("models")}
+                onOpenBotSettings={() => setPanel("settings")}
+                onResume={(resumed) =>
+                  setRoutines((current) =>
+                    current.map((entry) => (entry.id === resumed.id ? resumed : entry)),
+                  )
+                }
                 onEnsureWebhook={async () => {
                   await ensureWebhookSecret(active.id);
                 }}
@@ -5467,12 +6038,20 @@ export function ShellPage() {
                     !routineDraft.schedules.length &&
                     !routineDraft.webhookEnabled &&
                     !routineDraft.githubEnabled &&
+                    !routineDraft.watch &&
                     !routineDraft.messageProvider
                   ) {
                     setRoutineError(t`Add a schedule, webhook, GitHub, or message trigger`);
                     return;
                   }
-                  if (!routineDraft.prompt.trim()) {
+                  if (
+                    routineDraft.watch &&
+                    !WatchSpecSchema.safeParse(routineDraft.watch).success
+                  ) {
+                    setRoutineError(t`Enter the page address, starting with http:// or https://`);
+                    return;
+                  }
+                  if (!routineDraft.prompt.trim() && !routineDraft.taughtSkill) {
                     setRoutineError(t`Write what this routine should do each time it runs.`);
                     return;
                   }
@@ -5495,6 +6074,8 @@ export function ShellPage() {
                     const routineModel = {
                       modelProvider: model?.provider ?? null,
                       modelId: model?.modelId ?? null,
+                      modelCredentialId:
+                        model && routineDraft.credentialId ? routineDraft.credentialId : null,
                       thinkingLevel: (model && routineDraft.thinkingLevel
                         ? routineDraft.thinkingLevel
                         : null) as ThinkingLevel | null,
@@ -5508,8 +6089,11 @@ export function ShellPage() {
                           setRoutineError(t`Add a run time for this one-shot.`);
                           return;
                         }
-                        const parsed = new Date(routineDraft.runAtLocal);
-                        if (!Number.isFinite(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+                        const parsed = routineRunAtDate(
+                          routineDraft.runAtLocal,
+                          routineDraft.timezone || targetRoutine.timezone,
+                        );
+                        if (!parsed || parsed.getTime() <= Date.now()) {
                           setRoutineError(t`Run time must be in the future.`);
                           return;
                         }
@@ -5517,19 +6101,27 @@ export function ShellPage() {
                       }
                       saved = await rpc.routines.update({
                         routineId: targetRoutine.id,
-                        name: routineDraft.name || t`Routine`,
+                        name:
+                          routineDraft.name.trim() ||
+                          defaultRoutineName(routineDraft.prompt, routineDraft.taughtSkill?.name),
                         prompt: routineDraft.prompt.trim(),
+                        taughtSkillId: routineDraft.taughtSkill?.id ?? null,
                         crons,
                         active: armOneShot ? true : routineDraft.active,
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        quiet: routineDraft.quiet,
+                        // Always sent: the update schema rejects empty crons unless a watch comes with them.
+                        watch: routineDraft.watch,
                         ...(routineDraft.timezone &&
                         routineDraft.timezone !== targetRoutine.timezone
                           ? { timezone: routineDraft.timezone }
                           : {}),
                         ...(routineModel.modelProvider !== targetRoutine.modelProvider ||
                         routineModel.modelId !== targetRoutine.modelId ||
+                        routineModel.modelCredentialId !==
+                          (targetRoutine.modelCredentialId ?? null) ||
                         routineModel.thinkingLevel !== targetRoutine.thinkingLevel
                           ? routineModel
                           : {}),
@@ -5538,8 +6130,11 @@ export function ShellPage() {
                     } else {
                       saved = await rpc.routines.create({
                         botId: targetBotId,
-                        name: routineDraft.name || t`Routine`,
+                        name:
+                          routineDraft.name.trim() ||
+                          defaultRoutineName(routineDraft.prompt, routineDraft.taughtSkill?.name),
                         prompt: routineDraft.prompt.trim(),
+                        taughtSkillId: routineDraft.taughtSkill?.id ?? null,
                         crons,
                         timezone: routineDraft.timezone || accountTimezone(bootstrapMe),
                         active: routineDraft.active,
@@ -5547,6 +6142,8 @@ export function ShellPage() {
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        quiet: routineDraft.quiet,
+                        watch: routineDraft.watch?.kind === "page" ? routineDraft.watch : null,
                         ...routineModel,
                       });
                     }
@@ -5626,27 +6223,31 @@ export function ShellPage() {
                     groupId: contextGroup!.id,
                     pinned: !contextGroup!.pinned,
                   });
-              void request.then(() => refreshBots());
+              void catchBotMenuRequest(
+                request.then(() => refreshBots()),
+                contextChat.id,
+              );
             }}
             onToggleUnread={() => {
               const unread = !contextChat.unread;
               setBotMenu(null);
               if (contextBot) {
                 const request = unread ? markBotUnread(contextBot.id) : markBotRead(contextBot.id);
-                void request.catch(() => undefined);
+                void catchBotMenuRequest(request, contextChat.id);
               } else {
                 const request = unread
                   ? rpc.threads.markUnread({ groupId: contextGroup!.id })
                   : rpc.threads.markRead({ groupId: contextGroup!.id });
-                void request
-                  .then(() =>
+                void catchBotMenuRequest(
+                  request.then(() =>
                     setGroups((current) =>
                       current.map((group) =>
                         group.id === contextGroup!.id ? { ...group, unread } : group,
                       ),
                     ),
-                  )
-                  .catch(() => undefined);
+                  ),
+                  contextChat.id,
+                );
               }
             }}
             onMoveToSection={(sectionId) => {
@@ -5655,7 +6256,10 @@ export function ShellPage() {
               const request = contextBot
                 ? rpc.bots.update({ botId: contextBot.id, sectionId })
                 : rpc.groups.update({ groupId: contextGroup!.id, sectionId });
-              void request.then(() => refreshBots());
+              void catchBotMenuRequest(
+                request.then(() => refreshBots()),
+                contextChat.id,
+              );
             }}
             onCreateSection={() => {
               setNewSectionTarget(
@@ -5715,10 +6319,12 @@ export function ShellPage() {
               const request = contextBot
                 ? rpc.bots.duplicate({ botId: contextBot.id })
                 : rpc.groups.duplicate({ groupId: contextGroup!.id });
-              void request.then(async (chat) => {
-                await refreshBots();
-                navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
-              });
+              void request
+                .then(async (chat) => {
+                  await refreshBots();
+                  navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
+                })
+                .catch((error: unknown) => setSendError(errorText(error, t`Failed to duplicate`)));
             }}
             onClear={
               contextBot
@@ -5728,12 +6334,61 @@ export function ShellPage() {
                     setBotMenu(null);
                   }
             }
+            onHide={
+              contextBot
+                ? () => {
+                    const { id, name } = contextBot;
+                    setBotMenu(null);
+                    void rpc.bots
+                      .update({ botId: id, hidden: true })
+                      .then(() => refreshBots())
+                      .then(() => {
+                        setArchiveUndo(null);
+                        setFolderUndo(null);
+                        setHideUndo({ id, name });
+                      })
+                      .catch((error: unknown) =>
+                        setSendError(errorText(error, t`Failed to hide bot`)),
+                      );
+                  }
+                : undefined
+            }
             onArchive={() => {
               setBotMenu(null);
-              const request = contextBot
-                ? rpc.bots.archive({ botId: contextBot.id })
-                : rpc.groups.archive({ groupId: contextGroup!.id });
-              void request.then(() => refreshBots(true));
+              const target = contextBot
+                ? { kind: "bot" as const, id: contextBot.id, name: contextBot.name }
+                : { kind: "group" as const, id: contextGroup!.id, name: contextGroup!.name };
+              const request =
+                target.kind === "bot"
+                  ? rpc.bots.archive({ botId: target.id })
+                  : rpc.groups.archive({ groupId: target.id });
+              // Recorded before the await: the archive's own redirect replaces the route.
+              const openAtArchive =
+                target.kind === "bot" ? botId === target.id : groupId === target.id;
+              const pathAtArchive = pathnameRef.current;
+              // A move made while the request is in flight is the user's own choice, so Undo
+              // must not take them back.
+              let movedMeanwhile = false;
+              const sequence = ++archiveSequence.current;
+              void request
+                .then(() => {
+                  movedMeanwhile = pathnameRef.current !== pathAtArchive;
+                  return refreshBots(true);
+                })
+                // One frame for the redirect to reach the route refs, so Undo can tell them apart.
+                .then(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+                .then(() => {
+                  if (archiveSequence.current !== sequence) return;
+                  setHideUndo(null);
+                  setFolderUndo(null);
+                  setArchiveUndo({
+                    ...target,
+                    wasOpen: openAtArchive && !movedMeanwhile,
+                    landedPath: pathnameRef.current,
+                    seq: sequence,
+                  });
+                })
+                .catch((error: unknown) => setSendError(errorText(error, t`Failed to archive`)));
             }}
             onDelete={() => {
               if (contextBot) setDeleteTarget(contextBot);
@@ -5932,11 +6587,60 @@ export function ShellPage() {
           />
         ) : null}
 
-        {folderUndo ? (
+        {/* One notice at a time: the latest action wins. */}
+        {archiveUndo ? (
+          <SidebarUndoNotice
+            message={archiveUndo.error ?? t`${archiveUndo.name} archived`}
+            // A pending restore must not lose its failure to the auto-dismiss timer.
+            hold={archiveUndo.pending}
+            onUndo={() => {
+              const target = archiveUndo;
+              const { kind, id, seq } = target;
+              if (target.pending) return;
+              const clickedPath = pathnameRef.current;
+              const update = (
+                next: (NonNullable<typeof archiveUndo> & { pending?: boolean }) | null,
+              ) =>
+                setArchiveUndo((current) =>
+                  current && current.seq === seq ? (next ? { ...next } : null) : current,
+                );
+              update({ ...target, pending: true });
+              const restore =
+                kind === "bot"
+                  ? rpc.bots.restore({ botId: id })
+                  : rpc.groups.restore({ groupId: id });
+              void restore
+                .then(() => refreshBots(true))
+                .then(() => {
+                  update(null);
+                  if (reopensAfterUndo(target, clickedPath, pathnameRef.current))
+                    navigate(kind === "bot" ? `/app/${id}` : `/app/g/${id}`);
+                })
+                // Kept on screen, because setSendError only shows inside the composer.
+                .catch((error: unknown) =>
+                  update({ ...target, error: errorText(error, t`Failed to restore`) }),
+                );
+            }}
+            onDismiss={() => setArchiveUndo(null)}
+          />
+        ) : folderUndo ? (
           <SidebarUndoNotice
             message={t`Chats grouped into folders`}
             onUndo={() => void undoAutoGroup()}
             onDismiss={() => setFolderUndo(null)}
+          />
+        ) : hideUndo ? (
+          <SidebarUndoNotice
+            message={t`${hideUndo.name} hidden`}
+            onUndo={() => {
+              const { id } = hideUndo;
+              setHideUndo(null);
+              void rpc.bots
+                .update({ botId: id, hidden: false })
+                .then(() => refreshBots())
+                .catch(() => undefined);
+            }}
+            onDismiss={() => setHideUndo(null)}
           />
         ) : null}
 
@@ -5964,8 +6668,19 @@ export function ShellPage() {
           }}
           // Without a space heading, its menu is gone; the palette still reaches this action.
           actions={[
+            // Plain keywords, not translated: "New bot" already has a catalog entry.
+            { label: t`New bot`, keywords: "agent create", run: () => void createBot() },
             { label: t`New folder`, run: () => void createFolder() },
             { label: t`Group chats into folders`, run: () => void autoGroupSidebar() },
+            ...spaceSwitchTargets(spaces, bootstrapMe?.spaceId).map((space) => ({
+              label: t`Switch to ${space.name}`,
+              keywords: t`space`,
+              run: () => {
+                setMobileSidebarOpen(false);
+                if (selectSpace(space.id)) window.location.assign("/app");
+              },
+            })),
+            ...settingsJumps,
           ]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
@@ -5988,6 +6703,22 @@ export function ShellPage() {
 
         {pickerInfoTopic ? (
           <PickerInfoDialog topic={pickerInfoTopic} onClose={() => setPickerInfoTopic(null)} />
+        ) : null}
+
+        {archiveEmailTarget ? (
+          <ArchiveBotsDialog
+            count={archiveEmailTarget.length}
+            onCancel={() => setArchiveEmailTarget(null)}
+            onConfirm={async () => {
+              const results = await Promise.allSettled(
+                archiveEmailTarget.map((botId) => rpc.bots.archive({ botId })),
+              );
+              const failed = results.filter((result) => result.status === "rejected").length;
+              setArchiveEmailTarget(null);
+              if (failed > 0) setSendError(t`Could not archive ${failed} email chats`);
+              await refreshBots(true);
+            }}
+          />
         ) : null}
 
         {clearTarget ? (
@@ -6057,6 +6788,13 @@ export function ShellPage() {
             modelProvider={settingsModelProvider}
             notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
+            hiddenBots={bots.filter((bot) => bot.hiddenAt)}
+            onShowBot={(botId) => {
+              void rpc.bots
+                .update({ botId, hidden: false })
+                .then(() => refreshBots())
+                .catch(() => undefined);
+            }}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}
             sandboxProvider={bootstrapMe?.sandboxProvider}
@@ -6077,9 +6815,12 @@ export function ShellPage() {
               setBootstrapMe(await rpc.preferences.update({ timezone }));
             }}
             memoryConfig={memoryProviderConfig}
+            memoryConfigLoadFailed={memoryProviderConfigLoadFailed}
+            onRetryMemoryConfigLoad={retryMemoryProviderConfigLoad}
             onMemoryConfigChange={(config) => {
               memoryProviderConfigRevision.current += 1;
               setMemoryProviderConfig(config);
+              setMemoryProviderConfigLoadFailed(false);
             }}
             onVoiceStatusMaybeChanged={async () => {
               try {
@@ -6153,6 +6894,7 @@ export function ShellPage() {
                     botId={computerBot.id}
                     busy={teachBusy}
                     onStop={stopTeaching}
+                    onCancel={cancelTeaching}
                     variant="overlay"
                   />
                 ) : (
@@ -6187,7 +6929,14 @@ export function ShellPage() {
                   </Button>
                 ) : null}
                 {recordingSkill ? (
-                  <TeachStopButton busy={teachBusy} onStop={stopTeaching} />
+                  <>
+                    <TeachStopButton busy={teachBusy} onStop={stopTeaching} />
+                    <TeachCancelButton
+                      recording={recordingSkill}
+                      busy={teachBusy}
+                      onCancel={cancelTeaching}
+                    />
+                  </>
                 ) : hasControl ? (
                   <ComputerReleaseActions
                     takeoverRequested={Boolean(computer?.takeoverRequested)}
@@ -6214,7 +6963,7 @@ export function ShellPage() {
                     onRefresh={refreshActiveTeaching}
                   />
                 ) : null}
-                {computerBot && !recordingSkill ? (
+                {computerBot && !recordingSkill && !computersOff ? (
                   <ComputerMaintenanceActions
                     botId={computerBot.id}
                     computer={computer}
@@ -6247,7 +6996,8 @@ export function ShellPage() {
                 botId={computerBot.id}
                 computer={computer}
                 hasControl={hasControl}
-                dock={!recordingSkill}
+                dock
+                recordingSkillId={recordingSkill?.id}
                 onTakeControl={
                   computer?.state === "running" &&
                   !hasControl &&
@@ -6299,7 +7049,15 @@ export function ShellPage() {
   return (
     <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}>
       <AppNavigateContext.Provider value={navigate}>
-        {missingPath === pathname ? <NotFoundPage /> : shell}
+        {missingPath === pathname ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={<RowsSkeleton className="p-6" />}>
+              <NotFoundPage />
+            </Suspense>
+          </ErrorBoundary>
+        ) : (
+          shell
+        )}
       </AppNavigateContext.Provider>
     </AvatarStyleProvider>
   );
@@ -6314,6 +7072,7 @@ const SETTINGS_SECTIONS = [
   "voice",
   "computer",
   "billing",
+  "connections",
 ] as const satisfies readonly SettingsSection[];
 
 export function settingsSectionFromParam(value: string | null): SettingsSection | null {
@@ -6329,6 +7088,19 @@ export function chatIsOpening(input: {
   routeWaiting: boolean;
 }): boolean {
   return !input.hasChat && (!input.botsLoaded || input.routeWaiting);
+}
+
+/**
+ * Undo reopens the archived chat only if it was the open one, and only while the view is still
+ * on the path the archive left it at, both when Undo was clicked (`clickedPath`) and when the
+ * restore resolves (`currentPath`). Anything opened since is where the person meant to be.
+ */
+export function reopensAfterUndo(
+  undo: { wasOpen: boolean; landedPath: string },
+  clickedPath: string,
+  currentPath: string,
+): boolean {
+  return undo.wasOpen && undo.landedPath === clickedPath && undo.landedPath === currentPath;
 }
 
 /** Whether an `/app/:botId` link still names a chat, live or archived. */

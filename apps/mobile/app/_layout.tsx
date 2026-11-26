@@ -1,16 +1,17 @@
 import type { LinkFavicons } from "@rakazo/chat-ui/native";
 import {
+  AppLinkProvider,
   HideAmountsContext,
   LinkFaviconsContext,
   MarkdownLinkPromptProvider,
   RemoteImagesContext,
 } from "@rakazo/chat-ui/native";
-import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider, useRouter } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -29,6 +30,7 @@ import {
   subscribeApiBase,
   subscribeSessionRejected,
 } from "../lib/api";
+import { appRouteFor } from "../lib/app-link";
 import { loadAppearancePreference, mobileTokens } from "../lib/appearance";
 import { replaceWithSignIn } from "../lib/auth-routing";
 import { loadAvatarStyle } from "../lib/avatar-style";
@@ -78,19 +80,29 @@ function ChatContentProviders({
     () => ({ endpoint, load: (origin) => loadLinkFavicon(origin, endpoint), globe: <LinkGlobe /> }),
     [endpoint],
   );
+  const router = useRouter();
+  const resolveAppLink = useCallback(
+    (href: string) => {
+      const route = appRouteFor(href);
+      return route ? () => router.push(route) : null;
+    },
+    [router],
+  );
   return (
-    <MarkdownLinkPromptProvider
-      appOrigin={endpoint}
-      copy={{ title: t("Open external link?"), cancel: t("Cancel"), open: t("Open") }}
-    >
-      <HideAmountsContext.Provider value={hideAmounts}>
-        <RemoteImagesContext.Provider value={loadRemoteImages}>
-          <LinkFaviconsContext.Provider value={linkFavicons}>
-            {children}
-          </LinkFaviconsContext.Provider>
-        </RemoteImagesContext.Provider>
-      </HideAmountsContext.Provider>
-    </MarkdownLinkPromptProvider>
+    <AppLinkProvider resolve={resolveAppLink}>
+      <MarkdownLinkPromptProvider
+        appOrigin={endpoint}
+        copy={{ title: t("Open external link?"), cancel: t("Cancel"), open: t("Open") }}
+      >
+        <HideAmountsContext.Provider value={hideAmounts}>
+          <RemoteImagesContext.Provider value={loadRemoteImages}>
+            <LinkFaviconsContext.Provider value={linkFavicons}>
+              {children}
+            </LinkFaviconsContext.Provider>
+          </RemoteImagesContext.Provider>
+        </HideAmountsContext.Provider>
+      </MarkdownLinkPromptProvider>
+    </AppLinkProvider>
   );
 }
 
@@ -242,6 +254,7 @@ export default function Layout() {
                     <Stack.Screen name="inbox-attachment" options={{ title: "" }} />
                     <Stack.Screen name="artifacts" options={glassHeaderOptions(t("Artifacts"))} />
                     <Stack.Screen name="data-room" options={glassHeaderOptions(t("Data room"))} />
+                    <Stack.Screen name="scanner" options={glassHeaderOptions(t("Scanner"))} />
                     <Stack.Screen name="data-room-item" options={{ title: t("File") }} />
                     <Stack.Screen name="artifact" options={{ title: t("Artifact") }} />
                     <Stack.Screen name="agent-page" options={{ title: t("Page") }} />

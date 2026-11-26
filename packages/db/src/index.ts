@@ -1,3 +1,7 @@
+export * from "./app-control-store.js";
+export * from "./approval-decisions.js";
+export * from "./approval-rules.js";
+export * from "./artifact-shares.js";
 export * from "./artifact-versions.js";
 export * from "./audit-requests.js";
 export * from "./billing.js";
@@ -12,9 +16,12 @@ export * from "./company-import.js";
 export * from "./computers.js";
 export * from "./contacts.js";
 export * from "./credential-secrets.js";
+export * from "./cross-space-communication.js";
 export * from "./data-room.js";
 export * from "./data-room-autosort.js";
 export * from "./data-room-imports.js";
+export * from "./database-access.js";
+export * from "./equity/index.js";
 export * from "./events.js";
 export * from "./expire-stuck-run.js";
 export * from "./external-conversations.js";
@@ -24,6 +31,8 @@ export * from "./history-retrieval.js";
 export * from "./investor-portal.js";
 export * from "./investor-updates.js";
 export * from "./legal.js";
+export * from "./like-literal.js";
+export * from "./mail-reply-batch.js";
 export * from "./meetings.js";
 export * from "./memory-config.js";
 export * from "./messages.js";
@@ -34,17 +43,37 @@ export * from "./model-backups.js";
 export * from "./model-credentials.js";
 export * from "./notification-live.js";
 export * from "./notifications.js";
+export * from "./omi-outputs.js";
+export * from "./page-source-refresh.js";
+export * from "./pipeline-auto-status.js";
+export * from "./pipeline-import.js";
 export * from "./prisma-errors.js";
 export * from "./push-endpoints.js";
 export * from "./realtime-follow.js";
 export * from "./repos.js";
-export { delegatePendingAgents, delegatePendingIds } from "./run-pauses.js";
+export * from "./routine-watch.js";
+export * from "./row-security.js";
+export * from "./run-fragments.js";
+export {
+  announceDelegatePending,
+  closeApprovalCardsInTransaction,
+  delegatePendingAgents,
+  delegatePendingIds,
+  settleApprovalsOfEndedRuns,
+} from "./run-pauses.js";
+export * from "./run-secrets.js";
+export * from "./run-turn-checkpoint.js";
 export * from "./safes.js";
 export * from "./scope.js";
+export * from "./scratchpad-waiting.js";
 export * from "./sessions.js";
 export * from "./sidebar-folders.js";
 export * from "./sidebar-pages.js";
 export * from "./spaces.js";
+export * from "./stopped-work.js";
+export * from "./thread-goals.js";
+export * from "./thread-lock.js";
 export * from "./transaction-retry.js";
 export * from "./usage.js";
 export * from "./voice-credentials.js";
+export * from "./meetings-merge.js";

@@ -40,3 +40,14 @@ export function developmentIconFile(platform: NodeJS.Platform) {
 export function setupWindowOptions(platform: NodeJS.Platform) {
   return { width: 720, height: 700, minWidth: 480, minHeight: 560, ...windowChrome(platform) };
 }
+
+/**
+ * Pages in this window include bot-written HTML in a sandboxed frame. WebRTC could carry data out in a
+ * STUN server's hostname, and Electron has no permission for RTCPeerConnection, so the only control is
+ * the IP handling policy: no UDP except through a proxy.
+ */
+export function restrictWebRtc(contents: {
+  setWebRTCIPHandlingPolicy: (policy: "disable_non_proxied_udp") => void;
+}) {
+  contents.setWebRTCIPHandlingPolicy("disable_non_proxied_udp");
+}

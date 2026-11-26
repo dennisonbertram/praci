@@ -8,6 +8,7 @@ import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import type { ModelEmulatorRequest } from "./model-emulator.js";
 import { startModelEmulator } from "./model-emulator.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 const enabled = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 const origin = "http://127.0.0.1:5173";
@@ -229,6 +230,11 @@ describe.skipIf(!enabled)("history retrieval through executor", () => {
           modelId: model.model.id,
         });
         const thread = await handles.prisma.thread.findFirstOrThrow({ where: { botId: bot.id } });
+        await grantTestModelConsent(handles.prisma, thread, {
+          provider: model.model.provider,
+          modelId: model.model.id,
+          baseUrl: model.baseUrl,
+        });
         await handles.prisma.$transaction([
           handles.prisma.message.create({
             data: {

@@ -2,8 +2,12 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { MemoryDocument } from "@rakazo/contracts";
 import { Button, Input, Skeleton, Textarea } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { PickFilter, SearchField } from "../components/ListControls";
 import { downloadArtifactBytes } from "../lib/artifact-open";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
+import { useListParams } from "../lib/list-params";
+import { UNDO_SEND_MS } from "../lib/outbox";
+import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 
 const fieldClass = "mt-2 w-full font-mono text-[13px] leading-relaxed";
@@ -36,7 +40,6 @@ export function KnowledgeSection({ botId }: { botId: string }) {
   );
 }
 
-/** All of the user's memory documents (shared and per bot), mounted in Settings → Memory. */
 /** The first line of a memory document that says something: headings are skipped, list marks dropped. */
 export function memoryDocPreview(content: string): string | null {
   for (const raw of content.split("\n")) {
@@ -52,9 +55,13 @@ export function memoryDocPreview(content: string): string | null {
   return null;
 }
 
+/** All of the user's memory documents (shared and per bot), mounted in Settings → Memory. */
 export function SpaceMemorySection() {
   const { t } = useLingui();
-  const [filter, setFilter] = useState("");
+  const list = useListParams([] as const, { field: "default", dir: "asc" });
+  // Settings opens over another page, so its own params: it never reads or changes that page's search.
+  const filter = list.param("memoryQ") ?? "";
+  const agent = list.param("memoryAgent");
   const [hasDocs, setHasDocs] = useState(false);
   const [botNames, setBotNames] = useState<Map<string, string>>(new Map());
 
@@ -78,13 +85,26 @@ export function SpaceMemorySection() {
   return (
     <div className="mt-6" data-testid="space-memory-documents">
       {hasDocs ? (
-        <Input
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder={t`Filter memory`}
-          aria-label={t`Filter memory`}
-          className="mb-3"
-        />
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <SearchField
+            className="w-full @md:w-72"
+            value={filter}
+            onChange={(value) => list.setParam("memoryQ", value)}
+            placeholder={t`Filter memory`}
+            label={t`Filter memory`}
+            name="memory-search"
+          />
+          <PickFilter
+            label={t`Agent`}
+            value={agent}
+            anyLabel={t`All`}
+            options={[
+              ...[...botNames.entries()].map(([id, name]) => [id, name] as [string, string]),
+              ["user", t`Shared by all bots`],
+            ]}
+            onChange={(value) => list.setParam("memoryAgent", value)}
+          />
+        </div>
       ) : null}
       <MemoryDocumentList
         load={() => rpc.memory.list({})}
@@ -92,6 +112,7 @@ export function SpaceMemorySection() {
         exportScope="user"
         testId="space-memory-list"
         filter={filter}
+        agent={agent}
         onHasDocs={setHasDocs}
         groupLabel={(doc) =>
           doc.scope === "user"
@@ -109,6 +130,7 @@ function MemoryDocumentList({
   exportScope,
   testId,
   filter = "",
+  agent,
   groupLabel,
   onHasDocs,
   emptyMessage = true,
@@ -119,6 +141,7 @@ function MemoryDocumentList({
   exportScope?: MemoryDocument["scope"];
   testId: string;
   filter?: string;
+  agent?: string;
   /** When set, documents render in groups headed by this label; shared first, then by label. */
   groupLabel?: (doc: MemoryDocument) => string;
   onHasDocs?: (hasDocs: boolean) => void;
@@ -133,18 +156,21 @@ function MemoryDocumentList({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A Save conflict is shown beside the open editor, where the draft is.
+  const [conflictId, setConflictId] = useState<string | null>(null);
   const generation = useRef(0);
   const loadRef = useRef(load);
   loadRef.current = load;
 
-  useEffect(() => {
+  function reload() {
     const current = ++generation.current;
-    void loadRef
+    return loadRef
       .current()
       .then((list) => {
         if (current !== generation.current) return;
         setDocs(list);
         setLoading(false);
+        setError((previous) => (previous === t`Could not load` ? null : previous));
       })
       .catch(() => {
         if (current !== generation.current) return;
@@ -152,10 +178,30 @@ function MemoryDocumentList({
         setLoading(false);
         setError(t`Could not load`);
       });
+  }
+
+  useEffect(() => {
+    void reload();
     return () => {
       generation.current += 1;
     };
   }, [t]);
+
+  // Deletes wait out the Undo window here; leaving the list sends them at once.
+  const [held, setHeld] = useState<ReadonlySet<string>>(new Set());
+  const pending = useRef(
+    new Map<string, { run: () => void; timer: ReturnType<typeof setTimeout> }>(),
+  );
+  useEffect(() => {
+    const entries = pending.current;
+    return () => {
+      for (const { run, timer } of entries.values()) {
+        clearTimeout(timer);
+        run();
+      }
+      entries.clear();
+    };
+  }, []);
 
   // A document with nothing in it is not a memory; it only shows when nothing else does.
   const remembered = docs.filter((doc) => memoryDocPreview(doc.content) !== null);
@@ -165,12 +211,15 @@ function MemoryDocumentList({
     onHasDocs?.(hasDocs || error !== null);
   }, [hasDocs, error, onHasDocs]);
   const needle = filter.trim().toLowerCase();
-  const visible = needle
-    ? remembered.filter(
-        (doc) =>
-          doc.path.toLowerCase().includes(needle) || doc.content.toLowerCase().includes(needle),
-      )
-    : remembered;
+  const visible = remembered.filter((doc) => {
+    if (agent === "user" && doc.scope !== "user") return false;
+    if (agent && agent !== "user" && doc.botId !== agent) return false;
+    return (
+      !needle ||
+      doc.path.toLowerCase().includes(needle) ||
+      doc.content.toLowerCase().includes(needle)
+    );
+  });
   const groups = new Map<string, { label: string; docs: MemoryDocument[] }>();
   for (const doc of visible) {
     const key = groupLabel ? (doc.scope === "user" ? "" : (doc.botId ?? "?")) : "";
@@ -184,21 +233,71 @@ function MemoryDocumentList({
   );
 
   function openDoc(doc: MemoryDocument) {
+    setConflictId(null);
     setOpenId(doc.id);
     setDraft(doc.content);
     setError(null);
+  }
+
+  function release(id: string) {
+    setHeld((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function undoRemove(id: string) {
+    const entry = pending.current.get(id);
+    if (entry) clearTimeout(entry.timer);
+    pending.current.delete(id);
+    release(id);
+  }
+
+  function remove(doc: MemoryDocument) {
+    const run = () => {
+      pending.current.delete(doc.id);
+      void rpc.memory
+        .remove({ documentId: doc.id, revision: doc.revision })
+        .then(() => setDocs((current) => current.filter((entry) => entry.id !== doc.id)))
+        .catch((cause) =>
+          // A bot changed it during the Undo window: say so, so Delete is not pressed blind again.
+          setError(
+            (cause as { code?: string } | null)?.code === "CONFLICT"
+              ? t`Changed since you opened it`
+              : t`Could not delete`,
+          ),
+        )
+        .then(() => {
+          release(doc.id);
+          return reload();
+        });
+    };
+    const timer = setTimeout(run, UNDO_SEND_MS);
+    pending.current.set(doc.id, { run, timer });
+    setHeld((current) => new Set(current).add(doc.id));
+    setOpenId(null);
   }
 
   async function save(doc: MemoryDocument) {
     if (busy) return;
     setBusy(true);
     setError(null);
+    setConflictId(null);
     try {
-      const updated = await rpc.memory.update({ documentId: doc.id, content: draft });
+      const updated = await rpc.memory.update({
+        documentId: doc.id,
+        content: draft,
+        expectedRevision: doc.revision,
+      });
       setDocs((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
       setOpenId(null);
-    } catch {
-      setError(t`Could not save`);
+    } catch (cause) {
+      if ((cause as { code?: string } | null)?.code === "CONFLICT") {
+        // Keep the draft; the next Save uses the fresh revision.
+        await reload();
+        setConflictId(doc.id);
+      } else setError(t`Could not save`);
     } finally {
       setBusy(false);
     }
@@ -226,7 +325,16 @@ function MemoryDocumentList({
 
   return (
     <div data-testid={testId}>
-      {error ? <div className="px-2.5 pb-2 text-[13px] text-destructive">{error}</div> : null}
+      {error ? (
+        <div className="flex items-center gap-2 px-2.5 pb-2 text-[13px]">
+          <span className="text-destructive">{error}</span>
+          {error === t`Could not load` ? (
+            <Button variant="outline" size="sm" type="button" onClick={() => void reload()}>
+              <Trans>Try again</Trans>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       {loading ? <Skeleton className="h-7 w-full" /> : null}
       {emptyMessage && !loading && remembered.length === 0 && !error ? (
         <div className="rounded-xl border border-border px-4 py-3 text-[13.5px] text-muted-foreground">
@@ -252,59 +360,100 @@ function MemoryDocumentList({
               {group.label}
             </div>
           ) : null}
-          {group.docs.map((doc) => (
-            <div key={doc.id}>
-              <Button
-                variant="ghost"
-                type="button"
-                disabled={busy}
-                onClick={() => (openId === doc.id ? setOpenId(null) : openDoc(doc))}
-                className={rowClass(openId === doc.id)}
+          {group.docs.map((doc) =>
+            held.has(doc.id) ? (
+              // A toast would be hidden under Settings, so the Undo sits where the memory was.
+              <div
+                key={doc.id}
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-[14px] text-muted-foreground"
               >
-                {/* What the bot remembers, not its file name and revision number. */}
-                <span
-                  className="min-w-0 truncate text-[14px] text-foreground"
-                  dir="auto"
-                  title={doc.path}
+                <Trans>Memory deleted</Trans>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => undoRemove(doc.id)}
+                  className="rounded-lg px-3 py-1.5 text-[13px] text-foreground"
                 >
-                  {maskCurrencyWhenHidden(memoryDocPreview(doc.content) ?? "")}
-                </span>
-              </Button>
-              {openId === doc.id ? (
-                <div className="px-2.5 pb-2">
-                  <Textarea
-                    aria-label={doc.path}
-                    disabled={busy}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
-                    className={fieldClass}
+                  <Trans>Undo</Trans>
+                </Button>
+              </div>
+            ) : (
+              <div key={doc.id}>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => (openId === doc.id ? setOpenId(null) : openDoc(doc))}
+                  className={rowClass(openId === doc.id)}
+                >
+                  {/* What the bot remembers, not its file name and revision number. */}
+                  <span
+                    className="min-w-0 truncate text-[14px] text-foreground"
                     dir="auto"
-                  />
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      disabled={busy || draft === doc.content}
-                      onClick={() => void save(doc)}
-                      className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-                    >
-                      <Trans>Save</Trans>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setOpenId(null)}
-                      className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
-                    >
-                      <Trans>Cancel</Trans>
-                    </Button>
-                  </div>
+                    title={doc.path}
+                  >
+                    {maskCurrencyWhenHidden(memoryDocPreview(doc.content) ?? "")}
+                  </span>
+                </Button>
+                <div className="px-2.5 pb-1 text-[12px] text-muted-foreground">
+                  <time dateTime={doc.updatedAt}>{formatRelativeTime(doc.updatedAt)}</time>
+                  {doc.source && doc.source.kind === "routine" && doc.source.label ? (
+                    <>
+                      {" · "}
+                      <Trans>From {doc.source.label}</Trans>
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          ))}
+                {openId === doc.id ? (
+                  <div className="px-2.5 pb-2">
+                    <Textarea
+                      aria-label={t`Memory`}
+                      disabled={busy}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
+                      className={fieldClass}
+                      dir="auto"
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        disabled={busy || draft === doc.content || memoryDocPreview(draft) === null}
+                        onClick={() => void save(doc)}
+                        className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+                      >
+                        <Trans>Save</Trans>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setOpenId(null)}
+                        className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+                      >
+                        <Trans>Cancel</Trans>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => remove(doc)}
+                        className="ml-auto rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+                      >
+                        <Trans>Delete</Trans>
+                      </Button>
+                    </div>
+                    {conflictId === doc.id ? (
+                      <p role="alert" className="mt-2 text-[13px] text-destructive">
+                        {t`Changed since you opened it`}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ),
+          )}
         </div>
       ))}
       {hasDocs ? (

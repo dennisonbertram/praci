@@ -10,13 +10,16 @@ import type {
 import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
 import {
+  dismissReply,
   isMailConnection,
   mailSyncStatus,
   replyAllDiffers,
   requestMailSync,
   senderRulesState,
+  setMailReconnect,
   triageReadiness,
   triageStatus,
+  undoReplyDismissal,
   waitForMailSync,
 } from "@rakazo/adapters";
 import type {
@@ -29,6 +32,7 @@ import type {
   InboxPileCounts,
   InboxRefreshOutput,
   InboxTodo,
+  InboxTodoDone,
   MailAccountSummary,
   MailRow,
 } from "@rakazo/contracts";
@@ -39,12 +43,13 @@ import {
   inboxAgentSpawnKey,
   MailSignalsSchema,
 } from "@rakazo/contracts";
-import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
+import { applySenderMark, planUnsubscribe, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { proxyEmailImages } from "./email-image-proxy.js";
 import { removeFiltersOfSender } from "./inbox-sender-rules.js";
+import { trackedThreads } from "./inbox-track.js";
 
 export interface InboxDeps {
   prisma: PrismaClient;
@@ -59,7 +64,7 @@ export interface InboxDeps {
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
 /** Meetings stored this recently count as still being digested while their digest is empty. */
-const DIGEST_WINDOW_MS = 10 * 60_000;
+export const DIGEST_WINDOW_MS = 10 * 60_000;
 /** Updates and Newsletters group by sender, so a noisy sender must not be cut off at 200 rows. */
 const MAX_GROUPED_ROWS = 500;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
@@ -206,6 +211,14 @@ async function senderMarks(prisma: PrismaClient, actor: Actor): Promise<Map<stri
 const fromAddressIs = (addresses: string[]) =>
   addresses.map((address) => ({ fromAddress: { equals: address, mode: "insensitive" as const } }));
 
+/** What marks one cached message as spam-like, the row part of the cleanup's sender check. */
+const rowIsJunk = (m: CachedMessage) =>
+  m.isSpam ||
+  m.pile === "spam" ||
+  m.category === "spam" ||
+  m.category === "scam" ||
+  m.category === "suspicious";
+
 function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxMark>): MailRow {
   const mark = enabled ? (marks.get(m.fromAddress.toLowerCase()) ?? null) : null;
   // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
@@ -215,6 +228,12 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
       priority: enabled && !m.alreadyHandled ? asPriority(m.priority) : null,
     },
     mark,
+  );
+  const signals = MailSignalsSchema.safeParse(m.signals).data ?? null;
+  // The same plan inbox.unsubscribe runs, on this message's own signals: nothing to offer when
+  // it finds no target or would refuse this spam-like mail.
+  const canUnsubscribe = ["one_click", "link", "mailto"].includes(
+    planUnsubscribe(signals, rowIsJunk(m)).method,
   );
   return {
     id: m.id,
@@ -238,7 +257,8 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     ...(m.fromSelf ? { fromSelf: true } : {}),
     fromAddress: m.fromAddress.toLowerCase(),
     pile: m.isSpam ? "spam" : asPile(m.pile),
-    ...(MailSignalsSchema.safeParse(m.signals).data?.attachment ? { hasAttachment: true } : {}),
+    ...(signals?.attachment ? { hasAttachment: true } : {}),
+    ...(canUnsubscribe ? { canUnsubscribe: true } : {}),
   };
 }
 
@@ -306,6 +326,8 @@ async function searchMail(
           },
           context,
         );
+        // Google accepted the token, so a stored reconnect flag is stale.
+        await setMailReconnect(deps.prisma, id, false).catch(() => undefined);
         if (page.nextPageToken) next[id] = page.nextPageToken;
         if (page.unhydratedIds?.length) failed.push(id);
         const cached = await deps.prisma.cachedMailMessage.findMany({
@@ -321,7 +343,11 @@ async function searchMail(
         if (!(error instanceof MailProviderError)) throw error;
         getLogger().warn("inbox.list search failed", { connectionId: id, reason: error.kind });
         failed.push(id);
-        if (error.kind === "auth") reconnect.push(id);
+        if (error.kind === "auth") {
+          reconnect.push(id);
+          // Stored too, so the Integrations page says the same thing as this search.
+          await setMailReconnect(deps.prisma, id, true).catch(() => undefined);
+        }
         if (error.kind === "rate_limited") rateLimited.push(id);
         return [];
       }
@@ -382,6 +408,12 @@ export async function inboxList(
     select: { id: true, name: true },
   });
   const accounts = mailAccountsOf(connections);
+  const withTracked = async (rows: MailRow[]) => {
+    const tracked = await trackedThreads(prisma, actor, rows);
+    return rows.map((row) =>
+      tracked.has(`${row.connectionId}:${row.threadId}`) ? { ...row, tracked: true } : row,
+    );
+  };
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
   const enabled = ready !== null;
@@ -409,7 +441,7 @@ export async function inboxList(
     return {
       accounts,
       agent: agentOut,
-      rows: result.messages.map((m) => toMailRow(m, enabled, marks)),
+      rows: await withTracked(result.messages.map((m) => toMailRow(m, enabled, marks))),
       syncedAt: null,
       failedAccounts: result.failed,
       reconnectAccounts: result.reconnect,
@@ -467,7 +499,9 @@ export async function inboxList(
     pileCounts(prisma, actor, ids),
   ]);
 
-  const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
+  const rows = await withTracked(
+    oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks)),
+  );
   // A rate limit stays reported until a sync clears the stored error, even while another process holds the sync claim,
   // so an expired pause or a refresh that skipped its own sync never turns into "No mail".
   const current = states.filter((s) => s.lastErrorAt);
@@ -609,6 +643,37 @@ export async function inboxRefresh(
   };
 }
 
+/**
+ * Re-checks one account now with a lightweight Gmail call, records whether Google accepts the
+ * token (the flag the connections list and the Inbox both read), and returns the new state.
+ */
+export async function checkMailConnection(
+  deps: InboxDeps,
+  actor: Actor,
+  connectionId: string,
+  signal?: AbortSignal,
+): Promise<{ needsReconnect: boolean }> {
+  const context = mailContext(actor, "connections.check", signal);
+  const accounts = await deps.mail.listAccounts(
+    { spaceId: actor.spaceId, userId: actor.userId },
+    context,
+  );
+  const account = accounts.find((a) => a.id === connectionId);
+  if (!account) throw notFound();
+  try {
+    await deps.mail.listLabels(account, context);
+  } catch (error) {
+    if (!(error instanceof MailProviderError)) throw error;
+    // Anything but a refused token (rate limit, outage) says nothing about the sign-in.
+    if (error.kind !== "auth")
+      throw new ORPCError("BAD_GATEWAY", { message: "Gmail did not answer" });
+    await setMailReconnect(deps.prisma, connectionId, true);
+    return { needsReconnect: true };
+  }
+  await setMailReconnect(deps.prisma, connectionId, false);
+  return { needsReconnect: false };
+}
+
 /** The caller's cached message and the connected account it came from, or NOT_FOUND. */
 export async function ownMessage(
   deps: InboxDeps,
@@ -665,21 +730,28 @@ export async function inboxGet(
     input.messageId,
     context,
   );
-  const thread = await deps.prisma.cachedMailMessage.findMany({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      connectionId: row.connectionId,
-      threadId: row.threadId,
-      isSpam: false,
-      id: { not: row.id },
-    },
-    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
-    take: 50,
-  });
-  // The user's reply sorts after the message it answers, not among the earlier ones.
-  const isLater = (m: (typeof thread)[number]) => m.receivedAt > row.receivedAt;
-  const threadItem = (m: (typeof thread)[number]) => ({
+  const threadWhere = {
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    connectionId: row.connectionId,
+    threadId: row.threadId,
+    isSpam: false,
+    id: { not: row.id },
+  };
+  // The 50 messages nearest the opened one on each side, so a long thread opens around it.
+  const [earlier, later] = await Promise.all([
+    deps.prisma.cachedMailMessage.findMany({
+      where: { ...threadWhere, receivedAt: { lte: row.receivedAt } },
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+      take: 50,
+    }),
+    deps.prisma.cachedMailMessage.findMany({
+      where: { ...threadWhere, receivedAt: { gt: row.receivedAt } },
+      orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+      take: 50,
+    }),
+  ]);
+  const threadItem = (m: (typeof earlier)[number]) => ({
     id: m.id,
     from: m.fromName || m.fromAddress,
     receivedAt: m.receivedAt.toISOString(),
@@ -691,8 +763,8 @@ export async function inboxGet(
     return {
       unread: row.unread,
       inInbox: row.inInbox,
-      thread: thread.filter((m) => !isLater(m)).map(threadItem),
-      later: thread.filter(isLater).map(threadItem),
+      thread: earlier.reverse().map(threadItem),
+      later: later.map(threadItem),
       from: formatAddress(message.from),
       ...(row.fromSelf ? { fromSelf: true } : {}),
       to: message.to.map(formatAddress).join(", "),
@@ -844,11 +916,26 @@ export async function inboxTodosList(
   };
 }
 
+/** "No reply needed" on one message, or with `undo` the Undo of the toast it raised. */
+export async function inboxNoReply(
+  deps: Pick<InboxDeps, "prisma">,
+  actor: Actor,
+  input: { messageId: string; undo?: boolean },
+): Promise<{ stopped: string | null }> {
+  const scope = { spaceId: actor.spaceId, userId: actor.userId };
+  if (input.undo) {
+    await undoReplyDismissal(deps.prisma, scope, input.messageId);
+    return { stopped: null };
+  }
+  const { stopped } = await dismissReply(deps.prisma, scope, input.messageId);
+  return { stopped };
+}
+
 export async function inboxTodoSetDone(
   deps: Pick<InboxDeps, "prisma">,
   actor: Actor,
   input: { id: string; done: boolean },
-): Promise<InboxTodo> {
+): Promise<InboxTodoDone> {
   const now = new Date();
   const scope = {
     id: input.id,
@@ -866,5 +953,18 @@ export async function inboxTodoSetDone(
     ? await deps.prisma.inboxTodo.findFirst({ where: scope, include: todoInclude })
     : null;
   if (!row) throw notFound();
-  return todoOut(row);
+  // Finishing a to-do for mail still in Needs reply, with no reply sent, says that mail needed none.
+  const { stopped, dismissed } =
+    input.done && row.messageId
+      ? await dismissReply(
+          deps.prisma,
+          { spaceId: actor.spaceId, userId: actor.userId },
+          row.messageId,
+        )
+      : { stopped: null, dismissed: false };
+  return {
+    ...todoOut(row),
+    ...(stopped ? { stoppedSender: stopped } : {}),
+    ...(dismissed ? { dismissedReply: true } : {}),
+  };
 }

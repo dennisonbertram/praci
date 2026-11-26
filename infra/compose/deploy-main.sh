@@ -67,6 +67,12 @@ rollback() {
 trap rollback ERR
 
 git reset --hard "${target_revision}"
+# The app's own database login (subject to row-level security) needs a password
+# that older .env files do not have. Appending one leaves existing lines alone.
+if ! grep -Eq '^POSTGRES_APP_PASSWORD=[^[:space:]]' .env; then
+  printf '\nPOSTGRES_APP_PASSWORD=%s\n' "$(openssl rand -hex 16)" >>.env
+  echo "Added POSTGRES_APP_PASSWORD to .env."
+fi
 compose 1m config --quiet
 compose "${BUILD_TIMEOUT}" build
 compose "${UP_TIMEOUT}" up -d --remove-orphans

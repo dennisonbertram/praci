@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   actionHandlers: new Map<string, (() => void) | undefined>(),
   selectionGeneration: 0,
   sessionGeneration: 0,
+  hideAmounts: false,
   listeners: {
     api: new Set<() => void>(),
     selection: new Set<() => void>(),
@@ -96,6 +97,7 @@ vi.mock("../components/company-list", () => ({
     rows: {
       id: string;
       title: string;
+      detail?: string;
       onPress?: () => void;
       onConfirm?: () => void;
       onReject?: () => void;
@@ -109,6 +111,7 @@ vi.mock("../components/company-list", () => ({
           "div",
           { key: row.id },
           createElement("span", null, row.title),
+          row.detail ? createElement("span", null, row.detail) : null,
           row.onPress
             ? createElement("button", { type: "button", onClick: row.onPress }, `Open ${row.title}`)
             : null,
@@ -150,15 +153,17 @@ vi.mock("../components/settings-group", () => ({
   SettingsRow: ({
     title,
     detail,
+    value,
     onPress,
   }: {
     title: string;
     detail?: string;
+    value?: string;
     onPress?: () => void;
   }) =>
     onPress
       ? createElement("button", { type: "button", onClick: onPress }, title)
-      : createElement("div", null, title, detail),
+      : createElement("div", null, title, detail, value),
   SettingsSwitch: () => null,
 }));
 vi.mock("../components/menu-picker", () => ({
@@ -167,11 +172,23 @@ vi.mock("../components/menu-picker", () => ({
 vi.mock("../lib/hide-amounts", () => ({
   maskAmountsWhenHidden: (text: string) => text,
   setHideAmounts: vi.fn(),
-  useHideAmounts: () => false,
+  useHideAmounts: () => state.hideAmounts,
 }));
 vi.mock("../lib/i18n", () => {
-  const t = (text: string) => text;
-  return { t, useI18n: () => ({ t }) };
+  const relations = new Set([
+    "works at",
+    "reports to",
+    "founded",
+    "invested in",
+    "customer of",
+    "vendor of",
+    "counsel for",
+    "party to",
+    "works on",
+    "part of",
+  ]);
+  const t = (text: string) => (relations.has(text) ? `T:${text}` : text);
+  return { t, useI18n: () => ({ t }), dateLocaleForUi: () => "en-US" };
 });
 vi.mock("../lib/native", () => ({
   native: {
@@ -320,6 +337,7 @@ beforeEach(() => {
   state.spaceId = "space-1";
   state.selectionGeneration = 0;
   state.sessionGeneration = 0;
+  state.hideAmounts = false;
   state.actionHandlers.clear();
   state.rpc.mockReset().mockImplementation(async (procedure: string) => {
     if (procedure === "company/review") return review;
@@ -345,6 +363,238 @@ afterEach(() => {
 });
 
 describe("native Company RPCs", () => {
+  it("shows an entity's relationships from its fact without requesting the company page", async () => {
+    const fact: CompanyFact = {
+      ...personFact,
+      record: { ...personFact.record, edges: [{ ...edgeFact.record, confidence: 0.9 }] },
+    };
+    await renderFact(fact);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      [...container.querySelectorAll("section button")].map((button) => button.textContent),
+    ).toContain("T:works at");
+    expect(state.rpc.mock.calls.map(([procedure]) => procedure)).not.toContain("company/page");
+  });
+
+  it("disables Confirm for a confirmed fact opened outside Review", async () => {
+    await renderFact({ ...personFact, record: { ...personFact.record, status: "confirmed" } });
+
+    expect(
+      [...container.querySelectorAll("button")].find((button) => button.textContent === "Confirm")
+        ?.disabled,
+    ).toBe(true);
+  });
+
+  it("keeps Confirm enabled for a confirmed fact opened from Review", async () => {
+    state.params = { kind: "entity", id: personFact.record.id, origin: "review" };
+    state.rpc.mockImplementation(async (procedure: string) => {
+      if (procedure === "company/review")
+        return {
+          items: [
+            {
+              kind: "fact",
+              id: "review-1",
+              reason: "contradiction",
+              fact: { ...personFact, record: { ...personFact.record, status: "confirmed" } },
+            },
+          ],
+        };
+      throw new Error(`Unexpected RPC: ${procedure}`);
+    });
+    await render(<CompanyFactScreen />);
+
+    await pressButton("Confirm");
+    expect(state.rpc).toHaveBeenCalledWith("company/confirm", {
+      kind: "entity",
+      id: personFact.record.id,
+    });
+  });
+
+  it("keeps Confirm enabled for a fact that is not confirmed", async () => {
+    await renderFact(personFact);
+    expect(
+      [...container.querySelectorAll("button")].find((button) => button.textContent === "Confirm")
+        ?.disabled,
+    ).toBe(false);
+  });
+
+  it("shows event amounts in their own row and masks them when amounts are hidden", async () => {
+    const fact: EventCompanyFact = {
+      ...eventFact,
+      record: {
+        ...eventFact.record,
+        occursOn: { date: "2025-02-03", precision: "day" },
+        amountCents: 123456,
+        currency: "USD",
+      },
+    };
+    await renderFact(fact);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const rows = [...container.querySelectorAll("section div")];
+    const dates = rows.find((row) => row.textContent?.startsWith("Dates"));
+    const amount = rows.find((row) => row.textContent?.startsWith("Amount"));
+    expect(dates?.textContent).toBe("Dates2025-02-03");
+    expect(amount?.textContent).toBe("Amount$1,234.56");
+    state.hideAmounts = true;
+    await render(<CompanyFactScreen />);
+    expect(
+      [...container.querySelectorAll("section div")].find((row) =>
+        row.textContent?.startsWith("Dates"),
+      )?.textContent,
+    ).toBe("Dates2025-02-03");
+    expect(
+      [...container.querySelectorAll("section div")].find((row) =>
+        row.textContent?.startsWith("Amount"),
+      )?.textContent,
+    ).toBe("Amount•••");
+  });
+
+  it("labels organisation rows with their relationship to the company", async () => {
+    state.params = { view: "overview" };
+    state.rpc.mockImplementation(async (procedure: string) => {
+      if (procedure === "company/page")
+        return {
+          entities: [
+            {
+              id: "profile",
+              kind: "company",
+              displayName: "Acme",
+              attrs: {},
+              status: "confirmed",
+              confidence: 1,
+              evidence: [],
+            },
+            {
+              id: "vendor",
+              kind: "organisation",
+              displayName: "Vendor Ltd",
+              attrs: {},
+              status: "confirmed",
+              confidence: 1,
+              evidence: [],
+            },
+            {
+              id: "other",
+              kind: "organisation",
+              displayName: "Other Ltd",
+              attrs: {},
+              status: "confirmed",
+              confidence: 1,
+              evidence: [],
+            },
+          ],
+          edges: [
+            {
+              id: "relationship",
+              fromId: "vendor",
+              toId: "profile",
+              relation: "vendor_of",
+              status: "confirmed",
+              confidence: 1,
+              evidence: [],
+            },
+          ],
+          events: [],
+          latestRun: null,
+        };
+      throw new Error(`Unexpected RPC: ${procedure}`);
+    });
+    await render(<CompanyScreen />);
+    expect(container.textContent).toContain("Supplier");
+    expect(container.textContent).toContain("Organisation");
+  });
+
+  it("translates a running import status", async () => {
+    state.params = { view: "progress" };
+    state.rpc.mockImplementation(async (procedure: string) => {
+      if (procedure === "companyImport/session")
+        return {
+          progress: {
+            runId: "run-1",
+            status: "running",
+            tokenCap: 100,
+            reservedTokens: 0,
+            inputTokensUsed: 1,
+            outputTokensUsed: 2,
+            budgetWarning: false,
+            counts: {},
+            sources: [],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          sources: [],
+        };
+      throw new Error(`Unexpected RPC: ${procedure}`);
+    });
+    await render(<CompanyScreen />);
+    expect(container.textContent).toContain("Importing");
+    expect(container.textContent).not.toContain("running");
+  });
+
+  it("translates relationship phrases in review and fact rejection", async () => {
+    state.rpc.mockImplementation(async (procedure: string) => {
+      if (procedure === "company/review")
+        return {
+          items: [{ kind: "fact", id: "review-edge", reason: "low_confidence", fact: edgeFact }],
+        };
+      if (procedure === "company/page")
+        return {
+          entities: [
+            {
+              id: "fact-1",
+              kind: "person",
+              displayName: "Alex Reed",
+              attrs: {},
+              status: "suggested",
+              confidence: 0.9,
+              evidence: [],
+            },
+            {
+              id: "company-1",
+              kind: "company",
+              displayName: "Northwind",
+              attrs: {},
+              status: "confirmed",
+              confidence: 1,
+              evidence: [],
+            },
+          ],
+          edges: [
+            {
+              ...edgeFact.record,
+              startsOn: { date: "2024-01-01", precision: "year" },
+              confidence: 0.5,
+              evidence: [],
+            },
+          ],
+          events: [],
+          latestRun: null,
+        };
+      if (procedure === "company/fact") return edgeFact;
+      throw new Error(`Unexpected RPC: ${procedure}`);
+    });
+
+    state.params = { view: "review" };
+    await render(<CompanyScreen />);
+    expect(container.textContent).toContain("T:works at");
+    const reject = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent?.startsWith("Reject T:works at"),
+    );
+    await act(async () => reject?.click());
+    expect(state.alert.mock.calls.at(-1)?.[1]).toBe("T:works at");
+
+    await renderFact(edgeFact);
+    await pressButton("Reject");
+    expect(state.alert.mock.calls.at(-1)?.[1]).toBe("T:works at");
+  });
+
   it("routes recognized cached inbox provenance internally and keeps external links external", async () => {
     const evidence = {
       id: "evidence-1",

@@ -5,10 +5,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeActionButton } from "../components/native-action-button";
 import { cancelHeaderOptions, trailingHeaderOptions } from "../components/sheet-header";
 import {
-  apiBaseWarning,
   currentApiBase,
   defaultApiBase,
-  normalizeApiBase,
   probeApiBase,
   resetApiBase,
   saveApiBase,
@@ -40,9 +38,6 @@ export default function ServerScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/sign-in");
   }
-
-  const parsedDraft = normalizeApiBase(draft);
-  const warning = parsedDraft.ok ? apiBaseWarning(parsedDraft.url) : null;
 
   async function save() {
     if (saving.current) return;
@@ -116,6 +111,7 @@ export default function ServerScreen() {
             autoCapitalize="none"
             autoComplete="off"
             autoCorrect={false}
+            editable={!pending}
             keyboardType="url"
             onChangeText={(value) => {
               setDraft(value);
@@ -136,11 +132,6 @@ export default function ServerScreen() {
             textContentType="URL"
             value={draft}
           />
-          {warning ? (
-            <Text style={{ color: tokens.mutedForeground, marginTop: 12, fontSize: 13 }}>
-              {warning}
-            </Text>
-          ) : null}
           {error ? <Text style={{ color: tokens.destructive, marginTop: 12 }}>{error}</Text> : null}
           {usesCustomApiBase(current) || draft.trim() !== current ? (
             <NativeActionButton

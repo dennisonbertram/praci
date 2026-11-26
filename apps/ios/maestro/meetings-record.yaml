@@ -1,0 +1,40 @@
+# Usage: maestro --udid <UDID> test maestro/meetings-record.yaml -e EMAIL=... -e PASSWORD=... -e SERVER=http://127.0.0.1:3301
+# Needs a Debug build installed and a server with transcription set up (the demo stack with a Scripted voice provider).
+# Launches with -captureFixture so the recorder plays the bundled ~40 s fixture (with a 2 s pause, so two chunks) instead of the microphone.
+appId: ai.praci.mobile.dev
+---
+- runFlow: sign-in.yaml
+- launchApp:
+    arguments:
+      captureFixture: meeting-fixture
+- extendedWaitUntil:
+    visible:
+      id: settings
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: pageMeetings
+- tapOn:
+    id: pageMeetings
+- tapOn:
+    id: record
+- tapOn:
+    id: recordTitle
+- inputText: Fixture planning call
+- tapOn:
+    id: recordStart
+- assertVisible:
+    id: recordingBar
+# Past the first chunk (about 24 s), so one chunk is cut and uploaded while recording.
+- extendedWaitUntil:
+    visible: "0:2[6-9]"
+    timeout: 45000
+- tapOn:
+    id: recordStop
+# The bar says Transcribing… until the server has stored the meeting, then the list opens it.
+- assertVisible: Transcribing…
+- extendedWaitUntil:
+    visible:
+      id: deleteMeeting
+    timeout: 90000
+- assertVisible: Fixture planning call

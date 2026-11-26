@@ -7,6 +7,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { blocksToAgentHistoryText } from "./attachments.js";
 import { replyAttachment } from "./message-replies.js";
+import { uiBlockSummary } from "./ui-block-text.js";
 
 const markdownParser = unified().use(remarkParse).use(remarkGfm);
 /** Past this much source text in one message, quote derivation refuses to run. */
@@ -153,6 +154,7 @@ function replyBlockText(block: MessageBlock): string {
     case "handoff":
     case "bot_message_sent":
     case "bot_message_received":
+    case "goal":
       return block.text;
     case "choice":
       return block.question;
@@ -162,6 +164,7 @@ function replyBlockText(block: MessageBlock): string {
       return block.steps.map((step) => step.label).join(" · ");
     case "voice_call":
     case "cloud_agent":
+    case "page":
       return block.title;
     case "subagent":
       return block.name || block.task;
@@ -178,6 +181,8 @@ function replyBlockText(block: MessageBlock): string {
       return block.subject;
     case "finance":
       return financeCardSummary(block.card);
+    case "ui":
+      return uiBlockSummary(block.block);
     case "image":
     case "file":
       return block.name || blocksToAgentHistoryText([block]);

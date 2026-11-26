@@ -1,6 +1,11 @@
 import type { MessageBlock } from "@rakazo/contracts";
-import { expect, it } from "vitest";
-import { delegateWaitState, delegateWaitTarget, pendingDelegateAgents } from "./delegate-wait";
+import { describe, expect, it } from "vitest";
+import {
+  delegateWaitState,
+  delegateWaitTarget,
+  pendingDelegateAgents,
+  pendingSentBlocks,
+} from "./delegate-wait";
 
 const sent = {
   kind: "bot_message_sent",
@@ -87,4 +92,36 @@ it("ends a request only when that same agent answers", () => {
   const other = { ...received, fromBotId: "b3", fromBotName: "Inbox agent" };
   expect(delegateWaitTarget([msg(sent), msg(other)])).toBe("Mercury agent");
   expect(delegateWaitTarget([msg(sent), msg(received)])).toBeNull();
+});
+
+describe("pendingSentBlocks", () => {
+  const now = Date.parse("2026-01-01T01:00:00Z");
+  const at = (id: string, block: unknown, createdAt = "2026-01-01T00:59:00Z") => ({
+    id,
+    createdAt,
+    blocks: [block as MessageBlock],
+  });
+  it("is pending until a later received block from that agent", () => {
+    expect(
+      pendingSentBlocks([at("a", sent)], now)
+        .get("a")
+        ?.get(0),
+    ).toBe("pending");
+    expect(
+      pendingSentBlocks([at("a", sent), at("b", received)], now)
+        .get("a")
+        ?.get(0),
+    ).toBe("answered");
+    expect(
+      pendingSentBlocks([at("a", sent), at("b", { ...received, fromBotId: "b9" })], now)
+        .get("a")
+        ?.get(0),
+    ).toBe("pending");
+  });
+  it("ignores results and status", () => {
+    expect(pendingSentBlocks([at("a", { ...sent, intent: "result" })], now).size).toBe(0);
+  });
+  it("ignores old unanswered requests", () => {
+    expect(pendingSentBlocks([at("a", sent, "2026-01-01T00:00:00Z")], now).size).toBe(0);
+  });
 });

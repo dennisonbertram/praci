@@ -65,3 +65,113 @@ it("keeps the panel content above the toast reserve", () => {
   );
   act(() => root.unmount());
 });
+
+it("returns focus to the opener when the panel closes", () => {
+  window.matchMedia = (() => ({ matches: true })) as unknown as typeof window.matchMedia;
+  const trigger = document.createElement("button");
+  document.body.append(trigger);
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+
+  act(() =>
+    root.render(
+      <ResizableSidePanel open={false} panel="settings">
+        {null}
+      </ResizableSidePanel>,
+    ),
+  );
+  trigger.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open panel="settings">
+        <button type="button" />
+      </ResizableSidePanel>,
+    ),
+  );
+  el.querySelector<HTMLButtonElement>("aside button")?.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open={false} panel="settings">
+        {null}
+      </ResizableSidePanel>,
+    ),
+  );
+
+  expect(document.activeElement).toBe(trigger);
+  act(() => root.unmount());
+});
+
+it("moves focus into the panel only while it overlays the chat", () => {
+  const trigger = document.createElement("button");
+  document.body.append(trigger);
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+
+  window.matchMedia = (() => ({ matches: true })) as unknown as typeof window.matchMedia;
+  trigger.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open panel="settings">
+        <button type="button" />
+      </ResizableSidePanel>,
+    ),
+  );
+  expect(document.activeElement).toBe(el.querySelector("aside button"));
+
+  act(() =>
+    root.render(
+      <ResizableSidePanel open={false} panel="settings">
+        {null}
+      </ResizableSidePanel>,
+    ),
+  );
+  window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
+  trigger.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open panel="settings">
+        <button type="button" />
+      </ResizableSidePanel>,
+    ),
+  );
+  expect(document.activeElement).toBe(trigger);
+  act(() => root.unmount());
+});
+
+it("leaves focus where the user moved it before closing", () => {
+  const trigger = document.createElement("button");
+  const elsewhere = document.createElement("button");
+  document.body.append(trigger, elsewhere);
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+
+  act(() =>
+    root.render(
+      <ResizableSidePanel open={false} panel="settings">
+        {null}
+      </ResizableSidePanel>,
+    ),
+  );
+  trigger.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open panel="settings">
+        <button type="button" />
+      </ResizableSidePanel>,
+    ),
+  );
+  elsewhere.focus();
+  act(() =>
+    root.render(
+      <ResizableSidePanel open={false} panel="settings">
+        {null}
+      </ResizableSidePanel>,
+    ),
+  );
+
+  expect(document.activeElement).toBe(elsewhere);
+  act(() => root.unmount());
+});

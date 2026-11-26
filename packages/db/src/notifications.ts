@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { NotificationKind } from "@rakazo/contracts";
 import { NOTIFICATION_KINDS, notificationKindOf } from "@rakazo/contracts";
 import type { Notification, PrismaClient } from "./client.js";
+import { runAsSystem } from "./row-security.js";
 
 type Scope = { spaceId: string; userId: string };
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
@@ -12,6 +13,7 @@ export const NOTIFICATION_TITLE_MAX = 80;
 export const NOTIFICATION_BODY_MAX = 200;
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+const RUN_NOTICE_KINDS = ["done", "failed", "needs_input"] as const;
 const DELIVERY_DELAY_MS = 30_000;
 const NOTIFICATION_RETENTION_MS = 30 * DEDUPE_WINDOW_MS;
 const DELIVERY_RETENTION_MS = 7 * DEDUPE_WINDOW_MS;
@@ -100,75 +102,97 @@ export async function createNotification(
   prisma: Db,
   input: CreateNotificationInput,
 ): Promise<CreateNotificationResult> {
+  return prisma.$transaction((tx) => createNotificationInTransaction(tx, input));
+}
+
+/** What a notification write needs: the Prisma client, or a caller's open transaction. */
+export type NotificationTx = Pick<
+  PrismaClient,
+  | "notification"
+  | "notificationDelivery"
+  | "notificationPreference"
+  | "notificationEndpoint"
+  | "messagingIdentity"
+  | "$executeRaw"
+>;
+
+/** The insert `createNotification` makes, for callers that must commit it with their own write. */
+export async function createNotificationInTransaction(
+  tx: NotificationTx,
+  input: CreateNotificationInput,
+): Promise<CreateNotificationResult> {
   const { title, body } = validate(input);
   const scope = ownerOf(input);
   const botId = input.botId ?? null;
   const now = input.now ?? new Date();
   const importance = input.importance ?? "info";
   const dedupeKey = input.dedupeKey ?? defaultDedupeKey(input.surface, title);
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notification:${scope.spaceId}:${scope.userId}:${botId ?? ""}`}, 0))`;
-    const duplicate = await tx.notification.findFirst({
-      where: {
-        ...scope,
-        botId,
-        dedupeKey,
-        createdAt: { gt: new Date(now.getTime() - DEDUPE_WINDOW_MS) },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    if (duplicate) return { status: "deduped", notification: duplicate };
-
-    const since = (ms: number) => ({ gt: new Date(now.getTime() - ms) });
-    const [hour, day, attentionHour] = await Promise.all([
-      tx.notification.count({ where: { ...scope, botId, createdAt: since(HOUR_MS) } }),
-      tx.notification.count({ where: { ...scope, botId, createdAt: since(DEDUPE_WINDOW_MS) } }),
-      importance === "attention"
-        ? tx.notification.count({
-            where: { ...scope, botId, importance, createdAt: since(HOUR_MS) },
-          })
-        : 0,
-    ]);
-    if (
-      !input.skipRateLimits &&
-      (hour >= NOTIFICATION_LIMITS.perHour ||
-        day >= NOTIFICATION_LIMITS.perDay ||
-        attentionHour >= NOTIFICATION_LIMITS.attentionPerHour)
-    ) {
-      return { status: "rateLimited" };
-    }
-
-    const notification = await tx.notification.create({
-      data: {
-        ...scope,
-        botId,
-        routineId: input.routineId ?? null,
-        runId: input.runId ?? null,
-        surface: input.surface,
-        threadId: input.threadId ?? null,
-        title,
-        body,
-        link: input.externalLink?.url ?? input.link ?? null,
-        importance,
-        kind: input.kind ?? null,
-        dedupeKey,
-        createdAt: now,
-      },
-    });
-    if (importance === "attention") {
-      const channels = await externalChannels(tx, scope);
-      if (channels.length > 0) {
-        await tx.notificationDelivery.createMany({
-          data: channels.map((channel) => ({
-            notificationId: notification.id,
-            channel,
-            nextAttemptAt: new Date(now.getTime() + DELIVERY_DELAY_MS),
-          })),
-        });
-      }
-    }
-    return { status: "created", notification };
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notification:${scope.spaceId}:${scope.userId}:${botId ?? ""}`}, 0))`;
+  const duplicate = await tx.notification.findFirst({
+    where: {
+      ...scope,
+      botId,
+      dedupeKey,
+      createdAt: { gt: new Date(now.getTime() - DEDUPE_WINDOW_MS) },
+    },
+    orderBy: { createdAt: "desc" },
   });
+  if (duplicate) return { status: "deduped", notification: duplicate };
+
+  const since = (ms: number) => ({ gt: new Date(now.getTime() - ms) });
+  // The platform's own run notices (done, failed, needs input) skip the limits, so they must not
+  // use up the agent's budget either. Rows with no kind are the agent's own and still count.
+  const agentOwn = { OR: [{ kind: null }, { kind: { notIn: [...RUN_NOTICE_KINDS] } }] };
+  const [hour, day, attentionHour] = await Promise.all([
+    tx.notification.count({ where: { ...scope, botId, ...agentOwn, createdAt: since(HOUR_MS) } }),
+    tx.notification.count({
+      where: { ...scope, botId, ...agentOwn, createdAt: since(DEDUPE_WINDOW_MS) },
+    }),
+    importance === "attention"
+      ? tx.notification.count({
+          where: { ...scope, botId, ...agentOwn, importance, createdAt: since(HOUR_MS) },
+        })
+      : 0,
+  ]);
+  if (
+    !input.skipRateLimits &&
+    (hour >= NOTIFICATION_LIMITS.perHour ||
+      day >= NOTIFICATION_LIMITS.perDay ||
+      attentionHour >= NOTIFICATION_LIMITS.attentionPerHour)
+  ) {
+    return { status: "rateLimited" };
+  }
+
+  const notification = await tx.notification.create({
+    data: {
+      ...scope,
+      botId,
+      routineId: input.routineId ?? null,
+      runId: input.runId ?? null,
+      surface: input.surface,
+      threadId: input.threadId ?? null,
+      title,
+      body,
+      link: input.externalLink?.url ?? input.link ?? null,
+      importance,
+      kind: input.kind ?? null,
+      dedupeKey,
+      createdAt: now,
+    },
+  });
+  if (importance === "attention") {
+    const channels = await externalChannels(tx, scope);
+    if (channels.length > 0) {
+      await tx.notificationDelivery.createMany({
+        data: channels.map((channel) => ({
+          notificationId: notification.id,
+          channel,
+          nextAttemptAt: new Date(now.getTime() + DELIVERY_DELAY_MS),
+        })),
+      });
+    }
+  }
+  return { status: "created", notification };
 }
 
 /** Providers whose linked identity can receive the "imessage" notification channel. */
@@ -198,22 +222,30 @@ export async function externalChannels(
   tx: Pick<PrismaClient, "notificationEndpoint" | "notificationPreference" | "messagingIdentity">,
   { spaceId, userId }: Scope,
 ): Promise<string[]> {
-  const [endpoints, preference, imessage] = await Promise.all([
+  const [endpoints, switches, imessage] = await Promise.all([
     tx.notificationEndpoint.findMany({
       where: { userId, OR: [{ spaceId: null }, { spaceId }] },
       distinct: ["channel"],
       select: { channel: true },
     }),
-    tx.notificationPreference.findUnique({
-      where: { spaceId_userId: { spaceId, userId } },
-      select: { channels: true },
-    }),
+    channelSwitches(tx, { spaceId, userId }),
     linkedImessageIdentities(tx, { spaceId, userId }),
   ]);
-  const switches = (preference?.channels ?? {}) as Record<string, unknown>;
   const channels = endpoints.map((e) => e.channel);
   if (imessage.length > 0) channels.push("imessage");
   return channels.filter((channel) => switches[channel] !== false);
+}
+
+/** The person's per-channel switches; only an explicit `false` turns a channel off. */
+export async function channelSwitches(
+  tx: Pick<PrismaClient, "notificationPreference">,
+  { spaceId, userId }: Scope,
+): Promise<Record<string, unknown>> {
+  const preference = await tx.notificationPreference.findUnique({
+    where: { spaceId_userId: { spaceId, userId } },
+    select: { channels: true },
+  });
+  return (preference?.channels ?? {}) as Record<string, unknown>;
 }
 
 export const NOTIFICATION_CHANNELS = ["push", "browser", "imessage"] as const;
@@ -416,4 +448,37 @@ export async function deleteExpiredNotifications(
     where: { createdAt: { lt: new Date(now.getTime() - NOTIFICATION_RETENTION_MS) } },
   });
   return { notifications: notifications.count, deliveries: deliveries.count };
+}
+
+/**
+ * Tells a member that an outside client was connected to a Space, so a connection they did not
+ * make shows up. Runs in the system scope: the auth hook and the token route have no tenant yet.
+ */
+export async function notifyNewMcpConnection(
+  prisma: PrismaClient,
+  connection: { id: string; spaceId: string; userId: string; label: string },
+  notify?: (notification: { id: string; importance: "info" | "attention" }) => Promise<void>,
+) {
+  const result = await runAsSystem("new mcp connection notice", async () => {
+    const space = await prisma.space.findFirst({
+      where: { id: connection.spaceId },
+      select: { name: true },
+    });
+    const title = `New connection: ${connection.label} in ${space?.name ?? "your space"}`;
+    return createNotification(prisma, {
+      spaceId: connection.spaceId,
+      userId: connection.userId,
+      surface: "mcp",
+      title:
+        title.length > NOTIFICATION_TITLE_MAX
+          ? `${title.slice(0, NOTIFICATION_TITLE_MAX - 1)}…`
+          : title,
+      link: "/app?settings=connections",
+      importance: "attention",
+      kind: "new",
+      dedupeKey: `mcp-connection:${connection.id}`,
+      skipRateLimits: true,
+    });
+  });
+  if (result.status === "created") await notify?.(result.notification);
 }

@@ -70,7 +70,7 @@ let root: Root;
 
 async function render(
   options: {
-    onSave?: () => Promise<void>;
+    onSave?: (input: { name?: string; botIds?: string[] }) => Promise<void>;
     onRemove?: () => Promise<void>;
     covered?: boolean;
     instance?: string;
@@ -97,7 +97,10 @@ async function render(
 
 function button(name: string): HTMLButtonElement {
   const found = [...container.querySelectorAll("button")].find(
-    (candidate) => candidate.getAttribute("aria-label") === name || candidate.textContent === name,
+    (candidate) =>
+      candidate.getAttribute("aria-label") === name ||
+      candidate.textContent?.trim() === name ||
+      candidate.children[1]?.textContent === name,
   );
   if (!found) throw new Error(`Missing ${name} button`);
   return found;
@@ -131,7 +134,53 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+async function submitForm() {
+  await act(async () => {
+    container.querySelector("form")?.requestSubmit();
+    await Promise.resolve();
+  });
+}
+
 describe("GroupSettings", () => {
+  const botOf = (id: string, name: string) => ({ id, name, color: "blue", status: "idle" }) as Bot;
+  const threeBots = [
+    botOf("bot-1", "Researcher"),
+    botOf("bot-2", "Writer"),
+    botOf("bot-3", "Chief"),
+  ];
+
+  it("keeps the default responder first when members are re-ticked and added", async () => {
+    const onSave = vi.fn(async () => undefined);
+    await render({ bots: threeBots, onSave });
+    await click("Researcher");
+    await click("Chief");
+    await click("Researcher");
+    await click("Save");
+    expect(onSave).toHaveBeenCalledWith({ name: undefined, botIds: ["bot-1", "bot-2", "bot-3"] });
+  });
+
+  it("saves on Enter in the form", async () => {
+    const onSave = vi.fn(async () => undefined);
+    await render({ bots: threeBots, onSave });
+    const input = container.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      set?.call(input, "Renamed");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await submitForm();
+    expect(onSave).toHaveBeenCalledWith({ name: "Renamed", botIds: undefined });
+  });
+
+  it("does not save on Enter while the selection is invalid", async () => {
+    const onSave = vi.fn(async () => undefined);
+    await render({ bots: threeBots, onSave });
+    await click("Researcher");
+    await click("Writer");
+    await submitForm();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it("lists the group's members first and shows every bot without an inner scroll", async () => {
     const bot = (id: string, name: string) => ({ id, name, color: "blue", status: "idle" }) as Bot;
     await render({
@@ -142,9 +191,52 @@ describe("GroupSettings", () => {
         bot("bot-2", "Writer"),
       ],
     });
-    const names = [...container.querySelectorAll("button[aria-pressed]")].map((b) => b.textContent);
+    const names = [...container.querySelectorAll("button[aria-pressed]")].map(
+      (b) => b.children[1]?.textContent,
+    );
     expect(names).toEqual(["Researcher", "Writer", "Chief", "Inbox agent"]);
     expect(container.querySelector(".overflow-y-auto")).toBeNull();
+  });
+
+  it("labels only Firewall bots in the member picker", async () => {
+    await render({
+      bots: [
+        { ...botOf("bot-1", "Researcher"), firewall: true },
+        botOf("bot-2", "Writer"),
+        botOf("bot-3", "Chief"),
+      ],
+    });
+    const rows = [...container.querySelectorAll("button[aria-pressed]")];
+    expect(rows.find((row) => row.textContent?.includes("Researcher"))?.textContent).toContain(
+      "Firewall",
+    );
+    expect(rows.find((row) => row.textContent?.includes("Writer"))?.textContent).not.toContain(
+      "Firewall",
+    );
+    expect(rows.find((row) => row.textContent?.includes("Chief"))?.textContent).not.toContain(
+      "Firewall",
+    );
+  });
+
+  it("shows Answers first beside the first selected member and moves it when deselected", async () => {
+    const onSave = vi.fn(async () => undefined);
+    await render({ bots: threeBots, onSave });
+    const row = (name: string) =>
+      [...container.querySelectorAll("button[aria-pressed]")].find((candidate) =>
+        candidate.textContent?.includes(name),
+      );
+    expect(row("Researcher")?.textContent).toContain("Answers first");
+    expect(row("Writer")?.textContent).not.toContain("Answers first");
+
+    await click("Researcher");
+    expect(row("Writer")?.textContent).toContain("Answers first");
+    expect(row("Researcher")?.textContent).not.toContain("Answers first");
+
+    await click("Researcher");
+    expect(row("Researcher")?.textContent).toContain("Answers first");
+    expect(row("Writer")?.textContent).not.toContain("Answers first");
+    await click("Save");
+    expect(onSave).toHaveBeenCalledWith({ name: undefined, botIds: undefined });
   });
 
   it("closes from the header button", async () => {
@@ -219,6 +311,9 @@ describe("GroupSettings", () => {
     expect(onRemove).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alertdialog"]')?.textContent).toContain(
       "Delete Review team?",
+    );
+    expect(container.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      "This deletes the group and its conversation. It cannot be undone.",
     );
     await click("Delete");
     expect(onRemove).toHaveBeenCalledOnce();

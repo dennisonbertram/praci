@@ -1,7 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { oauthPopupSessionPreferences, shouldOpenInAppPopup } from "./window-open.js";
+import {
+  mainWindowNavigation,
+  oauthPopupSessionPreferences,
+  shouldOpenInAppPopup,
+} from "./window-open.js";
 
 const appOrigin = "https://rakazo.example.com";
+
+describe("main window navigation", () => {
+  it.each(["/settings", "/settings?tab=billing", "/settings#plans"])(
+    "allows a same-origin URL with path, query, or hash %s",
+    (suffix) => {
+      expect(mainWindowNavigation(appOrigin, `${appOrigin}${suffix}`)).toEqual({ allow: true });
+    },
+  );
+
+  it("opens an off-origin HTTPS URL externally", () => {
+    const url = "https://oauth-client.example/callback?code=abc";
+    expect(mainWindowNavigation(appOrigin, url)).toEqual({ allow: false, external: url });
+  });
+
+  it.each(["file:///tmp/page", "javascript:alert(1)", "smb://server/share"])(
+    "blocks non-HTTP(S) URL %s without opening it externally",
+    (url) => {
+      expect(mainWindowNavigation(appOrigin, url)).toEqual({ allow: false, external: null });
+    },
+  );
+
+  it("blocks every URL when there is no target origin", () => {
+    expect(mainWindowNavigation(null, `${appOrigin}/`)).toEqual({
+      allow: false,
+      external: `${appOrigin}/`,
+    });
+    expect(mainWindowNavigation(null, "file:///tmp/page")).toEqual({
+      allow: false,
+      external: null,
+    });
+  });
+
+  it("blocks a lookalike origin", () => {
+    const url = "https://rakazo.example.com.evil.test/path";
+    expect(mainWindowNavigation(appOrigin, url)).toEqual({ allow: false, external: url });
+  });
+});
 
 describe("desktop child windows", () => {
   it("keeps same-origin app routes in Electron", () => {

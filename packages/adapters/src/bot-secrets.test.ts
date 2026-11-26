@@ -1,9 +1,12 @@
 import type { BotSecretDestination } from "@rakazo/contracts";
 import { encodeLoginSecret } from "@rakazo/contracts";
+import { redactSecrets } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
+import * as Logging from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   credentialArgument,
+  loadLoginPasswordRedactions,
   normalizeSecretDestination,
   requestWithBotSecret,
   resolveLoginFill,
@@ -701,14 +704,36 @@ describe("normalizeSecretDestination", () => {
   });
 });
 
+/** Prisma's where for these tests: plain fields, a JSON path filter on auth, and take. */
+function matchingRows<T extends Record<string, unknown>>(
+  rows: T[],
+  { where, take }: { where: Record<string, unknown>; take?: number },
+) {
+  const matches = rows.filter((row) =>
+    Object.entries(where).every(([key, value]) => {
+      if (key === "auth" && value && typeof value === "object" && "path" in value) {
+        const filter = value as { path: string[]; equals: unknown };
+        return (row.auth as Record<string, unknown>)[filter.path[0]!] === filter.equals;
+      }
+      return row[key] === value;
+    }),
+  );
+  return take === undefined ? matches : matches.slice(0, take);
+}
+
 describe("saved website logins", () => {
   const login = {
     name: "site_login",
     origin: "https://login.example.test",
     auth: { type: "login" },
   };
-  async function loginFixture(username: string, auth: object = login.auth, origin = login.origin) {
-    const plaintext = encodeLoginSecret({ username, password: "fake-password-1" });
+  async function loginFixture(
+    username: string,
+    auth: object = login.auth,
+    origin = login.origin,
+    password = "fake-password-1",
+  ) {
+    const plaintext = encodeLoginSecret({ username, password });
     const encrypted = await secretStore.put(
       plaintext,
       { ...scope, operationId: "test", traceId: "test", signal: new AbortController().signal },
@@ -720,8 +745,93 @@ describe("saved website logins", () => {
         ? row
         : null,
     );
-    return { prisma: { botSecret: { findFirst } } as unknown as PrismaClient };
+    const findMany = vi.fn(async (query) => matchingRows([row], query));
+    return { prisma: { botSecret: { findFirst, findMany } } as unknown as PrismaClient };
   }
+
+  it("hides every saved password when the bot has more than 100 credentials", async () => {
+    const context = { operationId: "test", traceId: "test", signal: new AbortController().signal };
+    const rows: Record<string, unknown>[] = [];
+    // Other credentials are never decrypted for this, so their ciphertext doesn't matter.
+    for (let index = 0; index < 120; index += 1)
+      rows.push({ ...scope, name: `api_${index}`, auth: { type: "bearer" }, ciphertext: "unused" });
+    const password = "fake-late-password-1";
+    const encrypted = await secretStore.put(
+      encodeLoginSecret({ username: "fake-user@example.test", password }),
+      { ...scope, ...context },
+      { recordId: "login-late" },
+    );
+    rows.push({ ...scope, ...login, ...encrypted });
+    const prisma = {
+      botSecret: { findMany: vi.fn(async (query) => matchingRows(rows, query)) },
+    } as unknown as PrismaClient;
+    expect(await loadLoginPasswordRedactions(prisma, secretStore, scope)).toContain(password);
+  });
+
+  it("hides a saved password in its plain, URL, form and base64 forms", async () => {
+    const username = "fake-user@example.test";
+    const password = "fake pass!word+1";
+    const { prisma } = await loginFixture(username, login.auth, login.origin, password);
+    const redactions = await loadLoginPasswordRedactions(prisma, secretStore, scope);
+    const forms = [
+      password,
+      encodeURIComponent(password),
+      new URLSearchParams({ v: password }).toString().slice(2),
+      Buffer.from(password).toString("base64"),
+    ];
+    expect(forms).toContain("fake+pass%21word%2B1");
+    const redacted = redactSecrets([...forms, `Signed in as ${username}`].join("\n"), redactions);
+    for (const form of forms) expect(redacted).not.toContain(form);
+    // Only the run that fills a login hides its username.
+    expect(redacted).toContain(`Signed in as ${username}`);
+    expect(
+      await loadLoginPasswordRedactions(prisma, secretStore, { ...scope, botId: "bot-2" }),
+    ).toEqual([]);
+  });
+
+  it("leaves a short password to the run that fills it", async () => {
+    const { prisma } = await loginFixture(
+      "fake-user@example.test",
+      login.auth,
+      login.origin,
+      "abc",
+    );
+    expect(await loadLoginPasswordRedactions(prisma, secretStore, scope)).toEqual([]);
+    const fill = await resolveLoginFill({
+      prisma,
+      secretStore,
+      scope,
+      name: "site_login",
+      field: "password",
+    });
+    expect("redactions" in fill && fill.redactions).toContain("abc");
+  });
+
+  it("skips an unreadable login and logs only its id", async () => {
+    const row = { ...scope, ...login, id: "login-broken", ciphertext: "not-a-ciphertext" };
+    const prisma = { botSecret: { findMany: vi.fn(async () => [row]) } } as unknown as PrismaClient;
+    const warn = vi.fn();
+    const logger = vi.spyOn(Logging, "getLogger").mockReturnValue({ warn } as never);
+    try {
+      expect(await loadLoginPasswordRedactions(prisma, secretStore, scope)).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(expect.any(String), { loginId: "login-broken" });
+      // The logger's own scrubbing keeps the id readable.
+      expect(Logging.redactBindings(warn.mock.calls[0]![1])).toEqual({ loginId: "login-broken" });
+    } finally {
+      logger.mockRestore();
+    }
+  });
+
+  it("decrypts nothing for a bot without saved logins", async () => {
+    const { prisma } = await loginFixture("fake-user@example.test", { type: "bearer" });
+    const load = vi.spyOn(secretStore, "load");
+    try {
+      expect(await loadLoginPasswordRedactions(prisma, secretStore, scope)).toEqual([]);
+      expect(load).not.toHaveBeenCalled();
+    } finally {
+      load.mockRestore();
+    }
+  });
 
   it("resolves one field bound to the saved origin with its redactions", async () => {
     const { prisma } = await loginFixture("fake-user@example.test");
@@ -729,6 +839,7 @@ describe("saved website logins", () => {
     expect(await resolveLoginFill({ ...input, field: "password" })).toEqual({
       text: "fake-password-1",
       origin: "https://login.example.test",
+      markUsed: expect.any(Function),
       redactions: expect.arrayContaining(["fake-password-1", "fake-user@example.test"]),
     });
     expect(await resolveLoginFill({ ...input, field: "username" })).toMatchObject({
@@ -790,3 +901,157 @@ describe("saved website logins", () => {
     );
   });
 });
+
+describe("credential use bookkeeping", () => {
+  async function trackedFixture(status: number) {
+    const { input, findFirst } = await fixture();
+    const updateMany = vi.fn(async (_args?: any) => ({ count: 1 }));
+    // createNotification runs a transaction; a rejected credential only needs it to be called.
+    const tx = {
+      $executeRaw: vi.fn(),
+      notification: {
+        findFirst: vi.fn(async () => null),
+        count: vi.fn(async () => 0),
+        create: vi.fn(async () => ({ id: "n1", importance: "attention" })),
+      },
+      notificationDelivery: { createMany: vi.fn(), findMany: vi.fn(async () => []) },
+    };
+    const prisma = {
+      botSecret: { findFirst, updateMany },
+      $transaction: vi.fn(async (fn: (client: unknown) => unknown) => fn(tx)),
+      notification: tx.notification,
+      notificationDelivery: tx.notificationDelivery,
+    } as unknown as PrismaClient;
+    input.remote.fetch.mockResolvedValue(new Response("{}", { status }));
+    return { input: { ...input, prisma }, updateMany, transaction: prisma.$transaction };
+  }
+
+  it("stamps lastUsedAt and clears needsAttentionAt on success, scoped to the row", async () => {
+    const { input, updateMany } = await trackedFixture(200);
+    await requestWithBotSecret(input);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "secret-1", ciphertext: expect.any(String), ...scope },
+      data: { lastUsedAt: expect.any(Date), needsAttentionAt: null },
+    });
+  });
+
+  it("does not stamp lastUsedAt when the request fails", async () => {
+    const { input, updateMany } = await trackedFixture(200);
+    input.remote.fetch.mockRejectedValue(new Error("network"));
+    await requestWithBotSecret(input);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("marks needs attention on 401 and 403 without stamping lastUsedAt", async () => {
+    for (const status of [401, 403]) {
+      const { input, updateMany, transaction } = await trackedFixture(status);
+      await requestWithBotSecret(input);
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { id: "secret-1", ciphertext: expect.any(String), ...scope },
+        data: { needsAttentionAt: expect.any(Date) },
+      });
+      expect(transaction).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("ignores other error statuses", async () => {
+    const { input, updateMany } = await trackedFixture(500);
+    await requestWithBotSecret(input);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("still returns the response when the stamp fails", async () => {
+    const { input, updateMany } = await trackedFixture(200);
+    updateMany.mockRejectedValue(new Error("db down"));
+    expect(await requestWithBotSecret(input)).toMatchObject({ status: 200 });
+  });
+
+  it("still marks a 401 when the body read fails", async () => {
+    const { input, updateMany } = await trackedFixture(401);
+    const body = new ReadableStream({
+      pull() {
+        throw new Error("stream broke");
+      },
+    });
+    input.remote.fetch.mockResolvedValue(new Response(body, { status: 401 }));
+    expect(await requestWithBotSecret(input)).toMatchObject({ error: expect.any(String) });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "secret-1", ciphertext: expect.any(String), ...scope },
+      data: { needsAttentionAt: expect.any(Date) },
+    });
+  });
+
+  describe("a credential replaced during an in-flight request", () => {
+    async function replacedFixture(status: number) {
+      const { input, updateMany, transaction } = await trackedFixture(status);
+      // The replacement keeps the row id but has new ciphertext. Updates apply only on a match.
+      const current = { ciphertext: "replacement" };
+      updateMany.mockImplementation(async (args: { where: { ciphertext: string } }) => ({
+        count: args.where.ciphertext === current.ciphertext ? 1 : 0,
+      }));
+      input.remote.fetch.mockImplementation(async () => {
+        current.ciphertext = "replacement";
+        return new Response("{}", { status });
+      });
+      return { input, updateMany, transaction };
+    }
+
+    it("does not mark the replacement or notify on a late 401", async () => {
+      const { input, updateMany, transaction } = await replacedFixture(401);
+      await requestWithBotSecret(input);
+      const where = (updateMany.mock.calls[0] as unknown as [{ where: { ciphertext: string } }])[0]
+        .where;
+      expect(where.ciphertext).not.toBe("replacement");
+      expect(transaction).not.toHaveBeenCalled();
+    });
+
+    it("does not clear the replacement's mark on a late 200", async () => {
+      const { input, updateMany } = await replacedFixture(200);
+      await requestWithBotSecret(input);
+      const where = (updateMany.mock.calls[0] as unknown as [{ where: { ciphertext: string } }])[0]
+        .where;
+      expect(where.ciphertext).not.toBe("replacement");
+    });
+  });
+
+  it("stamps a login fill", async () => {
+    const { prisma } = await loginFixtureForUse();
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    (prisma as unknown as { botSecret: { updateMany: unknown } }).botSecret.updateMany = updateMany;
+    const resolved = await resolveLoginFill({
+      prisma,
+      secretStore,
+      scope,
+      name: "site_login",
+      field: "password",
+    });
+    // Resolving a value is not a use; the caller marks it after the page action succeeds.
+    expect(updateMany).not.toHaveBeenCalled();
+    if ("error" in resolved) throw new Error(resolved.error);
+    await resolved.markUsed();
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "login-1", ciphertext: expect.any(String), ...scope },
+      data: { lastUsedAt: expect.any(Date), needsAttentionAt: null },
+    });
+  });
+});
+
+async function loginFixtureForUse() {
+  const plaintext = encodeLoginSecret({ username: "fake-user@example.test", password: "pw-1" });
+  const encrypted = await secretStore.put(
+    plaintext,
+    { ...scope, operationId: "test", traceId: "test", signal: new AbortController().signal },
+    { recordId: "login-1" },
+  );
+  const row = {
+    ...scope,
+    name: "site_login",
+    origin: "https://login.example.test",
+    auth: { type: "login" },
+    ...encrypted,
+    id: "login-1",
+  };
+  const findFirst = vi.fn(async () => row);
+  return { prisma: { botSecret: { findFirst } } as unknown as PrismaClient };
+}

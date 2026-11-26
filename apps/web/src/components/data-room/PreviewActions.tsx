@@ -28,8 +28,11 @@ import { SheetPreview } from "../SheetPreview";
 
 export type FileUrl = { url: string; failed: boolean };
 
-/** True for an image or PDF, which is shown from an object URL of its bytes. */
-export const isShowable = (item: DataRoomApiItem) => canPreviewImage(item) || canPreviewPdf(item);
+export const isAudio = (item: DataRoomApiItem) => item.mimeType?.startsWith("audio/") ?? false;
+
+/** True for an image, PDF or audio file, which is shown from an object URL of its bytes. */
+export const isShowable = (item: DataRoomApiItem) =>
+  canPreviewImage(item) || canPreviewPdf(item) || isAudio(item);
 
 /**
  * The object URL of an image or PDF item, read once through the authenticated content route. The
@@ -77,8 +80,12 @@ export function FileViewer({
   height?: string;
 }) {
   useHideAmounts();
-  if (item.mimeType?.startsWith("text/plain") && item.previewText) {
-    // The extracted text is the file for a plain text file, so show it instead of a placeholder icon.
+  if (
+    item.previewText &&
+    (item.mimeType?.startsWith("text/plain") || !isShowable(item) || file.failed)
+  ) {
+    // Plain text files are their own preview; for a file the browser cannot show (or one whose
+    // bytes failed to load) the extracted text is the best stand-in for the placeholder icon.
     return (
       <pre
         className={`overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs ${fill ? "h-full" : "max-h-64"}`}
@@ -109,6 +116,10 @@ export function FileViewer({
         />
       </>
     );
+  if (isAudio(item)) {
+    // biome-ignore lint/a11y/useMediaCaption: a recording has no captions; its transcript is the note beside it
+    return <audio controls src={file.url} className="w-full" />;
+  }
   return item.mimeType === "application/pdf" ? (
     <>
       <PdfPhoneFallback item={item} url={file.url} fill={fill} />

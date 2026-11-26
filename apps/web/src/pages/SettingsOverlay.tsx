@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { AvatarStyle, SpaceMemoryConfig } from "@rakazo/contracts";
+import type { AvatarStyle, Bot, SpaceMemoryConfig } from "@rakazo/contracts";
 import {
   Button,
   Dialog,
@@ -15,6 +15,7 @@ import {
   Cpu,
   CreditCard,
   Monitor,
+  Plug,
   Settings,
   ShieldCheck,
   XIcon,
@@ -31,6 +32,7 @@ import {
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
 import { BillingSettingsPanel } from "./BillingSettingsPanel";
+import { McpConnectionsPanel } from "./McpConnectionsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
 import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
@@ -42,7 +44,8 @@ export type SettingsSection =
   | "memory"
   | "voice"
   | "computer"
-  | "billing";
+  | "billing"
+  | "connections";
 
 type NavItem = {
   id: SettingsSection;
@@ -60,6 +63,8 @@ export function SettingsOverlay({
   notice,
   avatarStyle,
   onAvatarStyleChange,
+  hiddenBots,
+  onShowBot,
   timezone,
   onTimezoneChange,
   isDeploymentOwner = false,
@@ -70,6 +75,8 @@ export function SettingsOverlay({
   onOpenMessaging,
   memoryConfig,
   onMemoryConfigChange,
+  memoryConfigLoadFailed = false,
+  onRetryMemoryConfigLoad,
   onClose,
   onVoiceStatusMaybeChanged,
 }: {
@@ -89,6 +96,8 @@ export function SettingsOverlay({
   notice?: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
+  hiddenBots?: readonly Pick<Bot, "id" | "name" | "color">[];
+  onShowBot?: (botId: string) => void;
   timezone?: string;
   onTimezoneChange?: (timezone: string) => Promise<void>;
   isDeploymentOwner?: boolean;
@@ -99,6 +108,8 @@ export function SettingsOverlay({
   onOpenMessaging?: () => void;
   memoryConfig: SpaceMemoryConfig | null | undefined;
   onMemoryConfigChange: (config: SpaceMemoryConfig | null) => void;
+  memoryConfigLoadFailed?: boolean;
+  onRetryMemoryConfigLoad?: () => Promise<void>;
   onClose: () => void;
   onVoiceStatusMaybeChanged?: () => void | Promise<void>;
 }) {
@@ -170,6 +181,7 @@ export function SettingsOverlay({
     { id: "models", label: t`Models`, icon: Cpu },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
+    { id: "connections", label: t`Connections`, icon: Plug },
   ];
 
   const memoryItem: NavItem = { id: "memory", label: t`Memory`, icon: Brain };
@@ -329,6 +341,8 @@ export function SettingsOverlay({
                   name={name}
                   avatarStyle={avatarStyle}
                   onAvatarStyleChange={onAvatarStyleChange}
+                  hiddenBots={hiddenBots}
+                  onShowBot={onShowBot}
                   timezone={timezone}
                   onTimezoneChange={onTimezoneChange}
                   messagingEnabled={messagingEnabled}
@@ -355,6 +369,7 @@ export function SettingsOverlay({
                 />
               ) : null}
               {section === "billing" && billingEnabled ? <BillingSettingsPanel /> : null}
+              {section === "connections" ? <McpConnectionsPanel /> : null}
               {section === "models" || section === "voice" ? (
                 <>
                   {notice && section === "voice" ? (
@@ -385,6 +400,8 @@ export function SettingsOverlay({
                   onClose={requestClose}
                   config={memoryConfig}
                   onConfigChange={onMemoryConfigChange}
+                  loadFailed={memoryConfigLoadFailed}
+                  onRetryLoad={onRetryMemoryConfigLoad}
                   onBusyChange={setMemoryBusy}
                 />
               ) : null}

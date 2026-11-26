@@ -15,6 +15,12 @@ import {
 } from "./contact-tools.js";
 import { selectBuiltinToolsForRun } from "./executor.js";
 
+/** A space with no ledger rows, so cap table tools use the legacy snapshot. */
+const noLedger = {
+  equityStakeholder: { findFirst: async () => null },
+  equityShareClass: { findFirst: async () => null },
+};
+
 describe("contact tools", () => {
   const base = {
     hasProvider: true,
@@ -95,6 +101,7 @@ describe("contact tools", () => {
       kind: "investor",
       notes: null,
       bot: null,
+      pipelinePeople: [],
       createdAt: new Date(0),
       updatedAt: new Date(0),
     };
@@ -169,7 +176,7 @@ describe("contact tools", () => {
       safeRow("Sent Fund", { sentAt: sent }),
       safeRow("Draft Fund", {}),
     ]);
-    const prisma = { capTableSnapshot: { findUnique }, safe: { findMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { findUnique }, safe: { findMany } } as never;
     const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
     expect(read).toEqual({
       capTable: expect.objectContaining({
@@ -215,6 +222,7 @@ describe("contact tools", () => {
       updatedAt: new Date("2026-02-01T00:00:00Z"),
     }));
     const prisma = {
+      ...noLedger,
       capTableSnapshot: { findUnique },
       safe: { findMany: async () => [] },
     } as never;
@@ -227,9 +235,33 @@ describe("contact tools", () => {
     ]); // the SAFE holder is not a table row, as on the Investors page
   });
 
+  it("cap_table_update refuses, and names the ledger, once the space has a ledger", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const create = vi.fn();
+    const prisma = {
+      equityStakeholder: { findFirst: async () => ({ id: "s1" }) },
+      equityShareClass: { findFirst: async () => null },
+      capTableSnapshot: { updateMany, findUnique: async () => null, create },
+    } as never;
+    const result = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1,
+        shareClasses: [],
+        holders: [],
+      },
+    );
+    expect(result).toEqual({ error: expect.stringContaining("equity ledger") });
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("cap_table_update validates, then saves for the run's owner", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     const bad = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
@@ -257,7 +289,7 @@ describe("contact tools", () => {
 
   it("cap_table_update sums ledger rows into each holder's amount, keeping converted money on the holder", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     const holder = (name: string, security: string) => ({ name, security, shares: 10 });
     await contactToolFromTool(
       "cap_table_update",
@@ -286,7 +318,7 @@ describe("contact tools", () => {
 
   it("cap_table_update gives a holder's ledger total to one row when it has several securities", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
@@ -308,7 +340,7 @@ describe("contact tools", () => {
 
   it("cap_table_update matches ledger names after trimming and counts a name once", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     const base = {
       companyName: "Example Co",
       asOf: "2026-01-31",
@@ -339,7 +371,7 @@ describe("contact tools", () => {
 
   it("cap_table_update refuses a transfer ledger row with no recipient", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     const result = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
@@ -358,7 +390,7 @@ describe("contact tools", () => {
 
   it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
-    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const prisma = { ...noLedger, capTableSnapshot: { updateMany } } as never;
     const args = {
       companyName: "Example Co",
       asOf: "2026-01-31",
@@ -384,6 +416,7 @@ describe("contact tools", () => {
 
   it("cap_table_update says so when another source owns the table", async () => {
     const prisma = {
+      ...noLedger,
       capTableSnapshot: {
         updateMany: vi.fn(async () => ({ count: 0 })),
         findUnique: vi.fn(async () => ({ id: "row" })),
@@ -412,10 +445,17 @@ describe("contact tools", () => {
       organization: null,
       kind: "investor",
       notes: null,
+      pipelinePeople: [],
       createdAt: new Date(0),
       updatedAt: new Date(0),
     };
-    const findFirst = vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "c1" });
+    // The email lookup and its name fallback miss, then the name-only lookup misses, then all hit.
+    const findFirst = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ id: "c1" });
     const create = vi.fn();
     const upsert = vi.fn();
     const update = vi.fn(async () => row);
@@ -424,6 +464,7 @@ describe("contact tools", () => {
     const tx = {
       $queryRaw: vi.fn(async () => [{ email: row.email, kind: row.kind }]),
       contact: { update, findUniqueOrThrow },
+      pipelineRecordPerson: { findFirst: vi.fn(async () => null) },
       investorPortalToken: { deleteMany: vi.fn() },
       portalSession: { deleteMany: vi.fn() },
       investorShare: { deleteMany: vi.fn() },
@@ -444,6 +485,133 @@ describe("contact tools", () => {
     const saved = await contactToolFromTool("contacts_save", { prisma, scope }, args);
     expect(saved).toEqual({ contact: expect.objectContaining({ name: "Ada Capital" }) });
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  const saveHarness = (lookups: unknown[]) => {
+    const row = {
+      id: "c1",
+      name: "Ann",
+      email: null,
+      organization: "Acme",
+      kind: "legal",
+      notes: null,
+      pipelinePeople: [],
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const findFirst = vi.fn();
+    for (const l of lookups) findFirst.mockResolvedValueOnce(l);
+    const update = vi.fn(async () => row);
+    const tx = {
+      $queryRaw: vi.fn(async () => [{ email: null, kind: "legal" }]),
+      contact: { update, findUniqueOrThrow: vi.fn(async () => row) },
+      pipelineRecordPerson: { findFirst: vi.fn(async () => null) },
+      investorPortalToken: { deleteMany: vi.fn() },
+      portalSession: { deleteMany: vi.fn() },
+      investorShare: { deleteMany: vi.fn() },
+    };
+    const prisma = {
+      contact: { findFirst, create: vi.fn(), upsert: vi.fn() },
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never;
+    return { prisma, findFirst, update };
+  };
+
+  it("contacts_save finds an email-less contact by name and organization", async () => {
+    const { prisma, findFirst, update } = saveHarness([{ id: "c1" }]);
+    const saved = await contactToolFromTool(
+      "contacts_save",
+      { prisma, scope },
+      { name: "Ann", organization: "Acme", kind: "legal" },
+    );
+    expect(saved).toHaveProperty("contact");
+    const where = findFirst.mock.calls[0]?.[0].where;
+    expect(where).toMatchObject({
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+      organization: { equals: "Acme" },
+    });
+    expect(findFirst.mock.calls[0]?.[0].orderBy).toEqual({ id: "asc" });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "c1" }) }),
+    );
+  });
+
+  it("contacts_save adds an email to an email-less contact found by name and organization", async () => {
+    const { prisma, findFirst, update } = saveHarness([null, { id: "c1" }]);
+    const saved = await contactToolFromTool(
+      "contacts_save",
+      { prisma, scope },
+      { name: "Ann", organization: "Acme", email: "ann@example.test" },
+    );
+    expect(saved).toHaveProperty("contact");
+    expect(findFirst.mock.calls[1]?.[0].where).toMatchObject({
+      email: null,
+      spaceId: scope.spaceId,
+    });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "c1" }),
+        data: expect.objectContaining({ email: "ann@example.test" }),
+      }),
+    );
+  });
+
+  it("contacts_save never clears an email", async () => {
+    const { prisma, update } = saveHarness([{ id: "c1" }]);
+    await contactToolFromTool(
+      "contacts_save",
+      { prisma, scope },
+      { name: "Ann", organization: "Acme", email: null },
+    );
+    expect(update).toHaveBeenCalled();
+    const data = (update.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect("email" in data).toBe(false);
+  });
+
+  it("contacts_save without an email reports the name and organization miss", async () => {
+    const { prisma } = saveHarness([null]);
+    expect(await contactToolFromTool("contacts_save", { prisma, scope }, { name: "X" })).toEqual({
+      error: "No contact with this name and organization. Use contacts_add for new people.",
+    });
+  });
+
+  it("contacts_save marks the editing bot inside the write transaction", async () => {
+    const row = {
+      id: "c1",
+      name: "Ada Fund",
+      email: "ada@example.test",
+      organization: null,
+      kind: "investor",
+      notes: null,
+      pipelinePeople: [],
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const txUpdate = vi.fn(async () => row);
+    const tx = {
+      $queryRaw: vi.fn(async () => [{ email: row.email, kind: row.kind }]),
+      contact: { update: txUpdate, findUniqueOrThrow: vi.fn(async () => row) },
+      pipelineRecordPerson: { findFirst: vi.fn(async () => null) },
+      investorPortalToken: { deleteMany: vi.fn() },
+      portalSession: { deleteMany: vi.fn() },
+      investorShare: { deleteMany: vi.fn() },
+    };
+    const outerUpdate = vi.fn();
+    const prisma = {
+      contact: { findFirst: vi.fn(async () => ({ id: "c1" })), update: outerUpdate },
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never;
+    await contactToolFromTool(
+      "contacts_save",
+      { prisma, scope, botId: "b1" },
+      { name: "Ada Capital", email: "ada@example.test" },
+    );
+    expect(txUpdate).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: expect.objectContaining({ lastEditedByBotId: "b1" }),
+    });
+    expect(outerUpdate).not.toHaveBeenCalled();
   });
 });
 

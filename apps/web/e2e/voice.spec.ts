@@ -95,9 +95,15 @@ test("voice settings connect a key, speak a reply, and call the dedicated Elio a
   await expect(page.getByTestId("call-view")).toBeVisible();
   await expect(page.getByTestId("call-view").getByText("Elio", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Hang up" })).toBeVisible();
+  await expect(
+    page.getByTestId("composer-bar").getByRole("button", { name: "Call Elio", exact: true }),
+  ).toHaveCount(0);
   await captureScreenshot(page, testInfo, "voice-call");
   await page.getByRole("button", { name: "Hang up" }).click();
   await expect(page.getByTestId("call-view")).toHaveCount(0);
+  await expect(
+    page.getByTestId("composer-bar").getByRole("button", { name: "Call Elio", exact: true }),
+  ).toBeVisible();
   expect(await rpc(page, "voice/agent", {})).toMatchObject({ id: elio.id });
 
   await openUserSettings(page, "voice");

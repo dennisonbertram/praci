@@ -75,8 +75,9 @@ export function ItemMenuItems<T extends { name: string }>({
           onPick={(agent) => onSendToAgent?.(item, agent)}
         />
       )}
-      {/* Folders carry `parentId`; only a document can be shared with investors. */}
-      {"parentId" in item ? null : (
+      {/* Folders carry `parentId`; only a document can be shared, and the server refuses
+          meeting notes. */}
+      {"parentId" in item || ("source" in item && item.source === "meeting") ? null : (
         <Item onClick={() => onAction("share", item)}>
           <Share2 aria-hidden="true" />
           <Trans>Share</Trans>

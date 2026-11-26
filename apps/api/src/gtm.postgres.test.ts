@@ -120,6 +120,18 @@ describePostgres("GTM overview and queue (PostgreSQL)", () => {
     });
   }
 
+  async function postBot(actor: Actor, slug: string) {
+    return prisma.bot.create({
+      data: {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        name: "GTM agent",
+        color: "#F2622A",
+        spawnKey: id(slug),
+      },
+    });
+  }
+
   async function createRoutine(actor: Actor, botId: string, nextRunAt: Date) {
     return prisma.routine.create({
       data: {
@@ -135,6 +147,38 @@ describePostgres("GTM overview and queue (PostgreSQL)", () => {
         nextRunAt,
       },
     });
+  }
+
+  async function approveParked(actor: Actor, itemId: string) {
+    const { updatedAt } = await prisma.scratchpadItem.findUniqueOrThrow({
+      where: { id: itemId },
+      select: { updatedAt: true },
+    });
+    return client(actor).scratchpad.update({
+      itemId,
+      status: "open",
+      updatedAt: updatedAt.toISOString(),
+    });
+  }
+
+  async function parkedPost(actor: Actor, botId: string, name: string, scheduledFor?: Date) {
+    const itemId = id(name);
+    await prisma.scratchpadItem.create({
+      data: {
+        id: itemId,
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        botId,
+        title: "Launch post",
+        status: "parked",
+        notes: "The post body",
+        category: "public_post",
+        channel: "x",
+        target: "account-1",
+        scheduledFor,
+      },
+    });
+    return itemId;
   }
 
   beforeAll(async () => {
@@ -539,5 +583,78 @@ describePostgres("GTM overview and queue (PostgreSQL)", () => {
       "accounts_list",
       "accounts_list",
     ]);
+  });
+
+  it("refuses a post approved for a slot the next run cannot publish", async () => {
+    const bot = await postBot(alice, "spawn-too-soon");
+    const nextRunAt = new Date(Date.now() + 60 * 60_000);
+    await createRoutine(alice, bot.id, nextRunAt);
+    const itemId = await parkedPost(
+      alice,
+      bot.id,
+      "too-soon",
+      new Date(nextRunAt.getTime() + 5 * 60_000),
+    );
+    await expect(approveParked(alice, itemId)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Schedule this post at least ten minutes after the next run.",
+    });
+    await expect(
+      prisma.scratchpadItem.findUniqueOrThrow({ where: { id: itemId } }),
+    ).resolves.toMatchObject({ status: "parked", approvedAt: null });
+  });
+
+  it("still refuses a too-soon post while the routine run is overdue", async () => {
+    const bot = await postBot(alice, "spawn-overdue");
+    await createRoutine(alice, bot.id, new Date(Date.now() - 20 * 60_000));
+    const itemId = await parkedPost(
+      alice,
+      bot.id,
+      "overdue-post",
+      new Date(Date.now() + 5 * 60_000),
+    );
+    await expect(approveParked(alice, itemId)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Schedule this post at least ten minutes after the next run.",
+    });
+    await expect(
+      prisma.scratchpadItem.findUniqueOrThrow({ where: { id: itemId } }),
+    ).resolves.toMatchObject({ status: "parked", approvedAt: null });
+  });
+
+  it("approves a post scheduled after the next run's ten-minute floor", async () => {
+    const bot = await postBot(alice, "spawn-far-enough");
+    const nextRunAt = new Date(Date.now() + 60 * 60_000);
+    await createRoutine(alice, bot.id, nextRunAt);
+    const itemId = await parkedPost(
+      alice,
+      bot.id,
+      "far-enough",
+      new Date(nextRunAt.getTime() + 15 * 60_000),
+    );
+    await expect(approveParked(alice, itemId)).resolves.toMatchObject({ status: "open" });
+    await expect(
+      prisma.scratchpadItem.findUniqueOrThrow({ where: { id: itemId } }),
+    ).resolves.toMatchObject({ status: "open", approvedAt: expect.any(Date) });
+  });
+
+  it("leaves a gated non-post approval alone", async () => {
+    const bot = await postBot(alice, "spawn-signup");
+    await createRoutine(alice, bot.id, new Date(Date.now() + 60 * 60_000));
+    const itemId = id("signup");
+    await prisma.scratchpadItem.create({
+      data: {
+        id: itemId,
+        spaceId: alice.spaceId,
+        userId: alice.userId,
+        botId: bot.id,
+        title: "List the beta",
+        status: "parked",
+        notes: "Site, fields, founder email and terms",
+        category: "create_account",
+        channel: "directory",
+      },
+    });
+    await expect(approveParked(alice, itemId)).resolves.toMatchObject({ status: "open" });
   });
 });

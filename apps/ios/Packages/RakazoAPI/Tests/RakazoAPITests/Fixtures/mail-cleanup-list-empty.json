@@ -1,0 +1,20 @@
+{
+  "json": {
+    "accounts": [
+      {
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "label": "Founder mail",
+        "address": "mock-founder@northwind.example.test",
+        "senderRules": "unsupported"
+      },
+      {
+        "connectionId": "cmvszf0vo000hcr9k8dds7tu8",
+        "label": "Sales mail",
+        "address": "sales@northwind.example.test",
+        "senderRules": "unsupported"
+      }
+    ],
+    "senders": [],
+    "syncedAt": "2026-10-29T04:17:54.721Z"
+  }
+}

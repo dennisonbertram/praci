@@ -21,10 +21,12 @@ export class PushSessionEndedError extends Error {
   }
 }
 
+export type PushPlatform = "expo" | "apns";
+
 export type PushEndpoint = { id: string; address: string; sessionId: string | null };
 
 /**
- * Saves a device's Expo push token for a user. An address belongs to exactly one endpoint
+ * Saves a device's push token (Expo by default, or an APNs device token) for a user. An address belongs to exactly one endpoint
  * (unique on channel and address), so saving a token another account holds moves it: the
  * previous account stops receiving pushes on that device. The same token saved again only
  * refreshes its session. Other tokens of the same session are kept (another device may share the
@@ -35,10 +37,15 @@ export async function savePushToken(
   userId: string,
   token: string,
   sessionId?: string,
-  options?: { sessionActive?: () => Promise<boolean>; replacesToken?: string },
+  options?: {
+    sessionActive?: () => Promise<boolean>;
+    replacesToken?: string;
+    platform?: PushPlatform;
+  },
 ): Promise<void> {
   const address = token.trim();
   const replaces = options?.replacesToken?.trim();
+  const platform = options?.platform ?? "expo";
   await prisma.$transaction(async (tx) => {
     await lockUser(tx, userId);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push-token:${address}`}, 0))`;
@@ -48,8 +55,15 @@ export async function savePushToken(
     }
     await tx.notificationEndpoint.upsert({
       where: { channel_address: { channel: PUSH, address } },
-      create: { userId, channel: PUSH, address, deviceId: address, sessionId: sessionId ?? null },
-      update: { userId, deviceId: address, sessionId: sessionId ?? null },
+      create: {
+        userId,
+        channel: PUSH,
+        address,
+        deviceId: address,
+        sessionId: sessionId ?? null,
+        platform,
+      },
+      update: { userId, deviceId: address, sessionId: sessionId ?? null, platform },
     });
     if (replaces && replaces !== address) {
       await tx.notificationEndpoint.deleteMany({

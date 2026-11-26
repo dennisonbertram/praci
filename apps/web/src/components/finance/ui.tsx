@@ -41,14 +41,26 @@ import { listAmount, money, shortDay, txnDay } from "../../lib/finance-format";
 import type { VendorGroup } from "../../lib/finance-group";
 import { groupByVendor, readGroupedPref, writeGroupedPref } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
+import type { TransactionSort } from "../../lib/finance-transaction-list";
+import {
+  DEFAULT_TRANSACTION_SORT,
+  filterTransactions,
+  sortTransactionGroups,
+  sortTransactions,
+  TRANSACTION_SORTS,
+} from "../../lib/finance-transaction-list";
 import {
   getHideAmounts,
   maskCurrencyWhenHidden,
   useHideAmounts,
 } from "../../lib/hide-amounts-preference";
-import { errorText } from "../../lib/user-error";
+import type { Sort } from "../../lib/list-params";
+import { useListParams } from "../../lib/list-params";
 import { AskBotButton } from "../AskBotButton";
+import { SeeAll, useCappedRows } from "../CappedList";
+import { ErrorNotice } from "../ErrorNotice";
 import { ShowAmountsButton } from "../HideAmountsToggle";
+import { PickFilter, SearchField, SortControl } from "../ListControls";
 import { PageNavButton } from "../PageHeader";
 import { StillLoading } from "../ShellSkeleton";
 
@@ -144,60 +156,13 @@ export function AskAgentButton() {
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
+      <AskBotButton compact botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
     </div>
   );
 }
 
-/** Loads one Finance RPC. A changed `deps` shows loading, not the previous answer; `reload` keeps the data on screen. */
-export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknown[]) {
-  const key = JSON.stringify(deps);
-  const [state, setState] = useState<{
-    key: string;
-    data: T | null;
-    error: string;
-    notFound?: boolean;
-  }>({
-    key,
-    data: null,
-    error: "",
-  });
-  const [attempt, setAttempt] = useState(0);
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  // `key` stands for `deps`; `attempt` is the manual retrigger.
-  useEffect(() => {
-    let live = true;
-    loadRef
-      .current()
-      .then((data) => live && setState({ key, data, error: "" }))
-      .catch(
-        (cause) =>
-          live &&
-          setState((s) => ({
-            key,
-            data: s.key === key ? s.data : null,
-            error: errorText(cause),
-            notFound: (cause as { code?: string } | null)?.code === "NOT_FOUND",
-          })),
-      );
-    return () => {
-      live = false;
-    };
-  }, [key, attempt]);
-  const current = state.key === key;
-  return {
-    data: current ? state.data : null,
-    error: current ? state.error : "",
-    /** The server answered NOT_FOUND: retrying will not help. */
-    notFound: current && state.notFound === true,
-    reload: () => setAttempt((n) => n + 1),
-    retry: () => {
-      setState({ key, data: null, error: "" });
-      setAttempt((n) => n + 1);
-    },
-  };
-}
+/** Finance pages' name for the shared page query. */
+export { usePageQuery as useFinanceQuery } from "../../lib/page-data";
 
 /** Text with each account ending (`••1111`) in the muted style every account list uses. */
 export function WithEndings({ text }: { text: string }) {
@@ -267,7 +232,7 @@ const crumbState = (crumb: Crumb | undefined) => (crumb?.back ? { back: crumb.ba
  * The trail shown above a page: its own crumbs, or, when it was opened from somewhere else (the
  * dashboard's Breakdown, a category page), Finance, that origin and the page itself.
  */
-export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
+export function trailFor(own: Crumb[], cameFrom: Crumb | null, path?: string): Crumb[] {
   // A crumb whose name has not loaded yet (or never will, on a missing page) is left out.
   const crumbs = own.filter((crumb) => crumb.label);
   const [root, ...rest] = crumbs;
@@ -275,7 +240,11 @@ export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
   if (!cameFrom || !root || !here) return crumbs;
   // The origin's own origins come too, so the trail is as deep as when the page is opened directly.
   const chain: Crumb[] = [];
-  for (let c: Crumb | undefined = cameFrom; c && c.to !== root.to; c = c.back) chain.unshift(c);
+  // Reaching this page's own address again (vendor, charge, Merchant) drops the loop, so nothing repeats.
+  for (let c: Crumb | undefined = cameFrom; c && c.to !== root.to; c = c.back) {
+    if (path && c.to === path) chain.length = 0;
+    else chain.unshift(c);
+  }
   return [root, ...chain, here];
 }
 
@@ -287,7 +256,7 @@ export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
 export function hereCrumb(own: Crumb[], cameFrom: Crumb | null, to: string): Crumb | null {
   const label = own.at(-1)?.label;
   if (!label) return null;
-  const back = trailFor(own, cameFrom)
+  const back = trailFor(own, cameFrom, to)
     .slice(1, -1)
     .reduce<Crumb | undefined>(
       (parent, c) =>
@@ -312,7 +281,8 @@ export function DetailHead({
   actions?: ReactNode;
 }) {
   const cameFrom = useCameFrom();
-  const crumbs = trailFor(own, cameFrom);
+  const location = useLocation();
+  const crumbs = trailFor(own, cameFrom, `${location.pathname}${location.search}`);
   // Before the page's own name loads (or when it never will), Back still returns to the real origin.
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
   // The page's own name is the heading below, so the trail stops at the page before it.
@@ -321,7 +291,15 @@ export function DetailHead({
   const back = crumbs.length <= 3;
   const heading =
     title === undefined ? null : (
-      <h1 className="min-w-0 text-lg leading-7 font-semibold">{title}</h1>
+      <h1
+        className={cn(
+          "min-w-0 text-lg leading-7 font-semibold",
+          // Beside Back the title takes what the row has left (and wraps), so Ask stays on this row.
+          back && "max-sm:flex-1 max-sm:basis-0",
+        )}
+      >
+        {title}
+      </h1>
     );
   // On a phone the actions join the title row's flex line (`contents`), so Ask stays beside the
   // title and the company and the page's own action take the next line.
@@ -363,7 +341,7 @@ export function DetailHead({
                     <Link
                       to={crumb.to}
                       state={crumbState(crumb)}
-                      className="hover:text-foreground hover:underline"
+                      className="rk-tap hover:text-foreground hover:underline"
                     >
                       {crumb.label}
                     </Link>
@@ -389,7 +367,11 @@ export function DetailHead({
         {/* On a phone the company takes what the row has left (and truncates). Beside a Back button it
             keeps room for its name and wraps to the next line, with Ask, rather than being cut to a few letters. */}
         <CompanyMenu
-          className={back ? "max-sm:order-1" : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"}
+          className={
+            back
+              ? "max-sm:order-1 max-sm:basis-full"
+              : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"
+          }
         />
         {back ? end : null}
       </div>
@@ -437,31 +419,7 @@ export function NotFoundNotice() {
   );
 }
 
-/** `action` replaces "Try again" when the fix is something else, such as Reconnect; with neither, there is no button. */
-export function ErrorNotice({
-  message,
-  onRetry,
-  action,
-}: {
-  message: string;
-  onRetry?: () => void;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div role="alert" className="my-4 flex items-center gap-3 text-sm text-destructive">
-      <span>{message}</span>
-      {action ? (
-        <Button variant="outline" size="sm" onClick={action.onClick}>
-          {action.label}
-        </Button>
-      ) : onRetry ? (
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          <Trans>Try again</Trans>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
+export { ErrorNotice } from "../ErrorNotice";
 
 /** The frame every detail page renders in: title, optional subtitle, loading and error states. */
 export function DetailPage({
@@ -722,18 +680,20 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
       <TableCell className="hidden w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground @md:table-cell">
         {shortDay(txnDay(row))}
       </TableCell>
-      <TableCell className="min-w-0 break-words">
+      <TableCell className="min-w-0 break-words py-3 pointer-coarse:py-1 @md:py-2">
         <Link
           state={{ ...back, preview: row }}
           to={financePath.transaction(row.id)}
-          className="rk-tap outline-none hover:underline focus-visible:underline"
+          className="rk-tap max-w-full outline-none hover:underline focus-visible:underline"
         >
-          {row.counterparty}
+          {maskCurrencyWhenHidden(row.counterparty)}
         </Link>
-        {/* Narrow, the date sits under the name instead of taking a column from it. */}
-        <div className="text-xs text-muted-foreground @md:hidden">{shortDay(txnDay(row))}</div>
+        {/* Narrow, the date and category sit under the name instead of taking columns from it. */}
+        <div className="truncate text-xs text-muted-foreground @md:hidden">
+          {shortDay(txnDay(row))} · {categoryLabel(row)}
+        </div>
         {row.memo ? (
-          <div className="line-clamp-1 text-xs text-muted-foreground">
+          <div className="line-clamp-1 hidden text-xs text-muted-foreground @md:block">
             {maskCurrencyWhenHidden(row.memo)}
           </div>
         ) : null}
@@ -743,6 +703,10 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
       </TableCell>
       <TableCell className="whitespace-nowrap ps-3 text-end tabular-nums">
         {listAmount(row.amountCents, undefined, row.currency)}
+        {/* The Status column is hidden below @2xl, so a pending charge says so under its amount. */}
+        {row.status === "pending" ? (
+          <div className="text-xs text-muted-foreground @2xl:hidden">{statusLabel(row.status)}</div>
+        ) : null}
       </TableCell>
       <TableCell className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
         {statusLabel(row.status)}
@@ -806,29 +770,39 @@ export function TransactionTable({
   rows,
   grouped = false,
   empty,
+  sort,
 }: {
   rows: FinanceTransaction[];
   grouped?: boolean;
+  /** The current sort and the header click handler; without it the headers do not sort and the rows keep their order. */
+  sort?: { value: Sort<TransactionSort>; onToggle: (field: TransactionSort) => void };
   /** What an empty list says; a page without a period picks its own words. */
   empty?: ReactNode;
 }) {
+  const sortHead = (field: TransactionSort) =>
+    sort
+      ? {
+          sortDirection: sort.value.field === field ? sort.value.dir : null,
+          onSort: () => sort.onToggle(field),
+        }
+      : {};
   return (
     // A fixed layout: every column but Counterparty has a set width, so opening a vendor, hiding
     // amounts or a longer name moves no column.
     <Table compact className="table-fixed">
-      <TableHeader>
+      <TableHeader className={sort ? "max-sm:hidden" : undefined}>
         <TableHeadRow>
           {/* Named in both views: an opened vendor's rows show their dates and status here. */}
-          <TableHead className="hidden w-[4.5rem] @md:table-cell">
+          <TableHead className="hidden w-[4.5rem] @md:table-cell" {...sortHead("date")}>
             <Trans>Date</Trans>
           </TableHead>
-          <TableHead>
+          <TableHead {...sortHead("counterparty")}>
             <Trans>Counterparty</Trans>
           </TableHead>
-          <TableHead className="hidden w-48 @2xl:table-cell">
+          <TableHead className="hidden w-48 @2xl:table-cell" {...sortHead("category")}>
             <Trans>Category</Trans>
           </TableHead>
-          <TableHead className="text-end w-24 ps-3">
+          <TableHead className="text-end w-24 ps-3" {...sortHead("amount")}>
             <Trans>Amount</Trans>
           </TableHead>
           <TableHead className="hidden w-24 ps-4 @2xl:table-cell">
@@ -846,22 +820,37 @@ export function TransactionTable({
           </TableRow>
         ) : null}
         {grouped
-          ? groupByVendor(rows).map((group) => <VendorGroupRows key={group.key} group={group} />)
+          ? (sort
+              ? sortTransactionGroups(groupByVendor(rows), sort.value, categoryLabel)
+              : groupByVendor(rows)
+            ).map((group) => <VendorGroupRows key={group.key} group={group} />)
           : rows.map((row) => <TransactionRow key={row.id} row={row} />)}
       </TableBody>
     </Table>
   );
 }
 
-/** A Transactions card whose header switches between the flat list and one row per vendor. The choice is remembered for this page during the visit. */
+const FILTER_PARAMS = ["q", "category", "status"] as const;
+
+/**
+ * A Transactions card whose header switches between the flat list and one row per vendor (the
+ * choice is remembered for this page during the visit), with search, Category and Status filters
+ * and sortable columns. They live in the URL as ?q=, category, status, sort and dir. `fixedCategory`
+ * leaves out the Category filter on a page whose category the page itself already picks.
+ */
 export function TransactionsSection({
   title,
   rows,
   empty,
+  fixedCategory = false,
+  seeAll,
 }: {
   title?: ReactNode;
   rows: FinanceTransaction[];
   empty?: ReactNode;
+  fixedCategory?: boolean;
+  /** The page with every row, search and filters. Set, the list shows 3 rows on a phone and 25 wide, then "See all (N)". */
+  seeAll?: string;
 }) {
   // Remembered per page, so choosing By vendor on one page does not hide dates on the next.
   const page = useLocation().pathname;
@@ -870,9 +859,93 @@ export function TransactionsSection({
     setGrouped(next);
     writeGroupedPref(page, next);
   };
-  // Grouping one vendor's charges by vendor changes nothing, so the switch is left out.
+  const list = useListParams(TRANSACTION_SORTS, DEFAULT_TRANSACTION_SORT);
+  const filters = {
+    q: list.param("q"),
+    category: fixedCategory ? undefined : list.param("category"),
+    status: list.param("status"),
+  };
+  const filtered = Object.values(filters).some(Boolean);
+  const sorted = sortTransactions(
+    filterTransactions(rows, filters, categoryLabel),
+    list.sort,
+    categoryLabel,
+  );
+  // Grouping one vendor's charges by vendor changes nothing, so the switch is left out. It follows
+  // all the rows, not the filtered ones, so filtering never makes the switch vanish.
   const manyVendors = groupByVendor(rows).length > 1;
   const grouped = preferGrouped && manyVendors;
+  // A phone caps what is drawn, never what is totalled: By vendor caps whole vendors, so each
+  // vendor's total still covers all its charges.
+  const units: (FinanceTransaction | VendorGroup)[] = grouped
+    ? sortTransactionGroups(groupByVendor(sorted), list.sort, categoryLabel)
+    : sorted;
+  const capped = useCappedRows(units, seeAll ? {} : { phone: Number.POSITIVE_INFINITY });
+  const shown = capped.rows.flatMap((unit) => ("rows" in unit ? unit.rows : [unit]));
+  // The full page lists transactions, so it matches only the flat list; the filters and sort go with it.
+  const { search } = useLocation();
+  const carried = new URLSearchParams(search);
+  for (const key of [...carried.keys()])
+    if (!["q", "status", "sort", "dir"].includes(key)) carried.delete(key);
+  const fullPage =
+    seeAll && !grouped
+      ? `${seeAll}${carried.size ? `${seeAll.includes("?") ? "&" : "?"}${carried}` : ""}`
+      : undefined;
+  const unique = (values: string[]): [string, string][] =>
+    [...new Set(values)].sort((a, b) => a.localeCompare(b)).map((v) => [v, v]);
+  const statuses = [...new Set(rows.map((row) => row.status))];
+  const sortNames: Record<TransactionSort, string> = {
+    date: t`Date`,
+    counterparty: t`Counterparty`,
+    category: t`Category`,
+    amount: t`Amount`,
+  };
+  const categories = unique(rows.map(categoryLabel));
+  const toolbar =
+    rows.length > 1 ? (
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <SearchField
+          name="transactions-search"
+          value={filters.q ?? ""}
+          onChange={(value) => list.setParam("q", value)}
+          placeholder={t`Search transactions`}
+          label={t`Search transactions`}
+          className="w-56"
+        />
+        {!fixedCategory && categories.length > 1 ? (
+          <PickFilter
+            label={t`Category`}
+            value={filters.category}
+            options={categories}
+            onChange={(value) => list.setParam("category", value)}
+          />
+        ) : null}
+        {statuses.length > 1 ? (
+          <PickFilter
+            label={t`Status`}
+            value={filters.status}
+            options={statuses.map((status) => [status, statusLabel(status)])}
+            onChange={(value) => list.setParam("status", value)}
+          />
+        ) : null}
+        {/* Wide, the column headers sort; narrow, they are not all shown. */}
+        <span className="ms-auto flex items-center gap-1 @2xl:hidden">
+          <SortControl
+            fields={TRANSACTION_SORTS.map((field) => [field, sortNames[field]])}
+            field={list.sort.field}
+            fieldLabel={sortNames[list.sort.field]}
+            direction={list.sort.dir}
+            onField={(field) => list.setSort({ field, dir: "asc" })}
+            onDirection={(dir) => list.setSort({ field: list.sort.field, dir })}
+          />
+        </span>
+        {filtered ? (
+          <Button variant="ghost" size="sm" onClick={() => list.clear(...FILTER_PARAMS)}>
+            <Trans>Clear filters</Trans>
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
   return (
     <Section
       title={title}
@@ -895,7 +968,18 @@ export function TransactionsSection({
         ) : null
       }
     >
-      <TransactionTable rows={rows} grouped={grouped} empty={empty} />
+      {toolbar}
+      <TransactionTable
+        rows={shown}
+        grouped={grouped}
+        sort={{ value: list.sort, onToggle: list.toggleSort }}
+        empty={filtered ? <Trans>No matches</Trans> : empty}
+      />
+      {seeAll ? (
+        <div className="mt-2 flex justify-end">
+          <SeeAll list={capped} {...(fullPage ? { to: fullPage } : {})} />
+        </div>
+      ) : null}
     </Section>
   );
 }
@@ -907,7 +991,7 @@ export function Chip({ to, on, children }: { to: string; on?: boolean; children:
       to={to}
       aria-current={on ? "true" : undefined}
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs",
+        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11",
         on
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
@@ -994,9 +1078,9 @@ export function KvRow({ label, children }: { label: ReactNode; children: ReactNo
 /** A link inside a detail value, with a trailing chevron. */
 export function ValueLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="rk-tap hover:underline">
+    <HereLink to={to} className="rk-tap hover:underline pointer-coarse:-my-3">
       {children} <span aria-hidden="true">›</span>
-    </Link>
+    </HereLink>
   );
 }
 

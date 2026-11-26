@@ -9,8 +9,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  enqueueNotificationToast,
   Input,
   NativeSelect,
+  notificationToastManager,
   Textarea,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
@@ -18,6 +20,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MASK, percentFigure, totalPercent } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { todayIso as today } from "../../lib/legal-format";
+import { UNDO_SEND_MS } from "../../lib/outbox";
 import { OwnershipBar } from "./OwnershipBar";
 
 /** One typed row. Numbers stay text while they are typed; blank means unknown. */
@@ -87,8 +91,6 @@ const rowProblems = (row: Draft) => ({
   invested: parseUsd(row.invested) === undefined,
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 /**
  * The typed-in cap table: always editable, saved on blur as the whole table with the version it
  * was loaded from. A failed save keeps the typed rows ("Not saved", Retry); a table that changed
@@ -126,6 +128,20 @@ export function CapTableEditor({
   const pending = useRef(false);
   const inflight = useRef(false);
   const again = useRef(false);
+
+  // An Undo dies with the editor: a stale one must never save a typed-in table over a Carta or
+  // Sheet table.
+  const mounted = useRef(false);
+  const openToasts = useRef(new Set<string>());
+  useEffect(() => {
+    mounted.current = true;
+    const toasts = openToasts.current;
+    return () => {
+      mounted.current = false;
+      for (const id of toasts) notificationToastManager.close(id);
+      toasts.clear();
+    };
+  }, []);
 
   // A change from outside (another tab, the agent) replaces the rows unless the founder is mid-edit.
   useEffect(() => {
@@ -260,9 +276,36 @@ export function CapTableEditor({
   };
   const remove = (id: string) => {
     pending.current = true;
+    // Remember the row and its index so Undo can put it back.
+    const index = rows.findIndex((row) => row.id === id);
+    const gone = index >= 0 ? rows[index] : undefined;
     setRows((current) => current.filter((row) => row.id !== id));
     // The state update lands before the save reads it.
     queueMicrotask(() => void save());
+    if (!gone) return;
+    const name = gone.name.trim() || t`holder`;
+    const toastId = `holder-delete-${++counter}`;
+    enqueueNotificationToast({
+      id: toastId,
+      title: t`Deleted ${name}`,
+      onClose: () => void openToasts.current.delete(toastId),
+      action: {
+        label: t`Undo`,
+        onClick: () => {
+          if (!mounted.current) return;
+          setRows((current) => {
+            const next = [...current];
+            // Back at its index, always ahead of the trailing blank row.
+            next.splice(Math.min(index, next.length - 1), 0, gone);
+            return next;
+          });
+          pending.current = true;
+          queueMicrotask(() => void save());
+        },
+      },
+      timeout: UNDO_SEND_MS,
+    });
+    openToasts.current.add(toastId);
   };
 
   const field = "h-8 text-sm pointer-coarse:h-11";

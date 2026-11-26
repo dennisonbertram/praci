@@ -1,6 +1,8 @@
 import * as z from "zod";
 import { AGENT_SECRET_NAME_PATTERN } from "./agent-secret-name.js";
+import { BotAppControlSchema, UpdateBotAppControlSchema } from "./app-control.js";
 import { BotAvatarValueSchema } from "./bot-avatar.js";
+import { commandVariableProblem } from "./bot-secrets.js";
 import { DisabledBuiltinToolsSchema } from "./builtin-tools.js";
 import {
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
@@ -10,6 +12,13 @@ import {
 import { ThreadMessageSchema } from "./events.js";
 import { Id, MemoryScope, RunStatus, SandboxKind } from "./ids.js";
 import { McpHeadersSchema, McpRemoteEndpointSchema, McpTransportSchema } from "./mcp.js";
+import { MeetingRecordingPolicySchema } from "./meetings.js";
+import {
+  PageWatchSpecSchema,
+  RoutineManagedKindSchema,
+  RoutineStatusSchema,
+  WatchSpecSchema,
+} from "./routines.js";
 import { RunTriggerSchema } from "./runs.js";
 
 export const ComputerModeSchema = z.enum(["team", "dedicated"]);
@@ -22,6 +31,24 @@ export const MemoryScopeSchema = z.enum(["isolated", "shared"]);
 export type MemoryScopeValue = z.infer<typeof MemoryScopeSchema>;
 
 export const AvatarStyleSchema = z.enum(["robot", "organic"]);
+
+/** True for an IANA timezone this runtime can format in, such as "Pacific/Auckland". */
+export function isValidTimeZone(value: string): boolean {
+  // Intl also accepts fixed offsets, which are not IANA timezone names.
+  if (/^[+-]/.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const TimeZoneSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine(isValidTimeZone, { message: "Unknown timezone" });
 export type AvatarStyle = z.infer<typeof AvatarStyleSchema>;
 export const DEFAULT_AVATAR_STYLE: AvatarStyle = "organic";
 
@@ -47,8 +74,18 @@ export const AgentSecretSchema = z.object({
 export type AgentSecret = z.infer<typeof AgentSecretSchema>;
 
 export const AgentSecretInputSchema = z.object({
-  name: z.string().trim().regex(AGENT_SECRET_NAME_PATTERN),
-  value: z.string().min(1).max(16_384),
+  name: z
+    .string()
+    .trim()
+    .regex(AGENT_SECRET_NAME_PATTERN)
+    .refine((n) => commandVariableProblem(n) === undefined, {
+      message: "Reserved environment variable name",
+    }),
+  value: z
+    .string()
+    .min(1)
+    .max(16_384)
+    .refine((v) => !v.includes("\0"), { message: "Value cannot contain a NUL character" }),
 });
 export type AgentSecretInput = z.infer<typeof AgentSecretInputSchema>;
 
@@ -74,10 +111,35 @@ export const RunPhaseSchema = z.object({
 export type RunPhase = z.infer<typeof RunPhaseSchema>;
 
 /** Internal bots serve the owner; external bots talk to people outside the company. */
+/** How much the owner is asked before an agent acts. Stored per space and user, overridable per agent. */
+export const PermissionLevelSchema = z.enum(["open", "ask_changes", "ask_everything"]);
+export type PermissionLevel = z.infer<typeof PermissionLevelSchema>;
+
+export const PermissionSettingsSchema = z.object({
+  /** The owner's stored choice; null follows the deployment default. */
+  level: PermissionLevelSchema.nullable(),
+  effectiveDefault: PermissionLevelSchema,
+});
+export type PermissionSettings = z.infer<typeof PermissionSettingsSchema>;
+
 export const BotAudienceSchema = z.enum(["internal", "external"]);
 export type BotAudience = z.infer<typeof BotAudienceSchema>;
 
+/** How far an agent goes beyond the request. Only the owner's settings set it; it never changes approvals. */
+export const BotProactivitySchema = z.enum(["low", "medium", "high"]);
+export type BotProactivity = z.infer<typeof BotProactivitySchema>;
+
 /** Only a bot the owner made can be external; page and integration agents hold private data by design. */
+/** A page the person asked for by hand: the server picks this key, so a client cannot claim it. */
+export const customPageSpawnKey = (id: string) => `custom-page:${id}`;
+
+export const isCustomPageSpawnKey = (spawnKey: string | null | undefined) =>
+  Boolean(spawnKey?.startsWith(customPageSpawnKey("")));
+
+/** What the web sends as the instructions of a new page agent; the server compares against it for upgrades. */
+export const NEW_PAGE_INSTRUCTIONS =
+  "You build and keep this page. Ask the user what the page should show, then name yourself after the page with update_bot and write it with page_write: lead with what matters, use charts and tables where they help, and keep it current when asked. Keep chat replies short and put the substance on the page.";
+
 export const botAudienceEditable = (spawnKey: string | null | undefined) => !spawnKey;
 
 export const BotSchema = z.object({
@@ -94,6 +156,8 @@ export const BotSchema = z.object({
   /** Order within its folder; bots and groups share one scale. Null: not ordered by hand yet. */
   position: z.number().int().nullable().optional(),
   archivedAt: z.string().nullable(),
+  /** Left out of the sidebar chat list by the person; the bot keeps working. */
+  hiddenAt: z.string().nullable().optional(),
   unread: z.boolean(),
   parentBotId: Id.nullable(),
   memoryScope: MemoryScopeSchema.nullable(),
@@ -112,11 +176,23 @@ export const BotSchema = z.object({
   autoSpeak: z.boolean(),
   modelProvider: z.string().nullable(),
   modelId: z.string().nullable(),
+  /** The model connection this bot runs on; null follows the space default. */
+  modelCredentialId: Id.nullable().optional(),
   thinkingLevel: ThinkingLevelSchema.nullable(),
   teamChatAmbientEnabled: z.boolean(),
   teamChatRules: z.string(),
+  crossSpaceCommunication: z.boolean().optional(),
+  /** Local desktop control; only the deployment owner can change it. */
+  appControl: BotAppControlSchema.optional(),
   disabledBuiltinTools: z.array(z.string()).default([]),
   audience: BotAudienceSchema.default("internal"),
+  /** Agent firewall: everything the agent reads is untrusted. Only the owner's settings set it. */
+  firewall: z.boolean().default(false),
+  /** Overrides the space permission level; null follows the space. Only the owner's settings set it. */
+  permissionLevel: PermissionLevelSchema.nullable().optional(),
+  /** Capabilities a firewalled agent may ask to use (each use still asks). Owner-only. */
+  firewallAskCapabilities: z.array(z.string()).default([]),
+  proactivity: BotProactivitySchema.default("medium"),
   /** An external bot may message only these internal bots. */
   externalMessageTargets: z.array(Id).default([]),
   /** An external bot has the browser and computer tools only when this is on. */
@@ -145,6 +221,8 @@ export type GroupMember = z.infer<typeof GroupMemberSchema>;
 
 /** Selected-text excerpt carried by a reply; capped so a quote stays a quote. */
 export const REPLY_QUOTE_MAX_LENGTH = 2_000;
+/** Longest message text a person can send; bigger pastes belong in a file. */
+export const THREAD_MESSAGE_MAX_LENGTH = 100_000;
 
 /** Cap an excerpt at the quote limit without splitting a surrogate pair. */
 export function truncateReplyQuote(value: string): string {
@@ -155,6 +233,7 @@ export function truncateReplyQuote(value: string): string {
 
 export const GROUP_MEMBER_MIN = 2;
 export const GROUP_MEMBER_MAX = 6;
+export const GROUP_NAME_MAX = 80;
 
 export const GroupSchema = z.object({
   id: Id,
@@ -180,14 +259,14 @@ const GroupBotIds = z
   .refine((ids) => new Set(ids).size === ids.length, { error: "botIds must be distinct" });
 
 export const CreateGroupInput = z.object({
-  name: z.string().trim().min(1).max(80),
+  name: z.string().trim().min(1).max(GROUP_NAME_MAX),
   botIds: GroupBotIds,
 });
 export type CreateGroupInput = z.infer<typeof CreateGroupInput>;
 
 export const UpdateGroupInput = z.object({
   groupId: Id,
-  name: z.string().trim().min(1).max(80).optional(),
+  name: z.string().trim().min(1).max(GROUP_NAME_MAX).optional(),
   botIds: GroupBotIds.optional(),
   pinned: z.boolean().optional(),
   sectionId: Id.nullable().optional(),
@@ -222,6 +301,7 @@ export const SpaceBotSchema = BotSchema.pick({
   color: true,
   notifyOnFinish: true,
   pinned: true,
+  hiddenAt: true,
   sectionId: true,
   position: true,
   unread: true,
@@ -327,6 +407,10 @@ export const SpaceSchema = z.object({
   canDelete: z.boolean().optional(),
   /** Members of the space, so the sidebar can drop the heading of a space that is only the caller's. */
   memberCount: z.number().int().positive().optional(),
+  /** Whether meetings may be recorded in this space. */
+  meetingRecording: MeetingRecordingPolicySchema.optional(),
+  /** True only when the current member is an owner or admin and may change `meetingRecording`. */
+  canSetMeetingRecording: z.boolean().optional(),
   bots: z.array(SpaceBotSchema),
   groups: z.array(SpaceGroupSchema),
   externalConversations: z.array(ExternalConversationSchema),
@@ -362,6 +446,8 @@ export const CreateBotInput = z.object({
   computerMode: ComputerModeSchema.default("team"),
   /** Idempotency key within a space (unique with spaceId). */
   spawnKey: z.string().trim().min(1).max(120).optional(),
+  /** Makes a page agent: the server gives it a reserved custom-page key. */
+  page: z.boolean().optional(),
 });
 export type CreateBotInput = z.infer<typeof CreateBotInput>;
 
@@ -387,17 +473,27 @@ export const UpdateBotInput = z
     notifyOnFinish: z.boolean().optional(),
     color: BotAvatarValueSchema.optional(),
     pinned: z.boolean().optional(),
+    /** Leaves the bot out of the sidebar chat list (or puts it back). */
+    hidden: z.boolean().optional(),
     memoryScope: MemoryScopeSchema.nullable().optional(),
     sectionId: Id.nullable().optional(),
     voiceId: z.string().max(120).nullable().optional(),
     autoSpeak: z.boolean().optional(),
     modelProvider: z.string().trim().min(1).max(80).nullable().optional(),
     modelId: z.string().trim().min(1).max(200).nullable().optional(),
+    /** Pins the bot to one of the caller's own model connections; null follows the space default. */
+    modelCredentialId: Id.nullable().optional(),
     thinkingLevel: ThinkingLevelSchema.nullable().optional(),
     teamChatAmbientEnabled: z.boolean().optional(),
     teamChatRules: z.string().max(TEAM_CHAT_RULES_MAX_LENGTH).optional(),
+    crossSpaceCommunication: z.boolean().optional(),
+    appControl: UpdateBotAppControlSchema.optional(),
     disabledBuiltinTools: DisabledBuiltinToolsSchema.optional(),
     audience: BotAudienceSchema.optional(),
+    firewall: z.boolean().optional(),
+    permissionLevel: PermissionLevelSchema.nullable().optional(),
+    firewallAskCapabilities: z.array(z.string().max(64)).max(20).optional(),
+    proactivity: BotProactivitySchema.optional(),
     externalMessageTargets: z.array(Id).max(200).optional(),
     externalComputerTools: z.boolean().optional(),
     runsOn: ComputerHostSchema.nullable().optional(),
@@ -478,9 +574,19 @@ export const RoutineSchema = z.object({
   /** Null runs this routine on its bot's model. */
   modelProvider: z.string().nullable(),
   modelId: z.string().nullable(),
+  /** The owner's connection this routine's own model runs on; null uses the bot's pin or the default. */
+  modelCredentialId: Id.nullable().optional(),
   thinkingLevel: ThinkingLevelSchema.nullable(),
   lastRunAt: z.string().nullable(),
   nextRunAt: z.string().nullable(),
+  /** Only message the user when something needs them; the server adds the silent-reply guidance. */
+  quiet: z.boolean(),
+  watch: WatchSpecSchema.nullable(),
+  /** "check_in" for a bot's managed check-in routine (editable only via Active). */
+  managedKind: RoutineManagedKindSchema.nullable(),
+  /** The taught skill this routine runs (its current playbook), or null. */
+  taughtSkill: z.object({ id: Id, name: z.string() }).nullable().optional(),
+  status: RoutineStatusSchema,
   createdAt: z.string(),
 });
 export type Routine = z.infer<typeof RoutineSchema>;
@@ -489,10 +595,13 @@ export const CreateRoutineInput = z
   .object({
     botId: Id,
     name: z.string().min(1).max(80),
-    prompt: z.string().min(1),
+    /** Required unless `taughtSkillId` is set; then the skill's current playbook is the prompt. */
+    prompt: z.string().default(""),
+    /** A saved taught skill on this bot. */
+    taughtSkillId: Id.nullable().default(null),
     crons: z.array(z.string().min(1)).default([]),
     /** Defaults to the user's stored time zone, then UTC. */
-    timezone: z.string().optional(),
+    timezone: TimeZoneSchema.optional(),
     notify: z.boolean().default(true),
     active: z.boolean().default(false),
     webhookEnabled: z.boolean().default(false),
@@ -506,12 +615,20 @@ export const CreateRoutineInput = z
       .default(null),
     modelProvider: z.string().trim().min(1).max(80).nullable().default(null),
     modelId: z.string().trim().min(1).max(200).nullable().default(null),
+    modelCredentialId: Id.nullable().default(null),
     thinkingLevel: ThinkingLevelSchema.nullable().default(null),
+    /** Defaults to on for a watch and off otherwise. */
+    quiet: z.boolean().optional(),
+    watch: PageWatchSpecSchema.nullable().default(null),
   })
   .superRefine((value, ctx) => {
     routineModelIssues(value, ctx);
+    if (!value.taughtSkillId && !value.prompt.trim()) {
+      ctx.addIssue({ code: "custom", message: "Add an instruction", path: ["prompt"] });
+    }
     if (
       value.crons.length === 0 &&
+      !value.watch &&
       !value.webhookEnabled &&
       !value.githubEnabled &&
       !value.messageProvider
@@ -569,8 +686,24 @@ export const ScratchpadItemSchema = z.object({
   proof: z.string().max(2_000).nullish(),
   approvedAt: ScratchpadDateTimeSchema.nullish(),
   approvedBy: z.enum(["user", "policy"]).nullish(),
+  dueAt: ScratchpadDateTimeSchema.nullish(),
+  waitingOn: z.string().max(200).nullish(),
+  resolvedReason: z.string().max(500).nullish(),
+  /** The provider message id of the mail thread this item tracks; mail_get takes it. */
+  mailMessageId: z.string().nullish(),
 });
 export type ScratchpadItem = z.infer<typeof ScratchpadItemSchema>;
+
+/** An open item, across the user's bots, that waits on the user or is past due. */
+export const WaitingOnYouItemSchema = z.object({
+  id: Id,
+  botId: Id,
+  botName: z.string(),
+  title: z.string(),
+  waitingOn: z.string().nullable(),
+  dueAt: ScratchpadDateTimeSchema.nullable(),
+});
+export type WaitingOnYouItem = z.infer<typeof WaitingOnYouItemSchema>;
 
 export const CreateScratchpadItemInput = z.object({
   botId: Id,
@@ -581,6 +714,8 @@ export const CreateScratchpadItemInput = z.object({
   channel: ScratchpadChannelSchema.optional(),
   target: z.string().max(200).optional(),
   scheduledFor: ScratchpadDateTimeSchema.optional(),
+  dueAt: ScratchpadDateTimeSchema.optional(),
+  waitingOn: z.string().max(200).optional(),
 });
 
 export const TaughtSkillStatusSchema = z.enum(["recording", "drafting", "draft", "saved"]);
@@ -599,7 +734,7 @@ export type SkillPlaybook = z.infer<typeof SkillPlaybookSchema>;
 
 export const TeachRecordingEventSchema = z.object({
   at: z.string(),
-  kind: z.enum(["pointer", "key", "clipboard", "snapshot", "scroll"]),
+  kind: z.enum(["pointer", "key", "clipboard", "snapshot", "scroll", "window", "file", "command"]),
   x: z.number().optional(),
   y: z.number().optional(),
   button: z.string().optional(),
@@ -608,6 +743,17 @@ export const TeachRecordingEventSchema = z.object({
   text: z.string().optional(),
   summary: z.string().optional(),
   sensitive: z.boolean().optional(),
+  /** Label of the field the input went to (for example "Password"); names a protected step. */
+  field: z.string().max(120).optional(),
+  /** Which protected value this event belongs to; the server sets it. */
+  segment: z.number().int().optional(),
+  /** window: the window title and the app it belongs to. */
+  title: z.string().max(300).optional(),
+  app: z.string().max(120).optional(),
+  /** file: the path that was written, never its content. */
+  path: z.string().max(500).optional(),
+  /** command: the command line, with secrets removed. */
+  command: z.string().max(1000).optional(),
 });
 export type TeachRecordingEvent = z.infer<typeof TeachRecordingEventSchema>;
 
@@ -625,6 +771,18 @@ export const TeachRecordingSchema = z.object({
 });
 export type TeachRecording = z.infer<typeof TeachRecordingSchema>;
 
+export const TeachTestOutcomeSchema = z.enum(["worked", "stopped"]);
+export type TeachTestOutcome = z.infer<typeof TeachTestOutcomeSchema>;
+
+/** A password the user typed while teaching. Until they save or skip it, the server holds the value. */
+export const TeachLoginPromptSchema = z.object({
+  stepIndex: z.number().int().min(0),
+  field: z.string(),
+  /** The username typed just before the password, offered for the user to confirm. */
+  username: z.string().optional(),
+});
+export type TeachLoginPrompt = z.infer<typeof TeachLoginPromptSchema>;
+
 export const TaughtSkillSchema = z.object({
   id: Id,
   botId: Id,
@@ -636,10 +794,27 @@ export const TaughtSkillSchema = z.object({
   startedAt: z.string().nullable(),
   expiresAt: z.string().nullable(),
   stoppedAt: z.string().nullable(),
+  /** When a chat, routine or test run last used this skill. */
+  lastRunAt: z.string().nullable().optional(),
+  /** Result of the latest Test run; null while it runs or before any test. */
+  lastTestOutcome: TeachTestOutcomeSchema.nullable().optional(),
+  lastTestNote: z.string().nullable().optional(),
+  /** Steps that wait for "Save as login" or "Skip". Empty once every value is saved or skipped. */
+  loginPrompts: z.array(TeachLoginPromptSchema).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type TaughtSkill = z.infer<typeof TaughtSkillSchema>;
+
+/** One row of `taughtSkills.list`. */
+export const TaughtSkillSummarySchema = z.object({
+  id: Id,
+  name: z.string(),
+  goal: z.string(),
+  lastRunAt: z.string().nullable(),
+  updatedAt: z.string(),
+});
+export type TaughtSkillSummary = z.infer<typeof TaughtSkillSummarySchema>;
 
 export const AgentSkillSourceSchema = z.enum(["user", "builtin", "plugin"]);
 export type AgentSkillSource = z.infer<typeof AgentSkillSourceSchema>;
@@ -656,6 +831,8 @@ export const AgentSkillSchema = z.object({
   /** Who wrote it. Agent-written skills carry a badge in settings. */
   origin: AgentSkillOriginSchema.optional(),
   readOnly: z.boolean(),
+  /** True when the skill carries a sandboxed tool script (see tool_run). */
+  tool: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -668,12 +845,26 @@ export const AgentSkillCatalogEntrySchema = AgentSkillSchema.pick({
   source: true,
   origin: true,
   readOnly: true,
+  tool: true,
 });
 export type AgentSkillCatalogEntry = z.infer<typeof AgentSkillCatalogEntrySchema>;
 
 /** A catalog entry with this bot's switch. A skill with no stored setting is on. */
 export const BotAgentSkillSchema = AgentSkillCatalogEntrySchema.extend({ enabled: z.boolean() });
 export type BotAgentSkill = z.infer<typeof BotAgentSkillSchema>;
+
+/** The tool a bot proposes with a skill. The owner approves exactly this source, pinned by its hash. */
+export const AgentSkillToolDraftSchema = z.object({
+  source: z.string(),
+  /** sha256 of `source`; approving with this value fails if the source changed since it was shown. */
+  hash: z.string(),
+  /** What the bot says the tool reads and writes. The bot's words, not checked. */
+  reads: z.string().optional(),
+  writes: z.string().optional(),
+  sampleInput: z.unknown().optional(),
+  sampleOutput: z.unknown().optional(),
+});
+export type AgentSkillToolDraft = z.infer<typeof AgentSkillToolDraftSchema>;
 
 /** An agent-written skill (new, or a revision of an active one) waiting for the owner. */
 export const AgentSkillDraftSchema = z.object({
@@ -684,6 +875,7 @@ export const AgentSkillDraftSchema = z.object({
   content: z.string(),
   /** True when it changes an active skill; false when the skill is new. */
   revision: z.boolean(),
+  tool: AgentSkillToolDraftSchema.optional(),
 });
 export type AgentSkillDraft = z.infer<typeof AgentSkillDraftSchema>;
 
@@ -736,14 +928,44 @@ export const MemoryDocumentSchema = z.object({
   content: z.string(),
   revision: z.number().int(),
   updatedAt: z.string(),
+  source: z
+    .object({
+      kind: z.enum(["routine", "chat", "other"]),
+      label: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
 });
 export type MemoryDocument = z.infer<typeof MemoryDocumentSchema>;
+
+/** One company context section: a memory document of scope "company". */
+export const CompanyContextSectionSchema = z.object({
+  id: Id,
+  /** Stable slug; it does not change when the section is renamed. */
+  slug: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  text: z.string(),
+  revision: z.number().int(),
+  updatedAt: z.string(),
+});
+export type CompanyContextSection = z.infer<typeof CompanyContextSectionSchema>;
+
+export const CompanyContextRevisionSchema = z.object({
+  revision: z.number().int(),
+  title: z.string(),
+  text: z.string(),
+  createdAt: z.string(),
+});
+export type CompanyContextRevision = z.infer<typeof CompanyContextRevisionSchema>;
 
 export const ConnectionSchema = z.object({
   id: Id,
   connectorId: z.string(),
   provider: z.string(),
   displayName: z.string(),
+  /** The account's own address (the mailbox), when known: what tells two accounts of one app apart. */
+  account: z.string().optional(),
   status: z.enum(["pending", "connected", "revoked", "error"]),
   /** Short user-safe reason when status is "error"; null otherwise. */
   error: z.string().nullable(),
@@ -810,20 +1032,83 @@ export function preferNativeGoogle(
   );
 }
 
+export const ActionApprovalEffectSchema = z.enum(["always_allow", "require_approval", "block"]);
 export const ActionApprovalRuleSchema = z.object({
   id: Id,
-  effect: z.enum(["always_allow", "require_approval"]),
-  matchKind: z.enum(["tool", "connector", "category"]),
+  effect: ActionApprovalEffectSchema,
+  matchKind: z.enum(["tool", "connector", "category", "site"]),
   matchValue: z.string(),
+  /** null for a space-wide rule; a bot id for that bot's override. */
+  botId: Id.nullable().optional(),
+  /** Set on an "Always for this routine" rule, with the routine's name. */
+  routineId: Id.nullable().optional(),
+  routineName: z.string().optional(),
+  /** Set on an agent's "Allow all sites" rule, with the agent's name. */
+  botName: z.string().optional(),
   createdAt: z.string(),
 });
 export type ActionApprovalRule = z.infer<typeof ActionApprovalRuleSchema>;
 
+/** The three choices of the approvals table, as the person sees them: Allow, Ask, Block. */
+export const ApprovalChoiceSchema = z.enum(["allow", "ask", "block"]);
+export type ApprovalChoice = z.infer<typeof ApprovalChoiceSchema>;
+
+export const APPROVAL_ACTION_TYPE_IDS = [
+  "send_email",
+  "organize_mail",
+  "spend_money",
+  "connected_apps_write",
+  "calendar_changes",
+  "files_and_commands",
+  "use_computer",
+  "delete_data",
+  "message_outside",
+  "use_credentials",
+] as const;
+export const ApprovalActionTypeSchema = z.enum(APPROVAL_ACTION_TYPE_IDS);
+export type ApprovalActionType = z.infer<typeof ApprovalActionTypeSchema>;
+
+export const ApprovalTableRowSchema = z.object({
+  actionType: ApprovalActionTypeSchema,
+  /** What applies for this scope: the bot override if there is one, else the space row, else the default. */
+  effect: ApprovalChoiceSchema,
+  spaceEffect: ApprovalChoiceSchema,
+  /** null when the bot has no override ("Same as all bots"); always null without a botId. */
+  botEffect: ApprovalChoiceSchema.nullable(),
+  primary: z.boolean(),
+});
+export type ApprovalTableRow = z.infer<typeof ApprovalTableRowSchema>;
+
 export const ActionAutoReviewSettingsSchema = z.object({
   enabled: z.boolean(),
+  /** Also judge calls in background runs that read nothing from outside. */
+  background: z.boolean(),
   checkerAvailable: z.boolean(),
 });
 export type ActionAutoReviewSettings = z.infer<typeof ActionAutoReviewSettingsSchema>;
+
+export const ActionAutoReviewRecentSchema = z.object({
+  id: z.string(),
+  tool: z.string(),
+  reason: z.string().nullable(),
+  at: z.string(),
+  botName: z.string(),
+});
+export type ActionAutoReviewRecent = z.infer<typeof ActionAutoReviewRecentSchema>;
+
+/** A call approved without a card, for "Approved automatically". */
+export const AutoApprovalSchema = z.object({
+  id: z.string(),
+  tool: z.string(),
+  botName: z.string(),
+  /** What the call acted on, in plain words, when the log can name it. */
+  target: z.string().nullable(),
+  at: z.string(),
+  /** False when the tool has no undo path here. */
+  undoable: z.boolean(),
+  undone: z.boolean(),
+});
+export type AutoApproval = z.infer<typeof AutoApprovalSchema>;
 
 export const CapabilityInstallSchema = z.object({
   id: Id,
@@ -835,6 +1120,14 @@ export const CapabilityInstallSchema = z.object({
   secretConfigured: z.boolean(),
   config: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
+  /** Tool sources (MCP, API, GraphQL) only: the source's own agent and who else may use it. */
+  agentBotId: Id.nullable().optional(),
+  allAgents: z.boolean().optional(),
+  agentShared: z.boolean().optional(),
+  writesEnabled: z.boolean().optional(),
+  /** Agents that can really use the source, and the ones among them allowed to make changes. */
+  usableBotIds: z.array(Id).optional(),
+  writeBotIds: z.array(Id).optional(),
 });
 export type CapabilityInstall = z.infer<typeof CapabilityInstallSchema>;
 
@@ -916,6 +1209,8 @@ export const McpServerSchema = z.object({
   headerKeys: z.array(z.string()),
   hasSecret: z.boolean(),
   oauthStatus: z.enum(["none", "connected", "reconnect"]),
+  /** False when the connector would never send the token (plain-HTTP loopback). */
+  oauthSupported: z.boolean(),
   /** A browser sign-in was started and has not finished (its session is still open). */
   oauthAttempted: z.boolean(),
   enabled: z.boolean(),
@@ -965,6 +1260,22 @@ export const ArtifactVersionSchema = z.object({
 });
 
 export type ArtifactVersion = z.infer<typeof ArtifactVersionSchema>;
+
+/** The live link of an artifact: which version it shows and when it stops working. Never the token. */
+export const ArtifactShareSchema = z.object({
+  artifactId: z.string(),
+  version: z.number().int(),
+  expiresAt: z.string(),
+});
+export type ArtifactShare = z.infer<typeof ArtifactShareSchema>;
+
+/** What the public share endpoint returns: one artifact version, nothing about its owner. */
+export const SharedArtifactSchema = z.object({
+  name: z.string(),
+  mimeType: z.string(),
+  contentBase64: z.string(),
+});
+export type SharedArtifact = z.infer<typeof SharedArtifactSchema>;
 
 export const ArtifactWithContentSchema = ArtifactSchema.extend({
   contentBase64: z.string(),
@@ -1040,7 +1351,16 @@ export const UsageRecordSchema = z.object({
   callId: z.string().nullable().optional(),
   operationId: z.string().nullable().optional(),
   operationKind: z
-    .enum(["answer", "setup", "retrieval", "subagent", "compaction", "triage", "company_import"])
+    .enum([
+      "answer",
+      "setup",
+      "retrieval",
+      "subagent",
+      "compaction",
+      "triage",
+      "company_import",
+      "goal_check",
+    ])
     .optional(),
   parentRunId: z.string().nullable().optional(),
   agentId: z.string().nullable().optional(),
@@ -1132,6 +1452,8 @@ export type MessagingAgentConnection = z.infer<typeof MessagingAgentConnectionSc
 
 export const RunSchema = z.object({
   id: Id,
+  /** The user the run acts for; clients use it to show a credential request only to them. */
+  userId: Id.optional(),
   botId: Id,
   threadId: Id,
   taskId: Id,
@@ -1152,6 +1474,10 @@ export type Run = z.infer<typeof RunSchema>;
 // store that sentence as the reply, and the next "continue" misses a final answer again.
 export const MISSING_TOOL_FINAL_RESPONSE_ERROR = "This agent could not finish. Try again.";
 
+/** Resumed without its saved turn, the model did not call the action the user approved. */
+export const APPROVED_ACTION_NOT_RUN_ERROR =
+  "The model did not run the approved action. Try again.";
+
 export const ThreadMessagePageSchema = z.object({
   threadId: Id,
   messages: z.array(ThreadMessageSchema),
@@ -1159,6 +1485,21 @@ export const ThreadMessagePageSchema = z.object({
   coveredThroughSeq: z.number().int().nonnegative().optional(),
 });
 export type ThreadMessagePage = z.infer<typeof ThreadMessagePageSchema>;
+
+/** The open goal (active or paused) of a bot's thread; ended goals are not sent. */
+export const ThreadGoalSchema = z.object({
+  id: Id,
+  text: z.string(),
+  status: z.enum(["active", "paused", "met", "blocked", "stopped", "cleared"]),
+  stopReason: z
+    .enum(["runs", "time", "spend", "stalled", "owner", "check_failed", "model_error"])
+    .nullable(),
+  /** Why the latest check said what it said; null before the first check. */
+  lastReason: z.string().nullable(),
+  continuations: z.number().int().nonnegative(),
+  startedAt: z.string(),
+});
+export type ThreadGoal = z.infer<typeof ThreadGoalSchema>;
 
 export const ThreadSnapshotSchema = z.object({
   threadId: Id,
@@ -1180,6 +1521,7 @@ export const ThreadSnapshotSchema = z.object({
     .array(z.object({ messageId: z.string(), id: Id, name: z.string() }))
     .optional(),
   computer: ComputerStatusSchema.optional(),
+  goal: ThreadGoalSchema.nullable().optional(),
 });
 export type ThreadSnapshot = z.infer<typeof ThreadSnapshotSchema>;
 
@@ -1478,6 +1820,8 @@ export const VoiceStatusSchema = z.object({
   transcriptionProvider: z.string().nullable(),
   /** True once the selected transcription provider can be used for dictation. Always false until S3b. */
   transcriptionReady: z.boolean(),
+  /** This user has agreed, in this space, to send audio to the provider that would transcribe it. Absent on older servers. */
+  transcriptionConsented: z.boolean().optional(),
 });
 export type VoiceStatus = z.infer<typeof VoiceStatusSchema>;
 
@@ -1610,6 +1954,8 @@ export const MeSchema = z.object({
   computerHost: z.enum(["docker", "this-mac"]).nullable(),
   canChooseHostComputer: z.boolean(),
   sandboxProvider: z.string(),
+  /** Whether this deployment runs stdio MCP servers. Absent from older servers. */
+  mcpStdioEnabled: z.boolean().optional(),
   avatarStyle: AvatarStyleSchema,
   /** IANA time zone last reported by one of the user's clients; null before the first report. */
   timezone: z.string().nullable(),
@@ -1672,3 +2018,6 @@ export const ExportManifestSchema = z.object({
   history: z.array(ThreadMessageSchema),
 });
 export type ExportManifest = z.infer<typeof ExportManifestSchema>;
+
+/** The failed-run message when a bot's pinned connection is signed out or removed. */
+export const PINNED_CONNECTION_LOST_MESSAGE = "This bot's connection is signed out or removed.";

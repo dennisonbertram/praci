@@ -6,6 +6,7 @@ import {
   cartaAgentSpawnKey,
 } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
+import { PAST_DEFAULTS } from "./agent-past-defaults.fixture.js";
 import type { CartaSyncDeps } from "./carta-agent.js";
 import {
   assignToExistingCartaAgent,
@@ -125,9 +126,15 @@ describe("ensureCartaAgent", () => {
     await ensureCartaAgent(deps, actor);
     const current = (createBot.mock.calls[0] as unknown as [Actor, { instructions: string }])[1]
       .instructions;
-    const earlier = current.replace(/ A SAFE is not a Carta change[^.]*\./, "");
-    expect(earlier).not.toBe(current);
+    const [last, earlier] = PAST_DEFAULTS.carta as [string, string];
+    expect(last).not.toBe(current);
+    expect(earlier).not.toContain("A SAFE is not a Carta change");
+    expect(last).toContain("A SAFE is not a Carta change");
     const replace = deps.repos.replaceBotInstructions;
+    createBot.mockResolvedValueOnce({ id: "bot-1", instructions: last } as never);
+    await ensureCartaAgent(deps, actor);
+    expect(replace).toHaveBeenCalledWith(actor, "bot-1", { from: last, to: current });
+    replace.mockClear();
     createBot.mockResolvedValueOnce({ id: "bot-1", instructions: earlier } as never);
     await ensureCartaAgent(deps, actor);
     expect(replace).toHaveBeenCalledWith(actor, "bot-1", { from: earlier, to: current });
@@ -288,7 +295,13 @@ describe("ensureCartaAgent", () => {
 
 describe("Carta populate run", () => {
   function syncFakes(
-    options: { endpoint?: string; active?: boolean; hasModel?: boolean; source?: string } = {},
+    options: {
+      endpoint?: string;
+      active?: boolean;
+      hasModel?: boolean;
+      source?: string;
+      ledger?: boolean;
+    } = {},
   ) {
     const base = fakes([{ id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT }]);
     const bot = { id: "bot-1", threadId: "thread-1" } as Bot;
@@ -318,6 +331,8 @@ describe("Carta populate run", () => {
     const deps = {
       prisma: {
         ...basePrisma,
+        equityStakeholder: { findFirst: vi.fn(async () => (options.ledger ? { id: "s1" } : null)) },
+        equityShareClass: { findFirst: vi.fn(async () => null) },
         capTableSnapshot: {
           findUnique: vi.fn(async () => (options.source ? { source: options.source } : null)),
         },
@@ -394,8 +409,13 @@ describe("Carta populate run", () => {
   });
 
   it("does not read Carta when the table's source is another one", async () => {
-    for (const source of ["native", "sheet"]) {
-      const f = syncFakes({ source });
+    // The ledger is the record once it has data, even while the stored source is Carta.
+    for (const options of [
+      { source: "native" },
+      { source: "sheet" },
+      { source: "carta", ledger: true },
+    ]) {
+      const f = syncFakes(options);
       await onMcpServerConnected(f.deps, actor, "srv-carta");
       expect(await startCartaSync(f.deps, actor)).toBe("other_source");
       expect(f.runCreate).not.toHaveBeenCalled();

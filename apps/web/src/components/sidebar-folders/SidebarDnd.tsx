@@ -22,7 +22,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
 import type { CSSProperties, ReactNode } from "react";
 import type { DropResult, SidebarLayout } from "./drop-target";
-import { folderDragId, ROOT_END_ID, resolveDrop } from "./drop-target";
+import {
+  folderDragId,
+  parseItemDragId,
+  ROOT_CONTAINER,
+  ROOT_END_ID,
+  resolveDrop,
+} from "./drop-target";
 
 /**
  * Drag and drop for the Personnel list. Rows and folder headers are the handles: a drag starts after
@@ -66,6 +72,17 @@ export function SidebarDnd({
           }
         : args,
     );
+  /** The folder holding a row, or null for a folder header, the root list and anything else. */
+  const folderOf = (dragId: string) => {
+    const row = parseItemDragId(dragId);
+    if (!row) return null;
+    return (
+      Object.entries(layout.containers).find(
+        ([container, items]) =>
+          container !== ROOT_CONTAINER && items.some((i) => i.kind === row.kind && i.id === row.id),
+      )?.[0] ?? null
+    );
+  };
   const name = (id: unknown) => labelFor(String(id));
   const announcements: Announcements = {
     onDragStart: ({ active }) => {
@@ -76,11 +93,22 @@ export function SidebarDnd({
       if (!over || over.id === active.id) return undefined;
       const item = name(active.id);
       const target = name(over.id);
+      const folderId = folderOf(String(over.id));
+      if (folderId) {
+        const folder = name(folderDragId(folderId));
+        return t`${item} is over ${target} in ${folder}.`;
+      }
       return t`${item} is over ${target}.`;
     },
     onDragEnd: ({ active, over }) => {
       const item = name(active.id);
-      if (!over || over.id === active.id) return t`${item} dropped.`;
+      if (!over) return t`${item} dropped.`;
+      const result = resolveDrop(String(active.id), String(over.id), layout);
+      if (!result) return t`${item} dropped.`;
+      if (result.type === "item" && result.folderId) {
+        const folder = name(folderDragId(result.folderId));
+        return t`${item} moved to ${folder}.`;
+      }
       const target = name(over.id);
       return t`${item} dropped on ${target}.`;
     },

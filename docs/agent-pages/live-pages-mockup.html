@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live pages mockup</title>
+<!--
+Mockup for the Live pages plan (docs/agent-pages). Sample data is invented (Northwind, Dana, Sam, example.com). Light and dark follow the OS; the button at the top right toggles.
+Open a screen directly with live-pages-mockup.html#screen-id. State pills switch the states of one screen.
+Author notes live in HTML comments, not in the frames. Everything inside a window is product UI.
+CSS tokens and layout classes are copied from docs/omi/mockup.html. Chat and approval structure follow apps/web/src/components/AskCard.tsx; the page panel follows apps/web/src/pages/shell/bot-page-panel.tsx.
+Numbers are consistent: runway 14 mo = cash $1.24M / burn $86K a month (14.4). The cash line falls about $20K a week, which matches that burn.
+-->
+<style>
+:root{
+  --background:#fafafa; --card:#fff; --muted:#f2f2f2; --muted-fg:#636363;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#8f5a0a; --success:#276749;
+  --bot:#b9501c; --scrim:rgba(0,0,0,.35); --field:#8a8a8a;
+  --ios-bg:#f2f2f7; --ios-row:#fff; --ios-sep:#e3e3e8; --ios-label:#6c6c70; --glass:rgba(255,255,255,.72);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
+    --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --field:#7a7a7a;
+    --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
+  --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --field:#7a7a7a;
+  --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:56px}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.index{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;white-space:nowrap}
+.index b{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.index a,.pill{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted-fg);font-size:12px;text-decoration:none}
+.index a:hover{background:var(--muted)}
+.index button{margin-left:auto}
+.pill.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.screens{max-width:1120px;margin:0 auto;padding:12px 16px 80px}
+.screen{padding-top:28px}
+.sh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.sh h2{margin:0;font-size:16px}
+.sh .sw{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.win{position:relative;display:grid;grid-template-columns:200px minmax(0,1fr);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:300px;background:var(--background)}
+.win.keep{overflow:auto}
+.win .side{background:var(--sidebar);border-right:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;min-height:32px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.lbl{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.av.bot{background:var(--bot)}
+.pane{padding:22px 26px 30px;min-width:0;position:relative}
+.btn{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 12px;font-weight:500;min-height:32px}
+.btn:hover{background:var(--muted)}
+.btn.pri{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.pri:hover{opacity:.9}
+.btn[disabled]{cursor:default;background:transparent;color:var(--muted-fg);opacity:1}
+.btn.sm{padding:4px 12px;font-size:12px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted-fg)}
+input.f{width:100%;padding:8px 10px;border:1px solid var(--field);border-radius:8px;background:var(--card);min-height:32px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ok{color:var(--success)}.badge.warn{color:var(--warning)}.badge.err{color:var(--destructive)}.badge.pend{color:var(--muted-fg)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.pr{display:flex;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.pr:first-child{border-top:0}.pr .grow{flex:1;min-width:160px}.pr small{color:var(--muted-fg);display:block}
+.ok-t{color:var(--success)}.err-t{color:var(--destructive)}.wn-t{color:var(--warning)}.mut{color:var(--muted-fg)}
+.mono{font:12px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;white-space:nowrap;min-height:32px;padding:4px 12px;border-radius:8px;border:0;background:transparent;color:var(--muted-fg)}
+.tab[aria-selected=true]{background:var(--sidebar-accent);color:var(--fg);font-weight:600}
+.chat{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bm{display:flex;gap:10px;align-items:flex-start}
+.bm .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bm .who{font-weight:600}
+.tool{display:inline-flex;gap:6px;align-items:center;color:var(--muted-fg);font-size:12px;border:1px solid var(--border);border-radius:8px;padding:2px 8px;width:fit-content}
+.composer{margin-top:18px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg);background:var(--card)}
+.pop{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:2px;min-width:180px}
+.pop .it{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:6px;background:none;border:0;text-align:left;text-decoration:none}
+.pop .it:hover{background:var(--muted)}
+.pop .it.bad{color:var(--destructive)}
+.pop .gh{font-size:11px;color:var(--muted-fg);padding:8px 10px 2px;display:flex;gap:6px;align-items:center}
+details.mn{position:relative}
+details.mn summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;border-radius:8px;color:var(--muted-fg);cursor:pointer}
+details.mn summary::-webkit-details-marker{display:none}
+details.mn summary:hover{background:var(--muted)}
+details.mn>.pop{position:absolute;right:0;top:34px;z-index:6}
+.shim-on .num{background:linear-gradient(90deg,var(--muted-fg) 35%,var(--fg) 50%,var(--muted-fg) 65%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.6s linear infinite}
+@keyframes shim{to{background-position:-150% 0}}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--muted-fg);animation:spin .8s linear infinite;flex:none;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.shim-on .num,.spin{animation:none}.shim-on .num{color:var(--muted-fg);background:none}}
+.tgl{width:34px;height:20px;border-radius:999px;background:var(--border);border:0;position:relative;flex:none}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.tgl::before{content:"";position:absolute;inset:-6px -4px}
+.tgl[aria-checked=true]{background:var(--primary)}
+.tgl[aria-checked=true]::after{left:16px;background:var(--primary-fg)}
+.tgl[aria-disabled=true]{opacity:.6;cursor:default}
+.scrim{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;padding:16px;z-index:5}
+.appr{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;max-width:440px}
+.appr h3{margin:0;font-size:13px}
+.appr table{border-collapse:collapse;width:100%}
+.appr td{padding:2px 0;vertical-align:top}.appr td:first-child{color:var(--muted-fg);width:72px;padding-right:8px}
+/* live page panel */
+.split{display:grid;grid-template-columns:minmax(0,290px) minmax(0,1fr);padding:0}
+.split .chatcol{padding:18px 16px;min-width:0}
+.pg{border-left:1px solid var(--border);background:var(--card);padding:10px 18px 24px;min-width:0}
+.pgbar{display:flex;align-items:center;gap:6px}
+.pgbar .tabs{flex:1}
+.pg h1{font-size:19px;margin:12px 0 10px}
+.blk{position:relative;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--card);min-width:0}
+.blk .ts{position:absolute;top:6px;right:10px;font-size:11px;color:var(--muted-fg);opacity:0;transition:opacity .15s}
+.blk:hover .ts,.blk:focus-within .ts{opacity:1}
+@media (hover:none){.blk .ts{opacity:1}}
+.blk .k{font-size:12px;color:var(--muted-fg);margin-bottom:2px}
+.num{font-size:22px;font-weight:650;letter-spacing:-.01em;white-space:nowrap}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.blk+.blk,.pg .blk,.pg p.md{margin-top:10px}
+.metrics .blk{margin-top:0}
+.blk.ph{border-style:dashed;color:var(--muted-fg);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse;margin-top:4px}
+.tbl th{font-size:11px;font-weight:600;color:var(--muted-fg);text-align:left;padding:4px 0}
+.tbl td{padding:6px 0;border-top:1px solid var(--border)}
+.tbl .r{text-align:right;font-variant-numeric:tabular-nums}
+.chart{display:block;width:100%;height:auto;max-height:150px}
+details.mn.wd{position:absolute;top:2px;right:2px}
+.wd summary{min-width:32px;min-height:32px}
+.wd i{width:8px;height:8px;border-radius:50%;background:var(--warning);display:block}
+.wd .pop{width:236px;padding:10px 12px;gap:8px;right:-6px}
+.pg p.md{margin-bottom:0}
+.frame{border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--card);position:relative;min-width:0}
+.frame h2{font-size:17px;margin:0 0 2px}
+.frame .upd{font-size:11px;color:var(--muted-fg)}
+/* iPhone */
+.phones{display:flex;justify-content:center}
+.phonewrap{display:flex;flex-direction:column;gap:10px;align-items:center;width:390px;max-width:100%}
+.phone{width:390px;height:780px;border:8px solid var(--fg);border-radius:52px;background:var(--ios-bg);position:relative;overflow:hidden;display:flex;flex-direction:column;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;font-size:17px;line-height:1.3}
+.phone::before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:30px;border-radius:20px;background:#000;z-index:3}
+.sbar{display:flex;justify-content:space-between;padding:16px 30px 6px;font-weight:600;font-size:15px}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;min-height:44px}
+.glass{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(20px);box-shadow:0 1px 6px rgba(0,0,0,.14),inset 0 0 0 .5px rgba(128,128,128,.3);font-size:26px;line-height:1;padding-bottom:3px;border:0}
+.large{font-size:34px;font-weight:700;letter-spacing:-.02em;padding:2px 20px 8px}
+.pbody{flex:1;overflow-y:auto;padding:0 16px 24px}
+.ig{background:var(--ios-row);border-radius:12px;overflow:hidden;margin:0 0 6px}
+.ih{font-size:13px;color:var(--ios-label);padding:14px 16px 6px}
+.if{font-size:13px;color:var(--ios-label);padding:2px 16px 12px}
+.ir{display:flex;align-items:center;gap:10px;padding:11px 16px;min-height:52px;border-top:1px solid var(--ios-sep)}
+.ir:first-child{border-top:0}
+.ir .g{flex:1;min-width:0}
+.ir .tr{color:var(--ios-label);display:flex;gap:6px;align-items:center}
+.ir.link{justify-content:center;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warning);display:inline-block}
+.nab{display:grid;place-items:center;min-height:48px;margin:12px 0 6px;border-radius:14px;background:var(--primary);color:var(--primary-fg);font-weight:600;border:0;width:100%;font-size:17px}
+.homebar{width:134px;height:5px;border-radius:3px;background:var(--fg);margin:6px auto 8px;flex:none}
+.hide .amt{font-size:0}
+.hide .amt::after{content:"•••";font-size:17px}
+.hide .chart{filter:blur(7px)}
+.ios-row-md{padding:12px 16px;line-height:1.4}
+@media (max-width:820px){
+  .win:not(.keep){grid-template-columns:minmax(0,1fr)}
+  .win:not(.keep) .side{display:none}
+  .pane{padding:16px}
+  .split{grid-template-columns:minmax(0,1fr)}
+  .pg{border-left:0;border-top:1px solid var(--border)}
+  .sh .sw{margin-left:0}
+}
+@media (max-width:430px){.phone{width:100%;max-width:390px}}
+@media (max-width:560px){.metrics{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<nav class="index" aria-label="Screens">
+  <b>Screens</b>
+  <a href="#page">1 Page</a>
+  <a href="#sources">2 Sources</a>
+  <a href="#approval">3 Approval</a>
+  <a href="#sidebar">4 Sidebar</a>
+  <a href="#html">5 HTML page</a>
+  <a href="#iphone">6 iPhone</a>
+  <a href="#share">7 Share</a>
+  <button class="pill" id="theme" type="button">Light / dark</button>
+</nav>
+<div class="screens">
+
+<!-- 1 -->
+<section class="screen" id="page">
+  <header class="sh"><h2>1 Finance: Cash page</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="normal" type="button">Normal</button>
+      <button class="pill" data-s="refreshing" type="button">Refreshing</button>
+      <button class="pill" data-s="fail" type="button">Source failed</button>
+      <button class="pill" data-s="wait" type="button">Waiting for approval</button>
+    </div>
+  </header>
+  <!--
+  The page panel sits beside the bot chat, as in bot-page-panel.tsx. The bot has three pages; the tab strip switches between them.
+  Live blocks (metrics, chart, table) read from saved sources and refresh on their schedule without the bot. The chart history comes from stored snapshots of the cash source.
+  A failed source keeps the last good value; the warning dot opens the error and Retry. The timestamp shows on hover or focus (always on touch).
+  -->
+  <div class="win" data-sidebar="Finance" data-bots="Finance|GTM">
+    <div class="pane split">
+      <div class="chatcol">
+        <div class="chat">
+          <div class="me">How is cash looking?</div>
+          <div class="bm"><span class="av bot">F</span><div class="body"><span class="who">Finance</span>
+            <div>Cash is $1.24M, about 14 months of runway.</div>
+            <div class="tool">Updated page · Cash</div></div></div>
+        </div>
+        <div class="composer">Message</div>
+      </div>
+      <div class="pg" data-live>
+        <div class="pgbar">
+          <div class="tabs" role="tablist" aria-label="Finance pages">
+            <button class="tab" role="tab" aria-selected="true" type="button">Cash</button>
+            <button class="tab" role="tab" aria-selected="false" type="button">Burn</button>
+            <button class="tab" role="tab" aria-selected="false" type="button">Pipeline</button>
+          </div>
+          <span class="spin" data-st="refreshing" role="status" aria-label="Refreshing"></span>
+          <details class="mn"><summary aria-label="Page options">&#8943;</summary>
+            <div class="pop"><a class="it" href="#sources">Sources</a><a class="it" href="#share">Share</a><button class="it" type="button">Rename</button><button class="it bad" type="button">Delete page</button></div>
+          </details>
+        </div>
+        <h1>Cash and runway</h1>
+        <div class="metrics">
+          <div class="blk" tabindex="0"><span class="ts">9:00 AM</span><div class="k">Cash</div><div class="num">$1.24M</div></div>
+          <div class="blk" tabindex="0"><span class="ts" data-st="normal refreshing wait">9:00 AM</span><div class="k">Burn / mo</div><div class="num">$86K</div>
+            <details class="mn wd" open data-st="fail"><summary aria-label="Burn: source failed"><i></i></summary>
+              <div class="pop"><span>Mercury: request timed out · last good 8:00 AM</span><button class="btn sm" type="button" style="width:fit-content">Retry</button></div>
+            </details></div>
+          <div class="blk" tabindex="0"><span class="ts">9:00 AM</span><div class="k">Runway</div><div class="num">14 mo</div></div>
+        </div>
+        <div class="blk" tabindex="0"><span class="ts">9:00 AM</span><div class="k">Cash, last 12 weeks</div>
+          <svg class="chart" viewBox="0 0 320 130" role="img" aria-label="Cash fell from $1.48M to $1.24M over 12 weeks"><g stroke="var(--border)"><line x1="8" y1="10" x2="312" y2="10"/><line x1="8" y1="60" x2="312" y2="60"/><line x1="8" y1="110" x2="312" y2="110"/></g><polyline points="8,16.7 35.6,22.7 63.3,29.7 90.9,35 118.6,43.3 146.2,47.3 173.8,56 201.5,63.3 229.1,70.7 256.7,78.3 284.4,87.3 312,96.7" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="312" cy="96.7" r="3.5" fill="var(--fg)"/><g fill="var(--muted-fg)" font-size="10"><text x="8" y="126">Aug 7</text><text x="312" y="126" text-anchor="end">Oct 30</text></g></svg>
+        </div>
+        <div class="blk" tabindex="0"><span class="ts">9:00 AM</span><div class="k">Largest vendors</div>
+          <table class="tbl"><thead><tr><th>Vendor</th><th>Category</th><th class="r">30 days</th></tr></thead><tbody>
+            <tr><td>Harbor Payroll</td><td class="mut">Payroll</td><td class="r">$31,200</td></tr>
+            <tr><td>Acme Cloud</td><td class="mut">Hosting</td><td class="r">$18,400</td></tr>
+            <tr><td>Lumen Office</td><td class="mut">Rent</td><td class="r">$9,600</td></tr>
+            <tr><td>Fieldnote Legal</td><td class="mut">Legal</td><td class="r">$7,500</td></tr>
+            <tr><td>Brightpath Ads</td><td class="mut">Marketing</td><td class="r">$6,300</td></tr>
+          </tbody></table>
+        </div>
+        <div class="blk ph" data-st="wait"><b>Revenue</b><span>Waiting for approval</span><a href="#approval">Review</a></div>
+        <p class="md">Cash fell about $20K a week this quarter, in line with burn. Acme Cloud is the largest vendor after payroll and rose 12% from September.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="screen" id="sources">
+  <header class="sh"><h2>2 Sources</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="sheet" type="button">Sheet</button>
+      <button class="pill" data-s="menu" type="button">Row menu</button>
+      <button class="pill" data-s="sched" type="button">Schedule</button>
+    </div>
+  </header>
+  <!-- Opened from the "…" menu of the Cash page. Each source is one saved read-only call; the bot picks it, the user can pause, retime or remove it. -->
+  <div class="win" data-sidebar="Finance" data-bots="Finance|GTM">
+    <div class="pane" style="min-height:560px">
+      <div class="scrim">
+        <div class="panel" role="dialog" aria-label="Sources" style="width:min(640px,100%);padding:6px 0;max-height:100%;overflow:visible">
+          <div class="pr"><b class="grow">Sources · Cash</b><button class="btn ghost sm" type="button" aria-label="Close">&#10005;</button></div>
+          <div class="pr"><div class="grow"><b>Cash</b><small>Mercury · MCP</small></div><span>Every hour</span><span class="mut">9:00 AM</span><span class="badge ok">ok</span><button class="btn ghost sm" type="button" aria-label="Cash options">&#8943;</button></div>
+          <div class="pr" style="position:relative"><div class="grow"><b>Burn</b><small>Mercury · MCP</small></div><span>Every hour</span><span class="mut">9:00 AM</span><span class="badge ok">ok</span>
+            <button class="btn ghost sm" type="button" aria-label="Burn options" data-s="menu">&#8943;</button>
+            <div class="pop" data-st="menu" style="position:absolute;right:14px;top:44px;z-index:7"><button class="it" type="button">Refresh now</button><button class="it" type="button" data-s="sched">Change schedule</button><button class="it" type="button">Pause</button><button class="it bad" type="button">Remove</button></div>
+          </div>
+          <div class="pr"><div class="grow"><b>Overview</b><small>finance_overview · Praci</small></div><span>Daily 7:00</span><span class="mut">7:00 AM</span><span class="badge ok">ok</span><button class="btn ghost sm" type="button" aria-label="Overview options">&#8943;</button></div>
+          <div class="pr"><div class="grow"><b>Revenue</b><small>api.example.com · API</small></div><span>Every hour</span><span class="mut">Never</span><span class="badge pend">pending</span><button class="btn ghost sm" type="button" aria-label="Revenue options">&#8943;</button></div>
+          <div class="pr"><div class="grow"><b>Vendors</b><small>Mercury · MCP</small></div><span>Every 6 hours</span><span class="mut">8:00 AM</span><span class="badge err">failed</span><button class="btn ghost sm" type="button" aria-label="Vendors options">&#8943;</button></div>
+          <div class="pr"><div class="grow"><b>Pipeline</b><small>finance_overview · Praci</small></div><span class="mut">Weekly</span><span class="mut">Oct 27</span><span class="badge warn">paused</span><button class="btn ghost sm" type="button" aria-label="Pipeline options">&#8943;</button></div>
+        </div>
+        <div class="pop" data-st="sched" role="menu" aria-label="Schedule" style="position:absolute;right:max(24px,calc(50% - 300px));top:150px;z-index:8;min-width:200px">
+          <div class="gh">Burn</div>
+          <button class="it" role="menuitemradio" aria-checked="false" type="button">Every 15 min</button>
+          <button class="it" role="menuitemradio" aria-checked="true" type="button"><b>Hourly</b> <span style="margin-left:auto">&#10003;</span></button>
+          <button class="it" role="menuitemradio" aria-checked="false" type="button">Every 6 hours</button>
+          <button class="it" role="menuitemradio" aria-checked="false" type="button">Daily</button>
+          <button class="it" role="menuitemradio" aria-checked="false" type="button">Weekly</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="screen" id="approval">
+  <header class="sh"><h2>3 Approval for a new source</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="pending" type="button">Pending</button>
+      <button class="pill" data-s="allowed" type="button">Allowed</button>
+      <button class="pill" data-s="denied" type="button">Denied</button>
+    </div>
+  </header>
+  <!-- Consent-style card, same labels as AskCard: Allow / Not now, and Allowed / Not now after the answer. A source never offers "Always allow": each new request or key asks again. Only the key name is shown, never its value. -->
+  <div class="win" data-sidebar="Finance" data-bots="Finance|GTM">
+    <div class="pane">
+      <div class="chat">
+        <div class="me">Add weekly revenue to the Cash page.</div>
+        <div class="bm"><span class="av bot">F</span><div class="body"><span class="who">Finance</span>
+          <div>I added a source for the revenue chart.</div>
+          <div class="appr" role="group" aria-label="Approval">
+            <h3>Read api.example.com every hour?</h3>
+            <table>
+              <tr><td>Request</td><td class="mono">GET https://api.example.com/v1/revenue?period=week</td></tr>
+              <tr><td>Key</td><td>Revenue API key</td></tr>
+              <tr><td>Schedule</td><td>Hourly</td></tr>
+              <tr><td>Page</td><td>Cash</td></tr>
+            </table>
+            <div style="display:flex;gap:8px" data-st="pending"><button class="btn pri sm" type="button" data-s="allowed">Allow</button><button class="btn sm" type="button" data-s="denied">Not now</button></div>
+            <div class="ok-t" data-st="allowed" role="status">Allowed</div>
+            <div class="mut" data-st="denied" role="status">Not now</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="screen" id="sidebar">
+  <header class="sh"><h2>4 Add a bot page to the sidebar</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="open" type="button">Menu open</button>
+      <button class="pill" data-s="added" type="button">Added</button>
+    </div>
+  </header>
+  <!-- Reuses the existing "Add page" control (AddSidebarPage.tsx). Bot pages are listed beside the built-in page templates, grouped by bot. -->
+  <div class="win keep">
+    <div class="side" style="min-height:420px">
+      <div class="row" style="color:var(--muted-fg)">Search</div><div class="row">Inbox</div><div class="row">Data room</div><div class="row">Meetings</div>
+      <div class="lbl">Bots</div>
+      <div class="row active"><span class="av bot">F</span>Finance</div><div class="row"><span class="av bot">G</span>GTM</div>
+      <div class="lbl" data-st="added">Pages</div>
+      <div class="row" data-st="added"><span class="av bot">F</span>Cash</div>
+      <div style="flex:1"></div>
+      <button class="row" type="button" aria-label="Add page" style="border:0;background:none;color:var(--muted-fg);text-align:left">+ Add page</button>
+      <div class="row">Integrations</div>
+      <div class="pop" data-st="open" role="menu" aria-label="Add page" style="position:absolute;left:12px;bottom:84px;min-width:216px;z-index:5">
+        <div class="gh"><span class="av bot">F</span>Finance</div>
+        <button class="it" role="menuitem" aria-label="Finance — Cash" type="button" data-s="added">Cash</button>
+        <button class="it" role="menuitem" aria-label="Finance — Burn" type="button" data-s="added">Burn</button>
+        <div class="gh"><span class="av bot">G</span>GTM</div>
+        <button class="it" role="menuitem" aria-label="GTM — Launch" type="button" data-s="added">Launch</button>
+      </div>
+    </div>
+    <div class="pane"><div class="chat"><div class="bm"><span class="av bot">F</span><div class="body"><span class="who">Finance</span><div>Cash is $1.24M.</div></div></div></div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="screen" id="html">
+  <header class="sh"><h2>5 HTML page: Board deck</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="normal" type="button">Normal</button>
+      <button class="pill" data-s="fail" type="button">Source failed</button>
+    </div>
+  </header>
+  <!--
+  An HTML page kind runs inside a sandboxed iframe (no network, no cookies, no parent access). A small data bridge lets the page read the rows of its saved sources:
+  the host posts the latest rows (and the last-good flag) into the frame, and the frame can only render them, never call a tool itself.
+  The frame is styled to read as plain content: no title bar, the same card surface. The host draws the "Updated" label and the warning dot outside the sandbox.
+  -->
+  <div class="win" data-sidebar="Finance" data-bots="Finance|GTM">
+    <div class="pane split">
+      <div class="chatcol">
+        <div class="chat"><div class="bm"><span class="av bot">F</span><div class="body"><span class="who">Finance</span><div>The board deck is ready.</div><div class="tool">Updated page · Board deck</div></div></div></div>
+        <div class="composer">Message</div>
+      </div>
+      <div class="pg">
+        <div class="pgbar">
+          <div class="tabs" role="tablist" aria-label="Finance pages">
+            <button class="tab" role="tab" aria-selected="false" type="button">Cash</button>
+            <button class="tab" role="tab" aria-selected="true" type="button">Board deck</button>
+          </div>
+          <details class="mn"><summary aria-label="Page options">&#8943;</summary>
+            <div class="pop"><a class="it" href="#sources">Sources</a><a class="it" href="#share">Share</a></div>
+          </details>
+        </div>
+        <div class="frame" style="margin-top:12px" role="group" aria-label="Board deck">
+          <h2>Q3 cohort retention</h2>
+          <div class="upd">Updated 9:00 AM</div>
+          <details class="mn wd" open data-st="fail"><summary aria-label="Cohorts: source failed"><i></i></summary>
+            <div class="pop"><span>api.example.com: request timed out · last good 8:00 AM</span><button class="btn sm" type="button" style="width:fit-content">Retry</button></div>
+          </details>
+          <div style="margin-top:10px;overflow-x:auto"><svg viewBox="0 0 320 190" width="100%" style="min-width:300px;display:block" role="img" aria-label="Cohort retention heatmap, six monthly cohorts"><g font-size="10" fill="var(--muted-fg)"><text x="66" y="10" text-anchor="middle">M0</text><text x="110" y="10" text-anchor="middle">M1</text><text x="154" y="10" text-anchor="middle">M2</text><text x="198" y="10" text-anchor="middle">M3</text><text x="242" y="10" text-anchor="middle">M4</text><text x="286" y="10" text-anchor="middle">M5</text></g><text x="4" y="36" font-size="10" fill="var(--muted-fg)">May</text><rect x="44" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text><rect x="88" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.27"/><text x="109" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">78%</text><rect x="132" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.23"/><text x="153" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">66%</text><rect x="176" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.21"/><text x="197" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">59%</text><rect x="220" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.19"/><text x="241" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">54%</text><rect x="264" y="18" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.18"/><text x="285" y="35" text-anchor="middle" font-size="11" fill="var(--fg)">51%</text><text x="4" y="64" font-size="10" fill="var(--muted-fg)">Jun</text><rect x="44" y="46" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="63" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text><rect x="88" y="46" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.26"/><text x="109" y="63" text-anchor="middle" font-size="11" fill="var(--fg)">75%</text><rect x="132" y="46" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.22"/><text x="153" y="63" text-anchor="middle" font-size="11" fill="var(--fg)">63%</text><rect x="176" y="46" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.20"/><text x="197" y="63" text-anchor="middle" font-size="11" fill="var(--fg)">57%</text><rect x="220" y="46" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.18"/><text x="241" y="63" text-anchor="middle" font-size="11" fill="var(--fg)">52%</text><text x="4" y="92" font-size="10" fill="var(--muted-fg)">Jul</text><rect x="44" y="74" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="91" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text><rect x="88" y="74" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.28"/><text x="109" y="91" text-anchor="middle" font-size="11" fill="var(--fg)">80%</text><rect x="132" y="74" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.24"/><text x="153" y="91" text-anchor="middle" font-size="11" fill="var(--fg)">68%</text><rect x="176" y="74" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.21"/><text x="197" y="91" text-anchor="middle" font-size="11" fill="var(--fg)">60%</text><text x="4" y="120" font-size="10" fill="var(--muted-fg)">Aug</text><rect x="44" y="102" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="119" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text><rect x="88" y="102" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.27"/><text x="109" y="119" text-anchor="middle" font-size="11" fill="var(--fg)">77%</text><rect x="132" y="102" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.23"/><text x="153" y="119" text-anchor="middle" font-size="11" fill="var(--fg)">65%</text><text x="4" y="148" font-size="10" fill="var(--muted-fg)">Sep</text><rect x="44" y="130" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="147" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text><rect x="88" y="130" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.28"/><text x="109" y="147" text-anchor="middle" font-size="11" fill="var(--fg)">79%</text><text x="4" y="176" font-size="10" fill="var(--muted-fg)">Oct</text><rect x="44" y="158" width="42" height="26" rx="4" fill="var(--fg)" fill-opacity="0.35"/><text x="65" y="175" text-anchor="middle" font-size="11" fill="var(--fg)">100%</text></svg></div>
+          <div class="metrics" style="margin:10px 0 0">
+            <div class="blk"><div class="k">M1 retention</div><div class="num">78%</div></div>
+            <div class="blk"><div class="k">M3 retention</div><div class="num">62%</div></div>
+            <div class="blk"><div class="k">Cohorts</div><div class="num">6</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="screen" id="iphone">
+  <header class="sh"><h2>6 iPhone: Cash</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="normal" type="button">Normal</button>
+      <button class="pill" data-s="fail" type="button">Source failed</button>
+      <button class="pill" data-s="hide" type="button">Hide amounts on</button>
+    </div>
+  </header>
+  <!-- Native SwiftUI screen (AgentPageScreen.swift) with Liquid Glass bar buttons. Pull to refresh reruns the sources. Hide amounts is the existing app setting; it masks every currency figure. -->
+  <div class="phones"><div class="phonewrap">
+    <div class="phone" aria-label="Cash page on iPhone">
+      <div class="sbar"><span>9:41</span><span>&#9679;&#9679;&#9679;</span></div>
+      <div class="nav"><button class="glass" type="button" aria-label="Back">&#8249;</button><button class="glass" type="button" aria-label="Page options" style="font-size:20px;padding:0">&#8943;</button></div>
+      <div class="large">Cash</div>
+      <div class="pbody">
+        <div class="ig">
+          <div class="ir"><span class="g">Cash</span><span class="tr amt">$1.24M</span></div>
+          <div class="ir"><span class="g">Burn / mo</span><span class="tr"><span class="dot" data-st="fail" aria-label="Source failed"></span><span class="amt">$86K</span></span></div>
+          <div class="ir"><span class="g">Runway</span><span class="tr">14 mo</span></div>
+        </div>
+        <div class="if wn-t" data-st="fail">Mercury: request timed out · last good 8:00 AM</div>
+        <div class="ig" data-st="fail"><div class="ir link">Retry</div></div>
+        <div class="if" data-st="normal hide">Updated 9:00 AM</div>
+        <div class="ih">Cash, last 12 weeks</div>
+        <div class="ig" style="padding:12px 14px"><svg class="chart" viewBox="0 0 320 130" role="img" aria-label="Cash fell from $1.48M to $1.24M over 12 weeks"><g stroke="var(--border)"><line x1="8" y1="10" x2="312" y2="10"/><line x1="8" y1="60" x2="312" y2="60"/><line x1="8" y1="110" x2="312" y2="110"/></g><polyline points="8,16.7 35.6,22.7 63.3,29.7 90.9,35 118.6,43.3 146.2,47.3 173.8,56 201.5,63.3 229.1,70.7 256.7,78.3 284.4,87.3 312,96.7" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="312" cy="96.7" r="3.5" fill="var(--fg)"/><g fill="var(--muted-fg)" font-size="10"><text x="8" y="126">Aug 7</text><text x="312" y="126" text-anchor="end">Oct 30</text></g></svg></div>
+        <div class="ih">Largest vendors</div>
+        <div class="ig">
+          <div class="ir"><span class="g">Harbor Payroll</span><span class="tr amt">$31,200</span></div>
+          <div class="ir"><span class="g">Acme Cloud</span><span class="tr amt">$18,400</span></div>
+          <div class="ir"><span class="g">Lumen Office</span><span class="tr amt">$9,600</span></div>
+          <div class="ir"><span class="g">Fieldnote Legal</span><span class="tr amt">$7,500</span></div>
+          <div class="ir"><span class="g">Brightpath Ads</span><span class="tr amt">$6,300</span></div>
+        </div>
+        <div class="ig ios-row-md">Cash fell about <span class="amt">$20K</span> a week this quarter, in line with burn.</div>
+        <button class="nab" type="button">Open chat</button>
+      </div>
+      <div class="homebar"></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 7 -->
+<section class="screen" id="share">
+  <header class="sh"><h2>7 Share a snapshot</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="link" type="button">Link</button>
+      <button class="pill" data-s="copied" type="button">Copied</button>
+    </div>
+  </header>
+  <!-- Same behavior as ArtifactShareDialog.tsx: a view-only link to the page as it is now, numbers frozen at that moment, expires after 30 days (fixed, not editable). Stop sharing ends it early. -->
+  <div class="win" data-sidebar="Finance" data-bots="Finance|GTM">
+    <div class="pane" style="min-height:420px">
+      <div class="scrim">
+        <div class="panel" role="dialog" aria-label="Share a snapshot" style="width:min(420px,100%);padding:16px;display:flex;flex-direction:column;gap:12px">
+          <b>Share a snapshot</b>
+          <div style="display:flex;align-items:center;gap:10px"><span style="flex:1">Expires in 30 days</span><button class="tgl" role="switch" aria-checked="true" aria-disabled="true" aria-label="Expires in 30 days" type="button"></button></div>
+          <div style="display:flex;gap:8px"><input class="f mono" readonly value="https://app.example.com/s/Hk3p9xQ2" aria-label="Snapshot link"><button class="btn pri" type="button" data-s="copied" data-st="link">Copy</button><button class="btn" type="button" data-st="copied" disabled>Copied</button></div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn" type="button">Stop sharing</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+<script>
+(function(){
+  function setState(sc,s){
+    sc.dataset.state=s;
+    sc.querySelectorAll('[data-st]').forEach(function(x){x.hidden=x.dataset.st.split(' ').indexOf(s)<0});
+    sc.querySelectorAll('.pill[data-s]').forEach(function(p){p.classList.toggle('on',p.dataset.s===s)});
+    sc.classList.toggle('shim-on',s==='refreshing');
+    sc.classList.toggle('hide',s==='hide');
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('[data-s]');
+    if(t){setState(t.closest('section'),t.dataset.s)}
+    if(e.target.closest('#theme')){var r=document.documentElement;var d=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=d?'light':'dark'}
+  });
+  document.querySelectorAll('[data-sidebar]').forEach(function(w){
+    var a=w.dataset.sidebar,bots=w.dataset.bots.split('|');
+    var h='<div class="side"><div class="row" style="color:var(--muted-fg)">Search</div><div class="row">Inbox</div><div class="row">Data room</div><div class="row">Meetings</div><div class="lbl">Bots</div>';
+    bots.forEach(function(b){h+='<div class="row'+(a===b?' active':'')+'"><span class="av bot">'+b[0]+'</span>'+b+'</div>'});
+    h+='<div style="flex:1"></div><div class="row">Integrations</div></div>';
+    w.insertAdjacentHTML('afterbegin',h);
+  });
+  document.querySelectorAll('section.screen').forEach(function(sc){var on=sc.querySelector('.pill[data-s].on');if(on)setState(sc,on.dataset.s)});
+})();
+</script>
+</body>
+</html>

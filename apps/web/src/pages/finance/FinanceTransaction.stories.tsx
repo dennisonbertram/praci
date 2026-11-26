@@ -1,6 +1,7 @@
 import type { FinanceTransactionOutput } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
+import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { FinanceReceiptPage, FinanceTransactionPage, ReceiptIcon } from "./FinanceTransaction";
 
@@ -65,6 +66,41 @@ export const WithReceipt: Story = {
   render: () => <FinanceTransactionPage id="txn_demo" />,
 };
 
+/** Phone, opened from Spend: Back, the merchant, Ask and the company switch share the header. */
+export const WithCompanySwitch: Story = {
+  parameters: {
+    initialEntries: [
+      { pathname: "/", state: { back: { label: "Spend", to: "/app/finance/spend" } } },
+    ],
+  },
+  beforeEach: () =>
+    mockRpc({
+      "finance.transaction": {
+        ...spend,
+        transaction: { ...spend.transaction, counterparty: "Acme Cloud Hosting" },
+      },
+      "finance.receiptUrl": receipt,
+    }),
+  decorators: [
+    (Story) => (
+      <FinanceChromeProvider
+        value={{
+          onAskAgent: () => undefined,
+          spaceId: "space_a",
+          spaces: [
+            { id: "space_a", name: "Northwind Labs" },
+            { id: "space_b", name: "Harbor Studio" },
+          ],
+          onSwitchSpace: () => undefined,
+        }}
+      >
+        <Story />
+      </FinanceChromeProvider>
+    ),
+  ],
+  render: () => <FinanceTransactionPage id="txn_demo" />,
+};
+
 export const Subscription: Story = {
   beforeEach: () =>
     mockRpc({
@@ -113,6 +149,22 @@ export const CheckFindsNoReceipt: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByText("Check for receipt"));
     await within(canvasElement).findAllByText("No receipt");
+  },
+};
+
+export const CheckFails: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.transaction": withTxn({ hasReceipt: false }),
+      "finance.receiptUrl": () => {
+        throw Object.assign(new Error("provider text"), { code: "BAD_GATEWAY" });
+      },
+    }),
+  render: () => <FinanceTransactionPage id="txn_demo" />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByText("Check for receipt"));
+    await within(canvasElement).findByText("Could not load");
+    await within(canvasElement).findByText("Try again");
   },
 };
 

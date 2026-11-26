@@ -331,6 +331,14 @@ describe("contracts", () => {
     expect(appContract.agentSecrets.put).toBeTruthy();
     expect(appContract.agentSecrets.remove).toBeTruthy();
     expect(appContract.notifications.registerPush).toBeTruthy();
+    const registerInput = appContract.notifications.registerPush["~orpc"].inputSchema;
+    expect(registerInput?.safeParse({ token: "token-123456" }).success).toBe(true);
+    expect(registerInput?.safeParse({ token: "token-123456", platform: "apns" }).success).toBe(
+      true,
+    );
+    expect(registerInput?.safeParse({ token: "token-123456", platform: "fcm" }).success).toBe(
+      false,
+    );
     expect(ProductEventType.options).toContain("thread.message.created");
     expect(ProductEventType.options).toContain("thread.cleared");
     expect(ProductEventType.options).toContain("thread.subagent");

@@ -1,4 +1,5 @@
 import { categorySlug, vendorKey } from "@rakazo/core";
+import { getLogger, serializeError } from "@rakazo/logging";
 import { z } from "zod";
 import {
   dollarsToCents,
@@ -40,6 +41,8 @@ const TreasurySchema = z.object({
       id: z.string(),
       status: z.string(),
       availableBalance: z.number(),
+      /** Posted balance; below it only when a transfer is pending, which is when `availableBalance` is lower. */
+      currentBalance: z.number().nullish(),
       netReturns: z
         .array(
           z.object({
@@ -72,6 +75,23 @@ const TransactionsSchema = z.object({
   truncatedAt: z.unknown().optional(),
   page: z.object({ nextPage: z.string().nullish() }).nullish(),
 });
+
+/** One page of a Treasury account's posted rows (getTreasuryTransactions); `amount` is signed and `canonicalDay` is YYYY-MM-DD. */
+const TreasuryTransactionsSchema = z.object({
+  cursor: z.number().nullish(),
+  transactions: z.array(
+    z.object({
+      id: z.string(),
+      amount: z.number(),
+      type: z.string().nullish(),
+      canonicalDay: z.string(),
+      description: z.string().nullish(),
+    }),
+  ),
+});
+
+const TREASURY_PAGE = 200;
+const TREASURY_MAX_PAGES = 100;
 
 const TransactionDetailSchema = z.object({
   transaction: z.object({
@@ -166,6 +186,58 @@ export function createMercuryFinanceSource(callTool: FinanceCallTool): FinanceSo
     throw new Error("Mercury returned too many transaction pages");
   }
 
+  /**
+   * Treasury rows are not in listTransactions, so without them the account's balance history would
+   * be flat. They are stored as `treasury` kind, which classifies as internal_transfer, so spend,
+   * revenue and cash totals are unchanged (dividends and fees are counted by the yield table).
+   * Posted rows lag the balance: a pending withdrawal shows only as availableBalance below
+   * currentBalance, so that gap becomes one pending row dated today. The history then replays from
+   * the available balance, the same number the Balance card shows.
+   * A failure here is logged and skipped: the chart stays flat but the rest of the sync still lands.
+   */
+  async function treasuryTransactions(): Promise<SourceTransaction[]> {
+    const rows: SourceTransaction[] = [];
+    try {
+      for (const account of (await loadTreasury()).filter((t) => t.status === "active")) {
+        let cursor: number | undefined;
+        for (let page = 0; page < TREASURY_MAX_PAGES; page += 1) {
+          const response = parseToolResponse(
+            TreasuryTransactionsSchema,
+            "getTreasuryTransactions",
+            await callTool("getTreasuryTransactions", {
+              treasuryId: account.id,
+              order: "desc",
+              limit: TREASURY_PAGE,
+              ...(cursor === undefined ? {} : { cursor }),
+            }),
+          );
+          for (const t of response.transactions) rows.push(mapTreasuryTransaction(t, account.id));
+          // The last page has no cursor or no rows; a cursor that does not advance would loop.
+          if (
+            response.transactions.length === 0 ||
+            response.cursor == null ||
+            response.cursor === cursor
+          )
+            break;
+          cursor = response.cursor;
+        }
+        const pendingCents =
+          dollarsToCents(account.availableBalance) -
+          dollarsToCents(account.currentBalance ?? account.availableBalance);
+        if (pendingCents !== 0)
+          rows.push(pendingTreasuryTransfer(account.id, pendingCents, new Date().toISOString()));
+      }
+    } catch (error) {
+      const { name, message } = serializeError(error);
+      getLogger().warn("Mercury Treasury transactions skipped", {
+        "error.name": name,
+        "error.message": message,
+      });
+      return [];
+    }
+    return rows;
+  }
+
   return {
     provider: "mercury",
 
@@ -208,6 +280,7 @@ export function createMercuryFinanceSource(callTool: FinanceCallTool): FinanceSo
         });
         for (const t of [...pending, ...posted]) byId.set(t.externalId, t);
       }
+      for (const t of await treasuryTransactions()) byId.set(t.externalId, t);
       return [...byId.values()];
     },
 
@@ -276,5 +349,52 @@ function mapTransaction(
     memo: null,
     hasReceipt: (t.attachmentsCount ?? 0) > 0,
     dashboardUrl: t.dashboardLink || null,
+  };
+}
+
+const TREASURY_ROW = {
+  provider: "mercury",
+  currency: "USD",
+  counterparty: "Mercury Treasury",
+  vendorKey: "mercury-treasury",
+  category: null,
+  kind: "treasury",
+  cardLastFour: null,
+  cardholder: null,
+  hasReceipt: false,
+  dashboardUrl: null,
+} as const;
+
+function mapTreasuryTransaction(
+  t: z.infer<typeof TreasuryTransactionsSchema>["transactions"][number],
+  accountExternalId: string,
+): SourceTransaction {
+  return {
+    ...TREASURY_ROW,
+    externalId: t.id,
+    accountExternalId,
+    postedAt: toIso(`${t.canonicalDay.slice(0, 10)}T00:00:00Z`, "getTreasuryTransactions"),
+    purchasedAt: null,
+    amountCents: dollarsToCents(t.amount),
+    status: "posted",
+    memo: t.description ?? null,
+  };
+}
+
+/** The gap between a Treasury account's available and posted balance: a transfer that has not posted. */
+function pendingTreasuryTransfer(
+  accountExternalId: string,
+  amountCents: number,
+  postedAt: string,
+): SourceTransaction {
+  return {
+    ...TREASURY_ROW,
+    externalId: `pending-${accountExternalId}`,
+    accountExternalId,
+    postedAt,
+    purchasedAt: null,
+    amountCents,
+    status: "pending",
+    memo: null,
   };
 }

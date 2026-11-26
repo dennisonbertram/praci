@@ -61,6 +61,31 @@ export const SourceLabels: Story = {
   },
 };
 
+/** Two accounts of one app: the address tells them apart; the status filter and sort appear with two or more apps. */
+export const TwoAccountsOfOneApp: Story = {
+  args: {
+    data: mockIntegrations({
+      connections: [
+        {
+          ...mockConnections[0]!,
+          id: "conn_g1",
+          provider: "gmail",
+          displayName: "Gmail",
+          account: "ada@example.test",
+        },
+        {
+          ...mockConnections[0]!,
+          id: "conn_g2",
+          provider: "gmail",
+          displayName: "Work",
+          account: "ada@work.example.test",
+        },
+        mockConnections[1]!,
+      ],
+    }),
+  },
+};
+
 /** Connected apps (connected, failed, connecting), MCP servers and a source, plus the catalog. */
 export const WithConnections: Story = {
   args: {
@@ -78,6 +103,7 @@ export const WithConnections: Story = {
       access: {
         conn_1: {
           allAgents: false,
+          agentShared: false,
           botIds: ["bot_ada", "bot_bram"],
           effectiveAccess: { shared: "some", botIds: ["bot_ada", "bot_bram"] },
         },

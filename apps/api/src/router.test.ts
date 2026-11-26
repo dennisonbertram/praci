@@ -4,7 +4,8 @@ import path from "node:path";
 import { createRouterClient } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import type { ManagedConnectorProvider } from "@rakazo/adapter-kit";
-import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
+import { runJobKey, SecretStoreUnavailableError } from "@rakazo/adapter-kit";
+import type * as Adapters from "@rakazo/adapters";
 import {
   COMPUTER_SCREEN_UNAVAILABLE,
   CodexCatalogCache,
@@ -27,7 +28,30 @@ import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
-import { createRouter, enqueueBotIntroRun, HEARTBEAT_MS, SESSION_RECHECK_MS } from "./router.js";
+import {
+  createRouter,
+  enqueueBotIntroRun,
+  HEARTBEAT_MS,
+  reintroduceUnansweredBot,
+  SESSION_RECHECK_MS,
+} from "./router.js";
+import { fakeRunUpdateManyAndReturn } from "./test-support/cancel-runs.js";
+
+// Real implementations by default; a test queues a once-only override.
+const pageSourceMocks = vi.hoisted(() => ({
+  answer: vi.fn(),
+  refresh: vi.fn(),
+}));
+vi.mock("@rakazo/adapters", async (importOriginal) => {
+  const original = await importOriginal<typeof Adapters>();
+  pageSourceMocks.answer.mockImplementation(original.answerPageSourceApproval as never);
+  pageSourceMocks.refresh.mockImplementation(original.refreshPageSource as never);
+  return {
+    ...original,
+    answerPageSourceApproval: pageSourceMocks.answer,
+    refreshPageSource: pageSourceMocks.refresh,
+  };
+});
 
 describe("account preferences", () => {
   function preferencesDeps(avatarStyle: string) {
@@ -583,6 +607,167 @@ describe("thread answer delivery", () => {
     expect(sink.events.some((event) => event.message === "thread answer enqueue")).toBe(true);
     installLogger(createLogger({ service: "rakazo-api", level: "off", sinks: [] }));
   });
+
+  it.each([
+    [
+      "a credential its destination cannot carry",
+      "Credential cannot be used with this authentication method",
+      400,
+    ],
+    ["an unexpected failure", "database unavailable", 500],
+  ])("maps %s to the right status without echoing the answer", async (_name, message, status) => {
+    const answerRunInput = vi.fn().mockRejectedValue(new Error(message));
+    const prisma = {
+      bot: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ id: "bot-1", thread: { id: "thread-1" }, computer: null }),
+      },
+      message: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma,
+      events: { answerRunInput },
+      jobs: { enqueue: vi.fn() },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: true,
+    } satisfies Actor;
+    const { response } = await new RPCHandler(createRouter(deps)).handle(
+      new Request("http://127.0.0.1/rpc/threads/answer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          json: {
+            botId: "bot-1",
+            runId: "run-1",
+            messageId: "message-1",
+            answer: "example\nvalue",
+          },
+        }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    expect(response.status).toBe(status);
+    expect(JSON.stringify(await response.json())).not.toContain("example");
+  });
+});
+
+describe("thread answer for a page source card", () => {
+  const card = {
+    id: "message-1",
+    botId: "bot-1",
+    blocks: [
+      {
+        kind: "ask",
+        text: "Read Mercury every hour?",
+        status: "pending",
+        pageSource: { sourceId: "source-1", callHash: "a".repeat(64) },
+        actions: [
+          { id: "allow", label: "Allow" },
+          { id: "deny", label: "Not now" },
+        ],
+      },
+    ],
+  };
+
+  async function answer(source: unknown, who = "user-1") {
+    const answerRunInput = vi.fn().mockResolvedValue(true);
+    const update = vi.fn();
+    const prisma = {
+      bot: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ id: "bot-1", thread: { id: "thread-1" }, computer: null }),
+      },
+      message: { findFirst: vi.fn().mockResolvedValue(card), update },
+      pageSource: { findFirst: vi.fn().mockResolvedValue(source), updateMany: vi.fn() },
+      notification: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn({ message: { update } })),
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma,
+      events: { answerRunInput, notify: vi.fn() },
+      jobs: { enqueue: vi.fn() },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: who,
+      email: "user@rakazo.test",
+      isDeploymentOwner: true,
+    } satisfies Actor;
+    const { response } = await new RPCHandler(createRouter(deps)).handle(
+      new Request("http://127.0.0.1/rpc/threads/answer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          json: { botId: "bot-1", runId: "run-1", messageId: "message-1", answer: "allow" },
+        }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    return { response, answerRunInput, prisma };
+  }
+
+  it("answers and clears the notification when the first refresh throws", async () => {
+    const source = { id: "source-1", status: "active" };
+    pageSourceMocks.answer.mockResolvedValueOnce(source);
+    pageSourceMocks.refresh.mockRejectedValueOnce(new Error("database write failed"));
+    const { response, prisma } = await answer(null);
+    expect(response.status).toBe(200);
+    expect(pageSourceMocks.refresh).toHaveBeenCalledOnce();
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ surface: "thread", threadId: "thread-1", seenAt: null }),
+      data: { seenAt: expect.any(Date) },
+    });
+  });
+
+  it("never resumes a run, and refuses a source that is not this bot's", async () => {
+    // The lookup is scoped to the bot, space and owner, so another bot's source id finds nothing.
+    const { response, answerRunInput, prisma } = await answer(null);
+    expect(response.status).toBe(409);
+    expect(answerRunInput).not.toHaveBeenCalled();
+    expect(prisma.pageSource.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "source-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        botId: "bot-1",
+      }),
+    });
+    expect(prisma.pageSource.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses a card whose call hash no longer matches the source", async () => {
+    const { response, prisma } = await answer({
+      id: "source-1",
+      kind: "mcp",
+      status: "pending",
+      call: { serverId: "s", tool: "getAccounts", args: {} },
+      updatedAt: new Date(),
+    });
+    expect(response.status).toBe(409);
+    expect(prisma.pageSource.updateMany).not.toHaveBeenCalled();
+  });
 });
 
 describe("thread stream authorization", () => {
@@ -1014,6 +1199,39 @@ describe("MCP loopback endpoints", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("reports a second server with the same name as a conflict", async () => {
+    const { create, handler } = mcpDeps();
+    create.mockRejectedValueOnce(
+      Object.assign(new Error("Unique constraint failed"), { code: "P2002" }),
+    );
+    const { response } = await handler.handle(rpc("mcp/servers/create", createInput), {
+      prefix: "/rpc",
+      context: { actor: actor(true) },
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response?.text()).toContain("An MCP server with that name already exists.");
+  });
+
+  it("refuses a stdio server this deployment can't run", async () => {
+    const { create, handler } = mcpDeps();
+    const { response } = await handler.handle(
+      rpc("mcp/servers/create", {
+        transport: "stdio",
+        slug: "files",
+        name: "Files",
+        command: "npx",
+        args: [],
+        env: {},
+      }),
+      { prefix: "/rpc", context: { actor: actor(true) } },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response?.text()).toContain("Stdio MCP servers aren't available here");
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("refuses to start OAuth against a stored loopback endpoint for a non-owner", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
@@ -1048,7 +1266,18 @@ describe("private API connectors", () => {
       createdAt: new Date(0),
     }));
     const prisma = {
-      capabilityInstall: { create },
+      capabilityInstall: {
+        create,
+        // The reply lists the new source; the agent made after install is best effort.
+        findMany: vi.fn(async () => [
+          {
+            ...((await create.mock.results[0]?.value) as Record<string, unknown>),
+            botAccess: [],
+          },
+        ]),
+        findFirst: vi.fn(async () => null),
+      },
+      bot: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
       $transaction: vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run(prisma)),
     } as unknown as PrismaClient;
     const deps = {
@@ -2091,7 +2320,7 @@ describe("model credential persistence", () => {
   } satisfies Actor;
 
   function persistDeps(options?: { envDefaultModel?: string }) {
-    const upsert = vi.fn().mockResolvedValue({ id: "preference" });
+    const upsert = vi.fn().mockResolvedValue({ id: "preference", isDefault: true });
     const finish = vi.fn();
     // Connect loads any previous credential on the root client before the write transaction.
     const userModelCredential = {
@@ -2281,14 +2510,29 @@ describe("bot intro run", () => {
   } satisfies Actor;
   const bot = { id: "bot-1", threadId: "thread-1" } as unknown as Bot;
 
-  function introDeps(options: { agentRuntime?: string; hasCredential?: boolean } = {}) {
+  function introDeps(
+    options: {
+      agentRuntime?: string;
+      hasCredential?: boolean;
+      userMessages?: number;
+      waitingRunId?: string;
+    } = {},
+  ) {
     let calls = 0;
     const create = vi.fn(({ data }: { data: object }) => {
       calls += 1;
       return Promise.resolve({ id: `record-${calls}`, ...data });
     });
     const enqueue = vi.fn().mockResolvedValue(undefined);
-    const tx = { task: { create }, run: { create } };
+    const findWaiting = vi.fn(async () =>
+      options.waitingRunId ? { id: options.waitingRunId } : null,
+    );
+    const tx = {
+      task: { create },
+      run: { create, findFirst: findWaiting },
+      $executeRaw: vi.fn(),
+      message: { findMany: vi.fn(async () => []) },
+    };
     const preference =
       (options.hasCredential ?? true)
         ? { isDefault: true, modelId: "model-1", credential: { id: "cred-1", provider: "test" } }
@@ -2299,11 +2543,14 @@ describe("bot intro run", () => {
         $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
         spaceModelPreference,
         deploymentSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+        message: { count: vi.fn(async () => options.userMessages ?? 0) },
+        bot: { findFirst: vi.fn(async () => ({ id: "bot-1", thread: { id: "thread-1" } })) },
       },
+      events: { notify: vi.fn() },
       jobs: { enqueue },
       env: { agentRuntime: options.agentRuntime ?? "pi" },
     } as unknown as RouterDeps;
-    return { create, enqueue, deps };
+    return { create, enqueue, deps, findWaiting };
   }
 
   it("queues an invisible-prompt run so the bot states how it read its role", async () => {
@@ -2360,6 +2607,57 @@ describe("bot intro run", () => {
 
     expect(create).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  describe("after the profile is edited", () => {
+    it("queues a delayed introduction while the user has not written yet", async () => {
+      const { create, enqueue, deps } = introDeps();
+
+      await reintroduceUnansweredBot(deps, actor, bot);
+
+      expect(create).toHaveBeenCalledTimes(2);
+      expect(enqueue).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          payload: { runId: "record-2" },
+          replaceKey: "run:record-2",
+          availableAt: expect.any(Date),
+        }),
+      );
+      const { availableAt } = enqueue.mock.calls[0]![0] as { availableAt: Date };
+      expect(availableAt.getTime()).toBeGreaterThan(Date.now() + 1000);
+    });
+
+    it("pushes back the intro run already waiting instead of starting another for a burst of edits", async () => {
+      const { create, enqueue, deps } = introDeps({ waitingRunId: "run-waiting" });
+
+      await reintroduceUnansweredBot(deps, actor, bot);
+
+      expect(create).not.toHaveBeenCalled();
+      expect(enqueue).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          payload: { runId: "run-waiting" },
+          replaceKey: "run:run-waiting",
+          availableAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it("does nothing once the user has sent a message", async () => {
+      const { create, enqueue, deps } = introDeps({ userMessages: 1 });
+
+      await reintroduceUnansweredBot(deps, actor, bot);
+
+      expect(create).not.toHaveBeenCalled();
+      expect(enqueue).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for a bot made by an agent or page", async () => {
+      const { enqueue, deps } = introDeps();
+
+      await reintroduceUnansweredBot(deps, actor, { ...bot, spawnKey: "page:x" } as Bot);
+
+      expect(enqueue).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -3379,6 +3677,15 @@ describe("bot model auth on save", () => {
     bot?: Record<string, unknown>;
     /** How many of the chosen message targets are internal bots of this space and user. */
     internalTargets?: number;
+    /** Connection ids that belong to the caller. */
+    ownedCredentialIds?: string[];
+    /** Sandbox provider of the deployment (default "fake"). */
+    sandboxProvider?: string;
+    /** Stored default computer host of the deployment. */
+    computerHost?: string;
+    /** Extra prisma and dependency fakes, for flows that move the bot's computer. */
+    prismaExtra?: Record<string, unknown>;
+    depsExtra?: Record<string, unknown>;
   }) {
     const bot = { ...storedBot(options.modelId), ...options.bot };
     const preferenceFindFirst = vi.fn(options.preferences);
@@ -3391,6 +3698,11 @@ describe("bot model auth on save", () => {
       }
       return null;
     });
+    const credentialFindFirst = vi.fn(async (args: { where: { id?: string; userId?: string } }) =>
+      args.where.userId === actor.userId && options.ownedCredentialIds?.includes(args.where.id!)
+        ? credentialRow(args.where.id!, "secret-oauth")
+        : null,
+    );
     const botUpdate = vi.fn(async () => ({
       id: bot.id,
       name: "Ada renamed",
@@ -3403,6 +3715,7 @@ describe("bot model auth on save", () => {
       event: { create: vi.fn(async () => ({ seq: 1 })) },
     };
     const prisma = {
+      $queryRaw: vi.fn(async () => []),
       bot: {
         findFirst: vi.fn(async (args: { where: { spaceId?: string; userId?: string } }) =>
           args.where.spaceId === bot.spaceId && args.where.userId === bot.userId ? bot : null,
@@ -3412,14 +3725,21 @@ describe("bot model auth on save", () => {
         update: botUpdate,
       },
       spaceModelPreference: { findFirst: preferenceFindFirst },
-      userModelCredential: { findFirst: vi.fn(async () => null) },
+      userModelCredential: { findFirst: credentialFindFirst },
       secret: { findFirst: secretFindFirst },
+      deploymentSettings: {
+        findUnique: vi.fn(async () => ({ computerHost: options.computerHost ?? null })),
+      },
       // listBots looks for delegate runs that wait for approval.
       run: { findMany: vi.fn(async () => []) },
+      // The new-bot introduction only asks whether the user has written yet.
+      message: { count: vi.fn(async () => 1) },
       $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+      ...options.prismaExtra,
     };
     const deps = {
       prisma,
+      ...options.depsExtra,
       secrets: {
         load: (ciphertext: string) => (ciphertext === "cipher-oauth" ? oauth : apiKey),
       },
@@ -3429,13 +3749,17 @@ describe("bot model auth on save", () => {
         defaultModel: "fake-model",
         webOrigin: "http://127.0.0.1:5173",
         screenProxySecret: "fake-test-secret",
-        sandboxProvider: "fake",
+        sandboxProvider: options.sandboxProvider ?? "fake",
       },
     } as unknown as RouterDeps;
     return {
       preferenceFindFirst,
       secretFindFirst,
       botUpdate,
+      transaction: prisma.$transaction,
+      prisma,
+      credentialFindFirst,
+      userMessageCount: prisma.message.count,
       handler: new RPCHandler(createRouter(deps)),
     };
   }
@@ -3464,6 +3788,85 @@ describe("bot model auth on save", () => {
         data: expect.objectContaining({ name: "Ada renamed", modelId: spark }),
       }),
     );
+  });
+
+  it("pins a bot to the caller's own connection", async () => {
+    const { botUpdate, handler } = saveDeps({
+      modelId: "other-model",
+      preferences: () => null,
+      ownedCredentialIds: ["cred-mine"],
+    });
+
+    const response = await call(handler, "bots/update", {
+      botId: "bot-1",
+      modelProvider: "openai-codex",
+      modelId: luna,
+      modelCredentialId: "cred-mine",
+    });
+
+    expect(response.status).toBe(200);
+    expect(botUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ modelCredentialId: "cred-mine" }),
+      }),
+    );
+  });
+
+  it("saves a rename while an unchanged pin points at a connection that is gone", async () => {
+    const { botUpdate, credentialFindFirst, handler } = saveDeps({
+      modelId: luna,
+      preferences: () => null,
+      bot: { modelCredentialId: "cred-gone" },
+      ownedCredentialIds: [],
+    });
+
+    const response = await call(handler, "bots/update", {
+      botId: "bot-1",
+      name: "Ada renamed",
+      modelProvider: "openai-codex",
+      modelId: luna,
+      modelCredentialId: "cred-gone",
+    });
+
+    expect(response.status).toBe(200);
+    expect(credentialFindFirst).not.toHaveBeenCalled();
+    expect(botUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: "Ada renamed" }) }),
+    );
+  });
+
+  it("rejects pinning a bot to someone else's connection", async () => {
+    const { botUpdate, credentialFindFirst, handler } = saveDeps({
+      modelId: spark,
+      preferences: () => null,
+      ownedCredentialIds: [],
+    });
+
+    const response = await call(handler, "bots/update", {
+      botId: "bot-1",
+      modelProvider: "openai-codex",
+      modelId: spark,
+      modelCredentialId: "cred-theirs",
+    });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(credentialFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "cred-theirs", userId: actor.userId }),
+      }),
+    );
+    expect(botUpdate).not.toHaveBeenCalled();
+  });
+
+  it("checks whether the new bot needs a fresh introduction only when its profile text changes", async () => {
+    const { userMessageCount, handler } = saveDeps({ modelId: spark, preferences: () => null });
+
+    await call(handler, "bots/update", { botId: "bot-1", color: "#112233" });
+    await call(handler, "bots/update", { botId: "bot-1", name: "Ada" });
+    expect(userMessageCount).not.toHaveBeenCalled();
+
+    await call(handler, "bots/update", { botId: "bot-1", name: "Ada renamed" });
+    expect(userMessageCount).toHaveBeenCalledOnce();
   });
 
   it("rejects setting Codex Spark on the space's ChatGPT subscription credential", async () => {
@@ -3584,6 +3987,113 @@ describe("bot model auth on save", () => {
       const response = await call(handler, "bots/update", { botId: "bot-1", audience: "external" });
       expect(response.status).toBe(400);
       expect(botUpdate).not.toHaveBeenCalled();
+    });
+
+    it("checks the whole request before it moves the bot's computer", async () => {
+      const { botUpdate, transaction, handler } = setup({
+        sandboxProvider: "docker",
+        computerHost: "this-mac",
+        bot: {
+          spawnKey: "finance-agent:user-1",
+          runsOn: null,
+          computerId: "c1",
+          computer: { id: "c1", scope: "team", controlBotId: null },
+        },
+      });
+      const response = await call(handler, "bots/update", {
+        botId: "bot-1",
+        runsOn: "docker",
+        audience: "external",
+      });
+      expect(response.status).toBe(400);
+      expect(transaction).not.toHaveBeenCalled();
+      expect(botUpdate).not.toHaveBeenCalled();
+    });
+
+    describe("moving a running dedicated computer", () => {
+      function relocate(exportError: Error) {
+        const computerUpdate = vi.fn(async () => ({}));
+        const botUpdateMany = vi.fn(async () => ({ count: 1 }));
+        const stop = vi.fn(async () => undefined);
+        const commit = vi.fn(async () => "r2");
+        const tx = {
+          $queryRaw: vi.fn(async () => []),
+          bot: { updateMany: vi.fn(async () => ({ count: 1 })) },
+        };
+        const prismaExtra = {
+          $transaction: vi.fn(async (fn: (client: unknown) => unknown) =>
+            fn({
+              ...tx,
+              bot: { ...tx.bot, update: vi.fn(async () => ({ id: "bot-1", name: "Ada" })) },
+              thread: { update: vi.fn(async () => ({ nextEventSeq: 2 })) },
+              event: { create: vi.fn(async () => ({ seq: 1 })) },
+            }),
+          ),
+          run: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
+          computerExecutionLease: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+          computer: {
+            findUnique: vi.fn(async () => ({ homeRevision: "r1" })),
+            updateMany: vi.fn(async () => ({ count: 1 })),
+            update: computerUpdate,
+          },
+        };
+        const sandbox = {
+          // biome-ignore lint/correctness/useYield: the export fails before any file
+          exportWorkspace: async function* () {
+            throw exportError;
+          },
+          stop,
+        };
+        const fixture = saveDeps({
+          modelId: luna,
+          preferences: () => null,
+          sandboxProvider: "docker",
+          computerHost: "this-mac",
+          bot: {
+            runsOn: null,
+            computerId: "c1",
+            computer: {
+              id: "c1",
+              scope: "dedicated",
+              state: "running",
+              providerRef: "ref-1",
+              homeKey: "home-1",
+              controlBotId: null,
+              controlHolder: "none",
+            },
+          },
+          prismaExtra,
+          depsExtra: { sandbox, home: { commit } },
+        });
+        // The flag is cleared through the client, not the claiming transaction.
+        Object.assign(fixture.prisma.bot, { updateMany: botUpdateMany });
+        return { ...fixture, computerUpdate, botUpdateMany, stop };
+      }
+
+      it("treats a sandbox that is already gone as stopped", async () => {
+        const { handler, computerUpdate, botUpdateMany, stop } = relocate(
+          Object.assign(new Error("gone"), { name: "SandboxNotFoundError" }),
+        );
+        const response = await call(handler, "bots/update", { botId: "bot-1", runsOn: "docker" });
+        expect(response.status).toBe(200);
+        expect(computerUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ state: "stopped" }) }),
+        );
+        expect(stop).not.toHaveBeenCalled();
+        expect(botUpdateMany).toHaveBeenCalledWith(
+          expect.objectContaining({ data: { computerSwitching: false } }),
+        );
+      });
+
+      it("still fails on other checkpoint errors and clears the switching flag", async () => {
+        const { handler, computerUpdate, botUpdateMany } = relocate(new Error("disk full"));
+        const response = await call(handler, "bots/update", { botId: "bot-1", runsOn: "docker" });
+        expect(response.status).not.toBe(200);
+        expect(computerUpdate).not.toHaveBeenCalled();
+        expect(botUpdateMany).toHaveBeenCalledWith(
+          expect.objectContaining({ data: { computerSwitching: false } }),
+        );
+      });
     });
 
     it("rejects message targets that are not internal bots of this space and user", async () => {
@@ -3708,6 +4218,9 @@ describe("routines.update", () => {
     thinkingLevel: null,
     lastRunAt: null,
     nextRunAt: null,
+    quiet: false,
+    watch: null,
+    managedKind: null,
     createdAt: new Date("2026-09-01T00:00:00.000Z"),
   };
 
@@ -3744,6 +4257,7 @@ describe("routines.update", () => {
           },
         ]),
       },
+      run: { findFirst: vi.fn(async () => null) },
       routine: {
         findFirst: vi.fn(async (args: { where: { bot?: { archivedAt: null } } }) =>
           botArchived && args.where.bot?.archivedAt === null ? null : savedRoutine,
@@ -3890,6 +4404,73 @@ describe("routines.update", () => {
   });
 });
 
+describe("routines.remove", () => {
+  const routine = { id: "routine-1", spaceId: "space-1", userId: "user-1", managedKind: null };
+
+  function fixture() {
+    // Matches only rows the where clause actually selects, like the database would.
+    const findFirst = vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+      Object.entries(where).every(([key, value]) => routine[key as keyof typeof routine] === value)
+        ? routine
+        : null,
+    );
+    const remove = vi.fn(async () => ({ count: 1 }));
+    const cancel = vi.fn(async () => undefined);
+    const findRuns = vi.fn(async () => []);
+    const prisma = {
+      routine: { findFirst, delete: remove },
+      run: { findMany: findRuns },
+      $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
+        callback({ routine: { delete: remove }, run: { findMany: findRuns } }),
+      ),
+    };
+    const handler = new RPCHandler(
+      createRouter({
+        prisma,
+        env: { sandboxProvider: "fake" },
+        jobs: { cancel, enqueue: vi.fn(async () => undefined) },
+      } as unknown as RouterDeps),
+    );
+    const call = (userId: string) =>
+      handler.handle(
+        new Request("http://127.0.0.1/rpc/routines/remove", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ json: { routineId: routine.id } }),
+        }),
+        {
+          prefix: "/rpc",
+          context: {
+            actor: {
+              spaceId: "space-1",
+              userId,
+              email: `${userId}@rakazo.test`,
+              isDeploymentOwner: false,
+            } satisfies Actor,
+          },
+        },
+      );
+    return { call, findFirst, remove, cancel };
+  }
+
+  it("only lets the routine owner delete it within the same space", async () => {
+    const { call, findFirst, remove, cancel } = fixture();
+
+    const otherMember = await call("user-2");
+    expect(otherMember.response.status).toBe(404);
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: "routine-1", spaceId: "space-1", userId: "user-2" },
+    });
+    expect(remove).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+
+    const owner = await call("user-1");
+    expect(owner.response.status).toBe(200);
+    expect(remove).toHaveBeenCalledWith({ where: { id: "routine-1" } });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+});
+
 describe("threads.endCall", () => {
   function fixture(duplicateMarker?: boolean, userSpoke = true) {
     const created: { blocks?: unknown; clientNonce?: string }[] = [];
@@ -4018,24 +4599,61 @@ describe("threads.endCall", () => {
 });
 
 describe("groups.archive", () => {
-  async function archiveGroup(archivedAt: Date | null) {
+  type GroupRoute = "archive" | "remove" | "update";
+  async function archiveGroup(
+    archivedAt: Date | null,
+    route: GroupRoute = "archive",
+    options: { releaseScreenFails?: boolean; leaseReleaseFails?: boolean } = {},
+  ) {
     const calls: string[] = [];
     const groupUpdate = vi.fn();
     // As in production: the run's computer is known only through its execution lease.
     const tx = {
+      externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "group-1" }]),
+      thread: { findUnique: vi.fn().mockResolvedValue({ id: "thread-1" }) },
       chatGroup: {
         findFirst: vi.fn().mockResolvedValue({
           archivedAt,
           thread: { id: "thread-1" },
+          members: [
+            { botId: "bot-1", bot: { archivedAt: null } },
+            { botId: "bot-2", bot: { archivedAt: null } },
+            { botId: "bot-3", bot: { archivedAt: null } },
+          ],
+        }),
+        findUnique: vi.fn().mockResolvedValue({
+          archivedAt,
+          thread: { id: "thread-1" },
+          artifacts: [],
+          members: [{ botId: "bot-1" }],
+        }),
+        findFirstOrThrow: vi.fn().mockResolvedValue({
+          id: "group-1",
+          spaceId: "workspace-1",
+          name: "Group",
+          pinned: false,
+          sectionId: null,
+          position: 0,
+          archivedAt: null,
+          members: [],
+          thread: { id: "thread-1", unread: false, messages: [] },
+          updatedAt: new Date(0),
+          createdAt: new Date(0),
         }),
         update: groupUpdate,
+        delete: vi.fn(),
       },
+      chatGroupMember: { deleteMany: vi.fn(), createMany: vi.fn() },
+      message: { findMany: vi.fn().mockResolvedValue([]) },
       run: {
         findMany: vi.fn().mockResolvedValue([{ id: "run-1", taskId: "task-1" }]),
-        updateMany: vi.fn(),
+        updateManyAndReturn: fakeRunUpdateManyAndReturn(),
       },
       attempt: { updateMany: vi.fn() },
+      secret: { deleteMany: vi.fn() },
       task: { updateMany: vi.fn() },
       computerExecutionLease: {
         findMany: vi
@@ -4068,15 +4686,19 @@ describe("groups.archive", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      bot: { findMany: vi.fn().mockResolvedValue([{ id: "bot-2" }, { id: "bot-3" }]) },
       computerExecutionLease: {
         updateMany: vi.fn(async () => {
           calls.push("expire lease");
+          if (options.leaseReleaseFails) throw new Error("lease release failed");
         }),
       },
       computer: { updateMany: vi.fn() },
     } as unknown as PrismaClient;
+    const jobsCancel = vi.fn().mockResolvedValue(undefined);
     const releaseScreen = vi.fn(async () => {
       calls.push("release screen");
+      if (options.releaseScreenFails) throw new Error("release screen failed");
     });
     const execute = vi.fn(() => {
       calls.push("cancel run work");
@@ -4093,7 +4715,7 @@ describe("groups.archive", () => {
       },
       dataDir: "/tmp/rakazo-router-test",
       sandbox: { releaseScreen, execute },
-      jobs: { cancel: vi.fn().mockResolvedValue(undefined) },
+      jobs: { cancel: jobsCancel },
     } as unknown as RouterDeps;
     const actor = {
       spaceId: "workspace-1",
@@ -4103,14 +4725,19 @@ describe("groups.archive", () => {
     } satisfies Actor;
 
     const { response } = await new RPCHandler(createRouter(deps)).handle(
-      new Request("http://127.0.0.1/rpc/groups/archive", {
+      new Request(`http://127.0.0.1/rpc/groups/${route}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ json: { groupId: "group-1" } }),
+        body: JSON.stringify({
+          json:
+            route === "update"
+              ? { groupId: "group-1", botIds: ["bot-2", "bot-3"] }
+              : { groupId: "group-1" },
+        }),
       }),
       { prefix: "/rpc", context: { actor } },
     );
-    return { response, releaseScreen, calls, groupUpdate };
+    return { response, releaseScreen, calls, groupUpdate, jobsCancel };
   }
 
   it("stops each member's run work and releases its screen before expiring the lease", async () => {
@@ -4147,86 +4774,68 @@ describe("groups.archive", () => {
     );
     expect(calls).toEqual(["cancel run work", "release screen", "expire lease"]);
   });
+
+  it.each(["remove", "update"] as const)(
+    "groups/%s stops run jobs and work, releases the screen, then expires the lease",
+    async (route) => {
+      const { response, releaseScreen, calls, jobsCancel } = await archiveGroup(null, route);
+
+      expect(response?.status).toBe(200);
+      expect(jobsCancel).toHaveBeenCalledWith(runJobKey("run-1"));
+      expect(releaseScreen).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "computer-1" }),
+        expect.objectContaining({
+          botId: "bot-1",
+          runId: "run-1",
+          screenLeaseId: screenLeaseIdForRun({ runId: "run-1", fence: 3 }, "run-1"),
+          cancelRunWork: true,
+        }),
+      );
+      expect(calls).toEqual(["cancel run work", "release screen", "expire lease"]);
+    },
+  );
+
+  it("groups/remove still succeeds when screen release or lease release fails", async () => {
+    const screenFails = await archiveGroup(null, "remove", { releaseScreenFails: true });
+    expect(screenFails.response?.status).toBe(200);
+    expect(screenFails.calls).toEqual(["cancel run work", "release screen", "expire lease"]);
+
+    const leaseFails = await archiveGroup(null, "remove", { leaseReleaseFails: true });
+    expect(leaseFails.response?.status).toBe(200);
+    expect(leaseFails.releaseScreen).toHaveBeenCalled();
+  });
 });
 
-describe("boards.rename", () => {
+describe("routines.list", () => {
   const actor = {
-    spaceId: "workspace-1",
+    spaceId: "space-1",
     userId: "user-1",
     email: "user@rakazo.test",
-    isDeploymentOwner: true,
+    isDeploymentOwner: false,
   } satisfies Actor;
 
-  function boardRow(ticketPrefix = "RAK") {
-    return {
-      id: "board-1",
-      spaceId: "workspace-1",
-      name: "Personal",
-      ticketPrefix,
-      nextNumber: 2,
-      createdAt: new Date("2026-06-01T00:00:00.000Z"),
-      updatedAt: new Date("2026-06-01T00:00:00.000Z"),
-    };
-  }
-
-  function renameDeps(tickets: number, ticketPrefix = "RAK") {
-    const count = vi.fn(async () => tickets);
-    const update = vi.fn(async ({ data }: { data: { name?: string; ticketPrefix?: string } }) => ({
-      ...boardRow(ticketPrefix),
-      ...data,
-      updatedAt: new Date("2026-06-02T00:00:00.000Z"),
-    }));
+  it("lists only the caller's routines in a stable order", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
     const prisma = {
-      board: {
-        findUnique: vi.fn(async () => boardRow(ticketPrefix)),
-        update,
-      },
-      ticket: { count },
+      bot: { findFirst: vi.fn().mockResolvedValue({ id: "bot-1", spaceId: "space-1" }) },
+      routine: { findMany },
+      run: { findFirst: vi.fn().mockResolvedValue(null) },
     } as unknown as PrismaClient;
-    const deps = { prisma, env: { ticketBoardEnabled: true } } as unknown as RouterDeps;
-    return { count, update, handler: new RPCHandler(createRouter(deps)) };
-  }
-
-  async function rename(handler: RPCHandler<never>, body: unknown) {
-    const { response } = await handler.handle(
-      new Request("http://127.0.0.1/rpc/boards/rename", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ json: body }),
-      }),
-      { prefix: "/rpc", context: { actor } },
+    const client = createRouterClient(
+      createRouter({ prisma, env: { sandboxProvider: "fake" } } as unknown as RouterDeps),
+      {
+        context: { actor } as never,
+      },
     );
-    return response;
-  }
 
-  it("rejects a prefix change after tickets exist", async () => {
-    const { count, update, handler } = renameDeps(2);
-    const response = await rename(handler, { ticketPrefix: "OPS" });
-    expect(response?.status).toBe(400);
-    await expect(response?.json()).resolves.toEqual({
-      json: expect.objectContaining({
-        code: "BAD_REQUEST",
-        message: "Cannot change the ticket prefix once tickets exist.",
+    await client.routines.list({ botId: "bot-1" });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { botId: "bot-1", spaceId: "space-1", userId: "user-1" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       }),
-    });
-    expect(count).toHaveBeenCalledWith({
-      where: { boardId: "board-1", spaceId: "workspace-1" },
-    });
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it("renames the board without changing the prefix", async () => {
-    const { count, update, handler } = renameDeps(2);
-    const response = await rename(handler, { name: "Launch" });
-    expect(response?.status).toBe(200);
-    await expect(response?.json()).resolves.toEqual({
-      json: expect.objectContaining({ name: "Launch", ticketPrefix: "RAK" }),
-    });
-    expect(count).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith({
-      where: { id: "board-1" },
-      data: { name: "Launch" },
-    });
+    );
   });
 });
 
@@ -4255,7 +4864,12 @@ describe("export.bot", () => {
     return home;
   }
 
-  async function exportFiles(scope: "team" | "dedicated", home: LocalAgentHomeStore) {
+  async function exportFiles(
+    scope: "team" | "dedicated",
+    home: LocalAgentHomeStore,
+    memoryFindMany = vi.fn().mockResolvedValue([]),
+    routineFindMany = vi.fn().mockResolvedValue([]),
+  ) {
     const prisma = {
       bot: {
         findFirst: vi.fn().mockResolvedValue({
@@ -4268,8 +4882,8 @@ describe("export.bot", () => {
           computer: { id: "computer-1", scope, homeKey: "home-1" },
         }),
       },
-      memoryDocument: { findMany: vi.fn().mockResolvedValue([]) },
-      routine: { findMany: vi.fn().mockResolvedValue([]) },
+      memoryDocument: { findMany: memoryFindMany },
+      routine: { findMany: routineFindMany },
       message: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const deps = {
@@ -4286,6 +4900,24 @@ describe("export.bot", () => {
     const manifest = await client.export.bot({ botId: "bot-1" });
     return manifest.files.sort((a, b) => a.path.localeCompare(b.path));
   }
+
+  it("exports only the caller's own bot memory", async () => {
+    const memoryFindMany = vi.fn().mockResolvedValue([]);
+    await exportFiles("team", await homeWith({}), memoryFindMany);
+    expect(memoryFindMany).toHaveBeenCalledWith({
+      where: { botId: "bot-1", spaceId: actor.spaceId, userId: actor.userId, scope: "bot" },
+    });
+  });
+
+  it("exports only the caller's own routines", async () => {
+    const routineFindMany = vi.fn().mockResolvedValue([]);
+    await exportFiles("team", await homeWith({}), undefined, routineFindMany);
+    expect(routineFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { botId: "bot-1", spaceId: actor.spaceId, userId: actor.userId },
+      }),
+    );
+  });
 
   it("exports only the bot's own folder from a Team Computer", async () => {
     const home = await homeWith({
@@ -4756,8 +5388,35 @@ describe("Carta server guards", () => {
     );
   });
 
+  it("refuses a typed-in save once the cap table ledger is the record", async () => {
+    const saved = vi.fn();
+    const client = clientFor({
+      equityStakeholder: { findFirst: vi.fn().mockResolvedValue({ id: "sh-1" }) },
+      equityShareClass: { findFirst: vi.fn().mockResolvedValue(null) },
+      capTableSnapshot: { updateMany: saved, upsert: saved, create: saved },
+    });
+    await expect(
+      client.investors.capTableSave({
+        updatedAt: new Date(0).toISOString(),
+        table: {
+          companyName: "Example Co",
+          asOf: "2026-01-31",
+          fullyDilutedShares: 0,
+          shareClasses: [],
+          holders: [],
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "The cap table is kept on the Cap table page.",
+    });
+    expect(saved).not.toHaveBeenCalled();
+  });
+
   it("answers a stale typed-in save as a conflict", async () => {
     const client = clientFor({
+      equityStakeholder: { findFirst: vi.fn().mockResolvedValue(null) },
+      equityShareClass: { findFirst: vi.fn().mockResolvedValue(null) },
       capTableSnapshot: {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
         findUnique: vi.fn().mockResolvedValue({ id: "row" }),
@@ -4818,6 +5477,122 @@ describe("Investors agent", () => {
         spawnKey: "investors-agent:someone",
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      client.bots.create({
+        name: "Squatter",
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team" as const,
+        spawnKey: "scanner-agent:someone",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    // The custom-page key is server-made; a client cannot send it.
+    await expect(
+      client.bots.create({
+        name: "Squatter",
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team" as const,
+        spawnKey: "custom-page:someone",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("Hiding a bot", () => {
+  it("looks the bot up within the actor's space and user, so another user's bot is not found", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const deps = {
+      prisma: { bot: { findFirst } } as unknown as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const client = createRouterClient(createRouter(deps), { context: { actor } });
+    await expect(
+      client.bots.update({ botId: "someone-elses-bot", hidden: true }),
+    ).rejects.toThrow();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "someone-elses-bot",
+          spaceId: "workspace-1",
+          userId: "user-1",
+        }),
+      }),
+    );
+  });
+});
+
+describe("memory list sources", () => {
+  it("returns routine names and hides a run owned by another user", async () => {
+    const actor = {
+      spaceId: "space-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const documents = [
+      {
+        id: "memory-1",
+        scope: "user",
+        botId: null,
+        path: "a.md",
+        content: "A",
+        revision: 2,
+        updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+        revisions: [{ sourceRunId: "run-own" }],
+      },
+      {
+        id: "memory-2",
+        scope: "user",
+        botId: null,
+        path: "b.md",
+        content: "B",
+        revision: 1,
+        updatedAt: new Date("2026-09-30T00:00:00.000Z"),
+        revisions: [{ sourceRunId: "run-other" }],
+      },
+    ];
+    const findMany = vi.fn(async () => documents);
+    const runFindMany = vi.fn(async () => [
+      {
+        id: "run-own",
+        trigger: "routine",
+        routine: { name: "Customer feedback check" },
+        bot: { name: "Chief" },
+      },
+    ]);
+    const deps = {
+      prisma: {
+        memoryDocument: { findMany },
+        run: { findMany: runFindMany },
+      } as unknown as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const client = createRouterClient(createRouter(deps), { context: { actor } });
+
+    const result = await client.memory.list({});
+
+    expect(result.map((doc) => doc.source)).toEqual([
+      { kind: "routine", label: "Customer feedback check" },
+      null,
+    ]);
+    expect(runFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["run-own", "run-other"] }, spaceId: "space-1", userId: "user-1" },
+      }),
+    );
   });
 });
 
@@ -4854,6 +5629,8 @@ describe("GTM scratchpad RPC", () => {
     const deps = {
       prisma: {
         bot: { findFirst: vi.fn(async () => bot) },
+        // Approving a post checks the GTM routine's next run; these tests have none.
+        routine: { findFirst: vi.fn(async () => null) },
         scratchpadItem,
       } as unknown as PrismaClient,
       env: { defaultProvider: "fake", defaultModel: "fake-model" },
@@ -4861,6 +5638,37 @@ describe("GTM scratchpad RPC", () => {
     } as unknown as RouterDeps;
     return createRouterClient(createRouter(deps), { context: { actor } });
   }
+
+  it("lists waiting-on-you items scoped to the caller's space and user", async () => {
+    const findMany = vi.fn(async () => [
+      {
+        id: "item-1",
+        botId: "bot-1",
+        title: "Sign the sample form",
+        status: "open",
+        waitingOn: "you",
+        dueAt: new Date("2026-01-05T00:00:00.000Z"),
+        bot: { name: "GTM" },
+      },
+    ]);
+    const client = scratchpadClient({ findMany });
+    const items = await client.scratchpad.waitingOnYou({});
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+      }),
+    );
+    expect(items).toEqual([
+      {
+        id: "item-1",
+        botId: "bot-1",
+        botName: "GTM",
+        title: "Sign the sample form",
+        waitingOn: "you",
+        dueAt: "2026-01-05T00:00:00.000Z",
+      },
+    ]);
+  });
 
   it("creates gated items through the shared store in parked status", async () => {
     const createdAt = new Date("2026-08-25T12:00:00.000Z");
@@ -4896,6 +5704,15 @@ describe("GTM scratchpad RPC", () => {
     expect(item.status).toBe("parked");
   });
 
+  it("returns NOT_FOUND when updating a deleted scratchpad item", async () => {
+    const client = scratchpadClient({ findFirst: vi.fn(async () => null) });
+    await expect(
+      client.scratchpad.update({ itemId: "deleted-item", title: "Post" }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
   it("returns CONFLICT for stale approval and rejects an approval without rendered updatedAt", async () => {
     const existing = {
       id: "item-1",
@@ -4906,7 +5723,7 @@ describe("GTM scratchpad RPC", () => {
       category: "public_post",
       channel: "x",
       target: "account-1",
-      scheduledFor: null,
+      scheduledFor: new Date("2099-01-01T00:00:00.000Z"),
       proof: null,
       approvedAt: null,
       approvedBy: null,
@@ -4941,7 +5758,7 @@ describe("GTM scratchpad RPC", () => {
       category: "public_post",
       channel: "x",
       target: "account-1",
-      scheduledFor: null,
+      scheduledFor: new Date("2099-01-01T00:00:00.000Z"),
       proof: null,
       approvedAt: new Date("2026-08-25T12:00:01.000Z"),
       approvedBy: "user",

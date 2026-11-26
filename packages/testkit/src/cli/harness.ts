@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
+import { runAsSystem } from "@rakazo/db";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import type { createEmulatedApp } from "./emulated-app.js";
 import { runProcess } from "./process.js";
@@ -18,6 +19,17 @@ const sandboxProvider = sandboxArg?.slice("--sandbox=".length) ?? "fake";
 const e2eSpec = specArg?.slice("--spec=".length);
 const e2eGrep = grepArg?.slice("--grep=".length);
 const agentRuntime = runtimeArg?.slice("--runtime=".length) ?? "scripted";
+
+const ROW_SECURITY_SUITE = "packages/db/src/row-security.postgres.test.ts";
+const BREX_CARDS_RLS_SUITE = "packages/db/src/brex-cards-rls.postgres.test.ts";
+const BREX_CARDS_BINDING_SUITE = "packages/adapters/src/brex-cards-binding.postgres.test.ts";
+// Suites that check the runtime login rather than the owner login. The Brex cards binding runs
+// as the runtime role so its cap count crosses spaces under row-level security, as it does live.
+const RUNTIME_LOGIN_SUITES = new Set([
+  ROW_SECURITY_SUITE,
+  BREX_CARDS_RLS_SUITE,
+  BREX_CARDS_BINDING_SUITE,
+]);
 
 if (Number(integration) + Number(e2e) !== 1) {
   throw new Error("Pass exactly one of --integration or --e2e");
@@ -47,12 +59,20 @@ async function main() {
   await mkdir(reportDir, { recursive: true });
   const container = await new PostgreSqlContainer("pgvector/pgvector:pg16-trixie").start();
   try {
-    const databaseUrl = container.getConnectionUri();
+    // Migrations run as the container superuser and the e2e API connects as the
+    // runtime login, so row-level security is enforced as in a deployment.
+    // Test code that seeds or inspects rows directly connects as the owner.
+    const migrationUrl = container.getConnectionUri();
+    const runtimeUrl = new URL(migrationUrl);
+    runtimeUrl.username = "rakazo_app";
+    runtimeUrl.password = "rakazo-test-runtime";
+    const databaseUrl = runtimeUrl.toString();
     const apiPort = Number(process.env.API_PORT ?? 3110);
     const webPort = Number(process.env.WEB_PORT ?? 5180);
     const webOrigin = `http://127.0.0.1:${webPort}`;
 
     process.env.DATABASE_URL = databaseUrl;
+    process.env.DATABASE_MIGRATION_URL = migrationUrl;
     process.env.REALTIME_DATABASE_URL = databaseUrl;
     process.env.VERIFY_DATABASE = "1";
     process.env.WAKEUP_DRIVER = "memory";
@@ -84,17 +104,15 @@ async function main() {
     process.env.CI = "1";
 
     execSync("pnpm --filter @rakazo/db generate", { stdio: "inherit", env: process.env });
-    execSync("pnpm --filter @rakazo/db exec prisma migrate deploy", {
-      stdio: "inherit",
-      env: process.env,
-      cwd: path.resolve("packages/db"),
-    });
+    execSync("pnpm db:migrate", { stdio: "inherit", env: process.env });
 
     if (integration) {
       const listed = [
         "packages/testkit/src/pi-offline.postgres.test.ts",
         "packages/testkit/src/usage-accounting.postgres.test.ts",
         "packages/db/src/history-retrieval.postgres.test.ts",
+        "packages/db/src/list-bots.postgres.test.ts",
+        "packages/db/src/groups-preview.postgres.test.ts",
         "packages/testkit/src/history-retrieval.postgres.test.ts",
         "packages/testkit/src/history-short-product.postgres.test.ts",
         "packages/testkit/src/history-followup-product.postgres.test.ts",
@@ -116,6 +134,9 @@ async function main() {
         "packages/testkit/src/mention-targets.test.ts",
         "packages/testkit/src/runs-list.test.ts",
         "packages/db/src/space-membership.postgres.test.ts",
+        ROW_SECURITY_SUITE,
+        BREX_CARDS_RLS_SUITE,
+        BREX_CARDS_BINDING_SUITE,
         "packages/db/src/messaging.postgres.test.ts",
         "packages/db/src/billing.postgres.test.ts",
         "apps/api/src/billing.postgres.test.ts",
@@ -152,12 +173,17 @@ async function main() {
       for (const [index, suite] of suites.entries()) {
         const database = `integration_${index}`;
         await databaseCommand(`CREATE DATABASE "${database}" TEMPLATE "${template}"`);
-        const suiteUrl = new URL(databaseUrl);
+        const suiteMigrationUrl = new URL(migrationUrl);
+        suiteMigrationUrl.pathname = `/${database}`;
+        // Suites drive app code without a request or job around it, so they keep
+        // the owner login; the row-level security suite checks the runtime login.
+        const suiteUrl = new URL(RUNTIME_LOGIN_SUITES.has(suite) ? databaseUrl : migrationUrl);
         suiteUrl.pathname = `/${database}`;
         try {
           await runProcess("pnpm", ["exec", "vitest", "run", suite], {
             ...process.env,
             DATABASE_URL: suiteUrl.toString(),
+            DATABASE_MIGRATION_URL: suiteMigrationUrl.toString(),
             REALTIME_DATABASE_URL: suiteUrl.toString(),
             OPENROUTER_API_KEY: "",
             MODEL_API_KEY: "",
@@ -199,9 +225,11 @@ async function main() {
           const userId = new URL(request.url).searchParams.get("userId");
           if (!userId) return Response.json({ error: "userId is required" }, { status: 400 });
           const { grantInboxAiConsent } = await import("./e2e-consent.js");
-          const granted = await grantInboxAiConsent(
-            { prisma: handles.prisma, resolveModel: handles.executor.resolveModel },
-            userId,
+          const granted = await runAsSystem("e2e consent fixture", () =>
+            grantInboxAiConsent(
+              { prisma: handles.prisma, resolveModel: handles.executor.resolveModel },
+              userId,
+            ),
           );
           return Response.json({ granted }, { headers: { "cache-control": "no-store" } });
         }
@@ -237,15 +265,18 @@ async function main() {
           {
             ...process.env,
             CI: "1",
+            DATABASE_URL: migrationUrl,
             // Pin English so e2e selectors match source messages regardless of runner locale.
             VITE_DEFAULT_UI_LOCALE: "en",
           },
         );
       } catch (error) {
-        const failedRuns = await handles.prisma.run.findMany({
-          where: { status: "failed" },
-          select: { id: true, error: true },
-        });
+        const failedRuns = await runAsSystem("report failed runs", () =>
+          handles.prisma.run.findMany({
+            where: { status: "failed" },
+            select: { id: true, error: true },
+          }),
+        );
         if (failedRuns.length) console.error("Failed agent runs:", failedRuns);
         throw error;
       }
@@ -308,10 +339,12 @@ type AppHandles = Awaited<ReturnType<typeof createEmulatedApp>>["handles"];
 
 async function managedComputers(handles: AppHandles) {
   if (!["e2b", "daytona", "box"].includes(sandboxProvider)) return [];
-  return handles.prisma.computer.findMany({
-    where: { providerRef: { not: null } },
-    select: { homeKey: true, kind: true, providerRef: true, userId: true, spaceId: true },
-  });
+  return runAsSystem("list managed computers for cleanup", () =>
+    handles.prisma.computer.findMany({
+      where: { providerRef: { not: null } },
+      select: { homeKey: true, kind: true, providerRef: true, userId: true, spaceId: true },
+    }),
+  );
 }
 
 async function writeSummary(reportDir: string, summary: Record<string, unknown>) {

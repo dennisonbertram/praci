@@ -49,6 +49,18 @@ export const HtmlBody: Story = {
     }),
 };
 
+/** An HTML email whose own styles remove all margins: its text must still sit inside the card's padding. */
+export const HtmlBodyNoMargins: Story = {
+  args: { messageId: "msg_html_flush" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": {
+        ...message,
+        html: '<html><head><style>body{margin:0;padding:0}</style></head><body><table width="100%"><tr><td>Sample update: the invented release notes start at the left edge of the message, and a long line wraps so the right padding is visible too. Nothing here is real.</td></tr></table></body></html>',
+      },
+    }),
+};
+
 /** The user's own reply, found by search: named "You", and its plain HTML reads as text in the app's style. */
 export const OwnSentReply: Story = {
   args: { messageId: "msg_own" },
@@ -118,6 +130,21 @@ export const WithAskAgent: Story = {
   args: {
     messageId: "msg_ask",
     unread: false,
+    onNavigate: () => undefined,
+    onArchive: () => undefined,
+    onRead: () => undefined,
+    onAskAgent: async () => undefined,
+  },
+  beforeEach: () => mockRpc({ "inbox.get": message }),
+};
+
+/** Phone toolbar: one line (Ask agent moves into More), a labelled Context button, and Track in More with a Tracked mark. */
+export const TrackedWithPhoneToolbar: Story = {
+  args: {
+    messageId: "msg_tracked",
+    unread: false,
+    tracked: true,
+    onTrack: () => undefined,
     onNavigate: () => undefined,
     onArchive: () => undefined,
     onRead: () => undefined,
@@ -309,4 +336,44 @@ export const NoLongerInMail: Story = {
 export const ArchivedMessage: Story = {
   args: { messageId: "msg_archived", onArchive: () => undefined, onMoveToInbox: () => undefined },
   beforeEach: () => mockRpc({ "inbox.get": { ...message, inInbox: false } }),
+};
+
+/** More gains the row's moves and Unsubscribe when the page passes them. */
+export const WithMoveAndUnsubscribe: Story = {
+  name: "With moves and Unsubscribe",
+  args: {
+    messageId: "msg_moves",
+    moves: ["spam", "trash"],
+    onMove: () => undefined,
+    onUnsubscribe: async () => ({ status: "done", method: "one_click" }),
+  },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": { ...message, from: "Sample Newsletter <news@lists.example.test>" },
+    }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await body.findByRole("button", { name: "More" }));
+    await body.findByRole("menuitem", { name: "Unsubscribe" });
+  },
+};
+
+/** Unsubscribe asks first: the mail cannot be taken back. */
+export const UnsubscribeConfirm: Story = {
+  args: {
+    messageId: "msg_unsub",
+    moves: ["spam", "trash"],
+    onMove: () => undefined,
+    onUnsubscribe: async () => ({ status: "done", method: "one_click" }),
+  },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": { ...message, from: "Sample Newsletter <news@lists.example.test>" },
+    }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await body.findByRole("button", { name: "More" }));
+    await userEvent.click(await body.findByRole("menuitem", { name: "Unsubscribe" }));
+    await body.findByRole("alertdialog");
+  },
 };

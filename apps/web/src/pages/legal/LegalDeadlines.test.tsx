@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { expect, it, vi } from "vitest";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
 
 const update = vi.hoisted(() => vi.fn());
 vi.mock("@lingui/core/macro", () => ({
@@ -55,14 +56,14 @@ const mk = (id: string) =>
     sourceQuote: null,
   }) as unknown as LegalDeadline;
 
-async function mount(deadlines: LegalDeadline[]) {
+async function mount(deadlines: LegalDeadline[], onChanged = () => undefined) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   await act(async () =>
     createRoot(container).render(
       <MemoryRouter>
-        <LegalDeadlines deadlines={deadlines} onChanged={() => undefined} today="2029-12-01" />
+        <LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2029-12-01" />
       </MemoryRouter>,
     ),
   );
@@ -72,6 +73,36 @@ const click = (c: HTMLElement, label: string, nth = 0) =>
   act(async () =>
     [...c.querySelectorAll("button")].filter((b) => b.textContent === label)[nth]?.click(),
   );
+
+it("keeps a deadline deleted elsewhere hidden when closing it returns NOT_FOUND", async () => {
+  update.mockReset();
+  update.mockRejectedValueOnce({ code: "NOT_FOUND" });
+  const onChanged = vi.fn();
+  const container = await mount([mk("gone")], onChanged);
+  const handler = vi.fn();
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, handler);
+
+  await click(container, "Done");
+
+  expect(container.textContent).not.toContain("Notice gone");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.textContent).not.toContain("Undo");
+  expect(onChanged).toHaveBeenCalled();
+  expect(handler).toHaveBeenCalled();
+  window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, handler);
+  container.remove();
+});
+
+it("restores the row and shows an error when closing fails for another reason", async () => {
+  update.mockReset();
+  update.mockRejectedValueOnce(new Error("temporary failure"));
+  const container = await mount([mk("retry")]);
+
+  await click(container, "Done");
+
+  expect(container.textContent).toContain("Notice retry");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("temporary failure");
+});
 
 it("sends Undo only after the close request has finished", async () => {
   let finishClose: () => void = () => undefined;
@@ -86,6 +117,39 @@ it("sends Undo only after the close request has finished", async () => {
   expect(update).toHaveBeenLastCalledWith({ id: "a", status: "open" });
 });
 
+it("re-enables Undo and shows the error after reopening fails", async () => {
+  update.mockReset();
+  update.mockResolvedValueOnce(undefined);
+  update.mockRejectedValueOnce(new Error("reopen failed"));
+  const container = await mount([mk("a")]);
+  await click(container, "Done");
+  await click(container, "Undo");
+  expect(container.querySelector("button[disabled]")?.textContent).toBeUndefined();
+  expect(container.textContent).toContain("reopen failed");
+  expect(
+    [...container.querySelectorAll("button")].find((button) => button.textContent === "Undo")
+      ?.disabled,
+  ).toBe(false);
+});
+
+it("re-enables Undo when the close it was waiting for fails", async () => {
+  let failClose: (error: Error) => void = () => undefined;
+  update.mockReset();
+  update.mockReturnValueOnce(new Promise<void>((_, reject) => (failClose = reject)));
+  update.mockResolvedValueOnce(undefined);
+  const container = await mount([mk("a"), mk("b")]);
+  await click(container, "Done", 0);
+  await click(container, "Undo");
+  await click(container, "Done", 0);
+  await act(async () => failClose(new Error("close failed")));
+
+  expect(container.textContent).toContain("close failed");
+  const undo = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Undo",
+  );
+  expect(undo?.disabled).toBe(false);
+});
+
 it("keeps another row's Undo when an earlier close fails", async () => {
   let failA: (e: Error) => void = () => undefined;
   update.mockReset();
@@ -96,6 +160,27 @@ it("keeps another row's Undo when an earlier close fails", async () => {
   await click(container, "Done", 0);
   await act(async () => failA(new Error("nope")));
   expect(container.textContent).toContain("Notice b");
+  expect(container.textContent).toContain("Undo");
+});
+
+it("keeps row B's Undo when row A finishes reopening", async () => {
+  let finishReopen: () => void = () => undefined;
+  update.mockReset();
+  update.mockResolvedValueOnce(undefined);
+  update.mockReturnValueOnce(new Promise<void>((resolve) => (finishReopen = resolve)));
+  update.mockResolvedValueOnce(undefined);
+  const container = await mount([mk("a"), mk("b")]);
+
+  await click(container, "Done", 0);
+  await click(container, "Undo");
+  expect(
+    [...container.querySelectorAll("button")].find((button) => button.textContent === "Undo")
+      ?.disabled,
+  ).toBe(true);
+  await click(container, "Done", 0);
+  await act(async () => finishReopen());
+
+  expect(container.textContent).toContain("Marked Notice b done.");
   expect(container.textContent).toContain("Undo");
 });
 
@@ -127,6 +212,31 @@ it("offers Keep on a deadline a scan proposed removing, and Keep clears the prop
   );
   await act(async () => keep?.click());
   expect(update).toHaveBeenCalledWith({ id: "d9", keep: true });
+});
+
+it("keeps Keep disabled while its request runs", async () => {
+  let finishKeep: () => void = () => undefined;
+  update.mockReset();
+  update.mockReturnValueOnce(new Promise<void>((resolve) => (finishKeep = resolve)));
+  const flagged = { ...mk("keep"), removalProposed: true } as LegalDeadline;
+  const container = await mount([flagged]);
+  await click(container, "Keep this deadline");
+  const keep = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Keep this deadline",
+  );
+  expect(keep?.disabled).toBe(true);
+  await act(async () => finishKeep());
+  expect(keep?.disabled).toBe(true);
+});
+
+it("puts row A back in the list after its reopen succeeds", async () => {
+  update.mockReset();
+  update.mockResolvedValue(undefined);
+  const container = await mount([mk("a"), mk("b")]);
+  await click(container, "Done", 0);
+  await click(container, "Undo");
+  expect(container.textContent).toContain("Notice a");
+  expect(container.textContent).toContain("Notice b");
 });
 
 it("Remove this one closes a proposed row in one click, and the row has no second Dismiss", async () => {

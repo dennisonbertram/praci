@@ -7,6 +7,7 @@ import type { WebhookDeps, WebhookSecretCache } from "./webhook-inbound.js";
 import {
   deliverWebhookEvent,
   formatWebhookPrompt,
+  inboundEventName,
   loadWebhookTarget,
   parseWebhookPayload,
   WEBHOOK_MAX_BODY_BYTES,
@@ -59,9 +60,7 @@ export function mountWebhookHttpRoutes(app: Hono, deps: WebhookDeps) {
       return unauthorized();
     }
 
-    const payload = parseWebhookPayload(raw, c.req.header("content-type"));
-    const eventPrompt = formatWebhookPrompt(payload);
-
+    // Routines are matched first: a delivery that cannot reach one is answered before the body is read.
     const webhookRoutines = await deps.prisma.routine.findMany({
       where: {
         botId: target.bot.id,
@@ -75,11 +74,29 @@ export function mountWebhookHttpRoutes(app: Hono, deps: WebhookDeps) {
         prompt: true,
         modelProvider: true,
         modelId: true,
+        modelCredentialId: true,
         thinkingLevel: true,
+        taughtSkillId: true,
       },
       orderBy: { updatedAt: "desc" },
       take: 5,
     });
+
+    // A bot whose webhook routines are all paused is paused: acknowledge the delivery without
+    // waking it, as the GitHub route does. A bot with no webhook routine at all keeps the legacy
+    // bot-level wake (#334), so only a non-zero total of webhook routines turns delivery off.
+    if (webhookRoutines.length === 0) {
+      const webhookRoutineCount = await deps.prisma.routine.count({
+        where: { botId: target.bot.id, spaceId: target.bot.spaceId, webhookEnabled: true },
+      });
+      if (webhookRoutineCount > 0) {
+        return c.json({ ok: true, ignored: true });
+      }
+    }
+
+    const payload = parseWebhookPayload(raw, c.req.header("content-type"));
+    const eventPrompt = formatWebhookPrompt(payload);
+    const eventName = inboundEventName(payload.event);
 
     const idempotencyKey =
       c.req.header("idempotency-key")?.trim() ||
@@ -93,6 +110,8 @@ export function mountWebhookHttpRoutes(app: Hono, deps: WebhookDeps) {
         prompt: eventPrompt,
         routines: webhookRoutines,
         source: "webhook",
+        // The chat bubble for a bot-level delivery names the event; the model gets the fenced prompt.
+        displayLabel: eventName === "webhook" ? "Webhook" : `Webhook: ${eventName}`,
         idempotencyKey,
       }),
     );

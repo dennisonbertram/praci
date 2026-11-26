@@ -1,13 +1,15 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { LegalDeadline, LegalDeadlineStatus } from "@rakazo/contracts";
+import type { LegalDeadline, LegalDeadlineKind, LegalDeadlineStatus } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { PickFilter, SearchField, SortControl } from "../../components/ListControls";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay } from "../../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
-import { daysBetween, todayIso } from "../../lib/legal-format";
+import { daysBetween, isDueSoon, todayIso, utcTodayIso } from "../../lib/legal-format";
+import { sortBy, useListParams } from "../../lib/list-params";
 import { rpc } from "../../lib/rpc";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
 import { errorText } from "../../lib/user-error";
@@ -33,26 +35,39 @@ const fullTitle = (deadline: LegalDeadline) =>
     deadline.contractTitle ? `${deadline.title}: ${deadline.contractTitle}` : deadline.title,
   );
 
+const SORTS = ["due", "contract"] as const;
+type DeadlineSort = (typeof SORTS)[number];
+
+const kindNames = (): Record<LegalDeadlineKind, string> => ({
+  renewal: t`Renewal`,
+  notice: t`Notice`,
+  termination: t`Termination`,
+  payment: t`Payment`,
+  filing: t`Filing`,
+  compliance: t`Compliance`,
+  other: t`Other`,
+});
+
 /** Open deadlines, soonest first. Done and Dismiss close one; `onChanged` reloads the page's numbers. */
 export function LegalDeadlines({
   deadlines,
   onChanged,
-  today = todayIso(),
-  onlyOverdue = false,
-  onShowAll,
+  today,
   onAsk,
 }: {
   deadlines: LegalDeadline[];
   onChanged: () => void;
+  /** Tests pin the date; otherwise Overdue uses the viewer's date and Due soon the server's (UTC), as the sidebar count does. */
   today?: string;
-  /** Lists only the overdue deadlines, with a way back to all of them. */
-  onlyOverdue?: boolean;
-  onShowAll?: () => void;
   /** Opens the Legal agent with this deadline as the question; without it no row offers Ask agent. */
   onAsk?: (deadline: LegalDeadline) => void;
 }) {
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState("");
+  const [reopening, setReopening] = useState<ReadonlySet<string>>(new Set());
+  const [keeping, setKeeping] = useState<ReadonlySet<string>>(new Set());
+  const reopeningRef = useRef(new Set<string>());
+  const keepingRef = useRef(new Set<string>());
   const [undo, setUndo] = useState<{
     deadline: LegalDeadline;
     status: LegalDeadlineStatus;
@@ -64,6 +79,16 @@ export function LegalDeadlines({
   /** The latest close request, so Undo waits for it instead of racing it. */
   const closing = useRef<Promise<boolean>>(Promise.resolve(true));
   useEffect(() => () => clearTimeout(undoTimer.current), []);
+  useEffect(() => {
+    const present = new Set(deadlines.map((deadline) => deadline.id));
+    setKeeping((ids) => {
+      const next = new Set([...ids].filter((id) => present.has(id)));
+      for (const id of keepingRef.current) {
+        if (!present.has(id)) keepingRef.current.delete(id);
+      }
+      return next.size === ids.size ? ids : next;
+    });
+  }, [deadlines]);
   const close = (deadline: LegalDeadline, status: LegalDeadlineStatus) => {
     const request = send(deadline, status);
     closing.current = request;
@@ -84,6 +109,12 @@ export function LegalDeadlines({
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
       return true;
     } catch (cause) {
+      if ((cause as { code?: string } | null)?.code === "NOT_FOUND") {
+        setUndo((current) => (current?.deadline.id === deadline.id ? null : current));
+        onChanged();
+        window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+        return false;
+      }
       setGone((ids) => {
         const next = new Set(ids);
         next.delete(deadline.id);
@@ -97,52 +128,125 @@ export function LegalDeadlines({
   };
   const reopen = async () => {
     if (!undo) return;
+    const id = undo.deadline.id;
+    if (reopeningRef.current.has(id)) return;
+    reopeningRef.current.add(id);
+    setReopening((ids) => new Set(ids).add(id));
     setError("");
     // A failed close already put the row back and reported the error.
-    if (!(await closing.current)) return;
     try {
+      if (!(await closing.current)) return;
       await rpc.legal.updateDeadline({ id: undo.deadline.id, status: "open" });
       setGone((ids) => {
         const next = new Set(ids);
-        next.delete(undo.deadline.id);
+        next.delete(id);
         return next;
       });
-      setUndo(null);
+      setUndo((current) => (current?.deadline.id === id ? null : current));
       onChanged();
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
+    } finally {
+      setReopening((ids) => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
+      reopeningRef.current.delete(id);
     }
   };
   const keep = async (deadline: LegalDeadline) => {
+    if (keepingRef.current.has(deadline.id)) return;
+    keepingRef.current.add(deadline.id);
+    setKeeping((ids) => new Set(ids).add(deadline.id));
     setError("");
     try {
       await rpc.legal.updateDeadline({ id: deadline.id, keep: true });
       onChanged();
     } catch (cause) {
       setError(errorText(cause));
+      setKeeping((ids) => {
+        const next = new Set(ids);
+        next.delete(deadline.id);
+        return next;
+      });
+      keepingRef.current.delete(deadline.id);
     }
   };
   const allOpen = deadlines.filter((deadline) => !gone.has(deadline.id));
-  const open = onlyOverdue
-    ? allOpen.filter((deadline) => daysBetween(today, deadline.dueDate) < 0)
-    : allOpen;
-  const filterBar = onlyOverdue ? (
-    <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-      {plural(open.length, {
-        one: "Showing # overdue deadline.",
-        other: "Showing # overdue deadlines.",
-      })}
-      {onShowAll ? (
-        <Button size="sm" variant="ghost" onClick={onShowAll}>
-          {plural(allOpen.length, {
-            one: "Show all # open deadline",
-            other: "Show all # open deadlines",
-          })}
-        </Button>
-      ) : null}
-    </p>
-  ) : null;
+  // Search, filters and sort live in the URL: ?q=, contract, kind, due (overdue or soon), sort, dir.
+  const list = useListParams(SORTS, { field: "due", dir: "asc" });
+  const filters = {
+    q: list.param("q"),
+    contract: list.param("contract"),
+    kind: list.param("kind"),
+    due: list.param("due"),
+  };
+  const filtered = Object.values(filters).some(Boolean);
+  const needle = filters.q?.trim().toLowerCase();
+  const open = allOpen.filter(
+    (d) =>
+      (!needle ||
+        [d.title, d.contractTitle, d.notes].some((text) => text?.toLowerCase().includes(needle))) &&
+      (!filters.contract || d.contractTitle === filters.contract) &&
+      (!filters.kind || d.kind === filters.kind) &&
+      (filters.due === "overdue"
+        ? daysBetween(today ?? todayIso(), d.dueDate) < 0
+        : filters.due === "soon"
+          ? isDueSoon(d.dueDate, today ?? utcTodayIso())
+          : true),
+  );
+  const names = kindNames();
+  const sortNames: Record<DeadlineSort, string> = { due: t`Due date`, contract: t`Contract` };
+  const toolbar =
+    allOpen.length > 0 ? (
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <SearchField
+          name="deadlines-search"
+          value={filters.q ?? ""}
+          onChange={(value) => list.setParam("q", value)}
+          placeholder={t`Search deadlines`}
+          label={t`Search deadlines`}
+          className="w-56"
+        />
+        <PickFilter
+          label={t`Contract`}
+          value={filters.contract}
+          options={[
+            ...new Set(deadlines.flatMap((d) => (d.contractTitle ? [d.contractTitle] : []))),
+          ]
+            .sort((a, b) => a.localeCompare(b))
+            .map((title) => [title, title])}
+          onChange={(value) => list.setParam("contract", value)}
+        />
+        <PickFilter
+          label={t`Kind`}
+          value={filters.kind}
+          options={[...new Set(deadlines.map((d) => d.kind))].map((kind) => [kind, names[kind]])}
+          onChange={(value) => list.setParam("kind", value)}
+        />
+        <PickFilter
+          label={t`Due`}
+          value={filters.due}
+          options={[
+            ["overdue", t`Overdue`],
+            ["soon", t`Due soon`],
+          ]}
+          onChange={(value) => list.setParam("due", value)}
+        />
+        <span className="ms-auto flex items-center gap-1">
+          <SortControl
+            fields={SORTS.map((field) => [field, sortNames[field]])}
+            field={list.sort.field}
+            fieldLabel={sortNames[list.sort.field]}
+            direction={list.sort.dir}
+            onField={(field) => list.setSort({ field, dir: "asc" })}
+            onDirection={(dir) => list.setSort({ field: list.sort.field, dir })}
+          />
+        </span>
+      </div>
+    ) : null;
   // The closed row's slot holds the Undo line, so the rows below do not move.
   const undoLine = undo ? (
     <>
@@ -151,34 +255,60 @@ export function LegalDeadlines({
       ) : (
         <Trans>Dismissed {fullTitle(undo.deadline)}.</Trans>
       )}
-      <Button size="sm" variant="ghost" onClick={() => void reopen()}>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={reopening.has(undo.deadline.id)}
+        onClick={() => void reopen()}
+      >
         <Trans>Undo</Trans>
       </Button>
     </>
   ) : null;
   // The page reloads after Done and the server lists open deadlines only, so the closed row is put back at its place for the Undo line.
-  const rows =
+  const placed =
     undo && !deadlines.some((deadline) => deadline.id === undo.deadline.id)
       ? deadlines.toSpliced(undo.index, 0, undo.deadline)
       : deadlines;
+  const rows = sortBy(
+    placed,
+    (d) => (list.sort.field === "due" ? d.dueDate : d.contractTitle),
+    list.sort.dir,
+  );
   if (open.length === 0) {
     return (
       <div>
-        {filterBar}
+        {toolbar}
+        {error ? (
+          <p role="alert" className="mb-2 text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         {undoLine ? (
           <div role="status" className="mb-2 flex h-8 items-center gap-2 text-sm">
             {undoLine}
           </div>
         ) : null}
         <p className="py-8 text-center text-sm text-muted-foreground">
-          {onlyOverdue ? <Trans>Nothing is overdue.</Trans> : <Trans>No open deadlines.</Trans>}
+          {filtered ? <Trans>No matches</Trans> : <Trans>No open deadlines.</Trans>}
         </p>
+        {filtered && allOpen.length > 0 ? (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => list.clear("q", "contract", "kind", "due")}
+            >
+              <Trans>Clear filters</Trans>
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }
   return (
     <div>
-      {filterBar}
+      {toolbar}
       {error ? (
         <p role="alert" className="mb-2 text-sm text-destructive">
           {error}
@@ -198,7 +328,7 @@ export function LegalDeadlines({
             );
           }
           if (!open.includes(deadline)) return null;
-          const days = daysBetween(today, deadline.dueDate);
+          const days = daysBetween(today ?? todayIso(), deadline.dueDate);
           const overdue = days < 0;
           const late = -days;
           // The visible title includes the contract, so the button names do too.
@@ -323,6 +453,7 @@ export function LegalDeadlines({
                   <Button
                     size="sm"
                     variant="outline"
+                    disabled={keeping.has(deadline.id)}
                     aria-label={t`Keep ${name}`}
                     onClick={() => void keep(deadline)}
                   >

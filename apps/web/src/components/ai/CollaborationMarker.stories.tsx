@@ -18,6 +18,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const Asking: Story = { args: { label: "Asking Legal agent…", pending: true } };
+
+export const Replied: Story = { args: { label: "Legal agent replied" } };
+
 export const LongLabel: Story = {
   render: (args) => (
     <div className="w-64">

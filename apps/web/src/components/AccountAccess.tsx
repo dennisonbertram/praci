@@ -34,9 +34,24 @@ export function AccountAccess({
   });
   const [attempt, setAttempt] = useState(0);
   const formRef = useRef<HTMLDivElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
   useEffect(() => {
     if (open && formRef.current) revealInPane(formRef.current);
-  }, [open]);
+    if (open) {
+      // Password accounts focus the password. Passwordless accounts focus their first
+      // confirmation action, including Sign in again or Send deletion code.
+      const target = security
+        ? formRef.current?.querySelector<HTMLElement>(
+            'input:not([type="hidden"]), button:not([disabled])',
+          )
+        : formRef.current?.querySelector<HTMLElement>("[data-delete-confirmation]");
+      target?.focus();
+    } else if (wasOpen.current) {
+      deleteTriggerRef.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open, security]);
   // A failed load is shown only where it matters: in the opened delete panel, beside Retry.
   const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
@@ -93,14 +108,14 @@ export function AccountAccess({
       ) : null}
       {open ? null : (
         <div className="pt-1">
-          <Button variant="destructive" onClick={() => setOpen(true)}>
+          <Button ref={deleteTriggerRef} variant="destructive" onClick={() => setOpen(true)}>
             <Trans>Delete account</Trans>
           </Button>
         </div>
       )}
       {open ? (
         <div ref={formRef} className="space-y-3">
-          <p className="text-sm">
+          <p data-delete-confirmation tabIndex={-1} className="text-sm">
             <Trans>This permanently deletes your account and data.</Trans>
           </p>
           {!security ? (
@@ -129,6 +144,7 @@ export function AccountAccess({
                 id="delete-password"
                 type="password"
                 autoComplete="current-password"
+                autoFocus
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
@@ -219,7 +235,12 @@ export function AccountAccess({
             variant="ghost"
             className="ms-2"
             disabled={pending}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              setPassword("");
+              setCode("");
+              setSent(false);
+            }}
           >
             <Trans>Cancel</Trans>
           </Button>

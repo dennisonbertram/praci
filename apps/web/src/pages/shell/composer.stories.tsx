@@ -121,6 +121,11 @@ export const ComposerVoiceAgent: Story = {
   render: () => composer({ onVoice: () => undefined }),
   beforeEach: loaded,
 };
+/** A speech-to-text engine is set up: the mic sits left of Send while the draft is empty. */
+export const ComposerDictation: Story = {
+  render: () => composer({ canDictate: true }),
+  beforeEach: loaded,
+};
 /** After Skip tour: one suggested question, one tap. */
 export const ComposerQuickAsk: Story = {
   render: () =>
@@ -138,4 +143,19 @@ export const ComposerDisabled: Story = {
 export const ComposerSendError: Story = {
   render: () => composer({ sendError: "The message could not be sent." }),
   beforeEach: loaded,
+};
+/** An agent picked in the middle of a sentence stays where it was typed, drawn as a chip. */
+export const ComposerInlineMention: Story = {
+  render: () => composer({ draftKey: "story:inline-mention" }),
+  beforeEach: () => {
+    sessionStorage.setItem(
+      "rakazo.chatDraft:story:inline-mention",
+      "Pull the full transcript and share with @Investors agent and put it in the data room.",
+    );
+    sessionStorage.setItem(
+      "rakazo.chatDraft:story:inline-mention:mentions",
+      JSON.stringify([{ kind: "bot", id: "bot_investors", name: "Investors agent" }]),
+    );
+    return loaded();
+  },
 };

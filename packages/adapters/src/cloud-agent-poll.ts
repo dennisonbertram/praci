@@ -6,9 +6,9 @@ import type {
 } from "@rakazo/adapter-kit";
 import { CloudAgentRequestRejected, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
-import { cloudAgentHttpsUrl } from "@rakazo/core";
+import { cloudAgentHttpsUrl, newRunUnattended } from "@rakazo/core";
 import type { CloudAgent } from "@rakazo/db";
-import { appendEventInTransaction, Prisma } from "@rakazo/db";
+import { appendEventInTransaction, Prisma, THREAD_LOCK_TRANSACTION_OPTIONS } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { cloudAgentsEnabled } from "./cloud-agent-factory.js";
 import type { CloudAgentDeps } from "./cloud-agent-service.js";
@@ -316,6 +316,7 @@ async function finishPoll(
             taskId: task.id,
             status: "queued",
             trigger: "cloud_agent",
+            unattended: newRunUnattended({ trigger: "cloud_agent" }),
             clientNonce: `cloud-agent-wake-run:${agent.id}:${saved.generation}`,
           },
         });
@@ -327,7 +328,7 @@ async function finishPoll(
       }
     }
     return { seq, wakeRunId, nextPollAt };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (!committed) return;
   if (committed.seq !== undefined)
     await deps.events.notify(agent.threadId, committed.seq).catch(() => undefined);

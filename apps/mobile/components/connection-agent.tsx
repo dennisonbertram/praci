@@ -11,7 +11,7 @@ import { errorText } from "../lib/user-error";
 import { NativeSwitch } from "./native-switch";
 import { Chevron } from "./row-accessories";
 
-/** The agent that owns a connection, with a switch to share the connection with every agent. */
+/** The agent that owns a connection, with a switch to let other agents use the connection. */
 export function ConnectionAgent({ connectionId, botId }: { connectionId: string; botId: string }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
@@ -28,12 +28,12 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
     const mine = ++sequence.current;
     setLoadFailed(false);
     Promise.all([
-      rpc<{ allAgents: boolean; botIds: string[] }>("connections/access", { connectionId }),
+      rpc<{ agentShared: boolean }>("connections/access", { connectionId }),
       rpc<MobileBot[]>("bots/list"),
     ])
       .then(([access, bots]) => {
         if (mine !== sequence.current) return;
-        setShared(access.allAgents);
+        setShared(access.agentShared);
         setName(bots.find((bot) => bot.id === botId)?.name ?? "");
       })
       .catch(() => {
@@ -56,9 +56,8 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
     setSaving(true);
     setError(null);
     try {
-      // Read the current selection right before saving so a change made elsewhere is kept.
-      const fresh = await rpc<{ botIds: string[] }>("connections/access", { connectionId });
-      await rpc("connections/setAccess", { connectionId, allAgents: next, botIds: fresh.botIds });
+      // Sharing on grants no other agent; the agents are chosen on the web.
+      await rpc("connections/setExclusive", { connectionId, exclusive: !next });
     } catch (cause) {
       setShared(previous);
       setError(errorText(cause, t("Try again.")));

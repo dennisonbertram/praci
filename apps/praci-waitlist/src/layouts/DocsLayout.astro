@@ -1,6 +1,7 @@
 ---
 import "../styles/docs.css";
 import { getCollection } from "astro:content";
+import SocialMeta from "../components/SocialMeta.astro";
 
 interface Props {
   title: string;
@@ -22,7 +23,7 @@ const full = title === "Praci" ? title : `${title} | Praci`;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{full}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <SocialMeta title={full} {description} />
   </head>
   <body>
     <header>

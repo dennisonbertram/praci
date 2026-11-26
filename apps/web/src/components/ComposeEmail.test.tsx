@@ -59,8 +59,8 @@ vi.mock("@rakazo/ui-web", () => {
     DialogClose: Container,
     DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     DialogTitle: Container,
-    NativeSelect: Container,
-    NativeSelectOption: Container,
+    NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
+    NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
     Popover: Container,
     PopoverContent: Container,
     PopoverTrigger: Trigger,
@@ -70,6 +70,12 @@ vi.mock("@rakazo/ui-web", () => {
     TooltipTrigger: Trigger,
   };
 });
+
+vi.mock("./inbox/EmailSidePanel", () => ({
+  EmailSidePanel: ({ people }: { people: Array<{ email: string }> }) => (
+    <aside data-testid="context-panel">{people.map((p) => p.email).join(",")}</aside>
+  ),
+}));
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import type { ComposeSeed } from "./ComposeEmail";
@@ -85,7 +91,13 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
 // Roots still mounted when a test ends would fire their autosave timers during a later test.
 const mounted: Array<ReturnType<typeof createRoot>> = [];
 
-async function open(seed: ComposeSeed, onClose = () => {}, draft?: string, spaceId?: string) {
+async function open(
+  seed: ComposeSeed,
+  onClose = () => {},
+  draft?: string,
+  spaceId?: string,
+  onSent?: () => void,
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -109,6 +121,7 @@ async function open(seed: ComposeSeed, onClose = () => {}, draft?: string, space
         draft={draft}
         spaceId={spaceId}
         onClose={onClose}
+        onSent={onSent}
       />,
     ),
   );
@@ -255,9 +268,11 @@ it("holds a send for the undo window, and Undo reopens the message untouched", a
   vi.useFakeTimers();
   try {
     const onClose = vi.fn();
-    await open(reply("reply"), onClose);
+    const onSent = vi.fn();
+    await open(reply("reply"), onClose, undefined, undefined, onSent);
     await act(async () => button("Send").click());
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSent).toHaveBeenCalledTimes(1);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(UNDO_SEND_MS - 100);
     });
@@ -270,6 +285,75 @@ it("holds a send for the undo window, and Undo reopens the message untouched", a
     const restoring = getOutbox().restoring;
     expect(restoring?.fields.to).toEqual(["Sam Lee <sam@example.test>"]);
     expect(restoring?.fields.html).toContain("<blockquote>");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("saves the final text as a draft before sending, even within the autosave delay", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    // Press Send before the 1.5 s autosave would run.
+    await act(async () => button("Send").click());
+    expect(send).not.toHaveBeenCalled();
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    expect(draftSave.mock.calls[0]?.[0]).toMatchObject({ subject: "Re: Offsite!" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(draftSave.mock.invocationCallOrder[0]).toBeLessThan(
+      send.mock.invocationCallOrder[0] as number,
+    );
+    expect(send.mock.calls[0]?.[0]).toMatchObject({ subject: "Re: Offsite!" });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("discards the saved draft after an Undo of the send", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  draftSave.mockResolvedValue({ status: "saved" });
+  discardDraft.mockResolvedValue({});
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    expect(restoring?.saved).toBe(true);
+    // Open it again as MailOutbox does, from the snapshot Undo handed back.
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await act(async () =>
+      (document.querySelector("button[aria-label='Discard']") as HTMLButtonElement).click(),
+    );
+    expect(discardDraft).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(discardDraft).toHaveBeenCalledTimes(1);
   } finally {
     vi.useRealTimers();
   }
@@ -840,4 +924,591 @@ it("will not send a new message with no From account chosen", async () => {
   await act(async () => button("Send").click());
   expect(document.body.textContent).toContain("Choose which account to send from.");
   expect(send).not.toHaveBeenCalled();
+});
+
+it("shows context for the To recipients only, and the Context button hides it", async () => {
+  await open(reply("replyAll"));
+  const panel = () => document.querySelector('[data-testid="context-panel"]');
+  // Cc people are not who the message is for.
+  expect(panel()?.textContent).toBe("sam@example.test");
+  const toggle = document.querySelector<HTMLElement>('button[aria-label="Context"]');
+  await act(async () => toggle?.click());
+  expect(panel()).toBeNull();
+  await act(async () => toggle?.click());
+  expect(panel()).not.toBeNull();
+});
+
+it("keeps a send error through the autosave that follows it", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    await open({ kind: "new" });
+    await type(field("Subject") as HTMLInputElement, "Hello");
+    await act(async () => button("Send").click());
+    expect(document.querySelector("[role=alert]")?.textContent).toBe("Add a recipient.");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalled();
+    expect(document.querySelector("[role=alert]")?.textContent).toBe("Add a recipient.");
+    expect(document.querySelector("[role=status]")?.textContent).not.toBe("Draft saved");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("clears the send error once the person adds a recipient, then shows the draft as saved", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    await open({ kind: "new" });
+    await type(field("Subject") as HTMLInputElement, "Hello");
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(document.querySelector("[role=alert]")?.textContent).toBe("Add a recipient.");
+    await type(field("To") as HTMLInputElement, "sam@example.test,");
+    expect(document.querySelector("[role=alert]")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(document.querySelector("[role=alert]")).toBeNull();
+    expect(document.querySelector("[role=status]")?.textContent).toBe("Draft saved");
+    expect(document.body.textContent).not.toContain("Add a recipient.");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps a restored send error until the next edit, not overwriting it with a save", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    const notice = "Gmail didn't respond. Try again.";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () =>
+      root.render(
+        <ComposeEmail
+          seed={{ kind: "new" }}
+          accounts={[]}
+          restore={{
+            seed: { kind: "new" },
+            clientId: "abcdefgh34",
+            fields: {
+              connectionId: "c1",
+              to: ["sam@example.test"],
+              cc: [],
+              bcc: [],
+              subject: "Hello",
+              html: "",
+              text: "x",
+            },
+            forwarded: [],
+            files: [],
+            saved: true,
+            accounts: [],
+            notice,
+          }}
+          onClose={() => {}}
+        />,
+      ),
+    );
+    expect(document.querySelector("[role=alert]")?.textContent).toBe(notice);
+    // Nothing has been edited, so no autosave replaces the reason the send failed.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(document.querySelector("[role=alert]")?.textContent).toBe(notice);
+    expect(document.querySelector("[role=status]")?.textContent).not.toBe("Draft saved");
+    await type(field("Subject") as HTMLInputElement, "Hello again");
+    expect(document.querySelector("[role=alert]")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(document.querySelector("[role=status]")?.textContent).toBe("Draft saved");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("waits for the send's draft save before discarding after Undo", async () => {
+  let finish: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValue(
+    new Promise<{ status: string }>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  discardDraft.mockResolvedValue({});
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    expect(restoring?.saved).toBe(true);
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await act(async () =>
+      (document.querySelector("button[aria-label='Discard']") as HTMLButtonElement).click(),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS + 100);
+    });
+    // The send's save has not landed, so the discard waits for it instead of running first.
+    expect(discardDraft).not.toHaveBeenCalled();
+    await act(async () => {
+      finish({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(draftSave.mock.invocationCallOrder[0]).toBeLessThan(
+      discardDraft.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+    expect(discardDraft).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("saves the newer text only after the send's slower save lands", async () => {
+  let finish: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValueOnce(
+    new Promise<{ status: string }>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite?");
+    await act(async () => button("Send").click());
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(2);
+    expect(draftSave.mock.calls[1]?.[0]).toMatchObject({ subject: "Re: Offsite?" });
+    expect(draftSave.mock.invocationCallOrder[0]).toBeLessThan(
+      draftSave.mock.invocationCallOrder[1] ?? Number.POSITIVE_INFINITY,
+    );
+    undoSend();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+const accounts = [
+  { connectionId: "c1", label: "Personal" },
+  { connectionId: "c2", label: "Work" },
+];
+
+it("locks From once a draft exists, keeping the account it was saved with", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={{ kind: "new" }}
+          accounts={accounts}
+          connectionId="c1"
+          onClose={() => {}}
+        />,
+      );
+    });
+    const from = () => document.querySelector<HTMLSelectElement>('select[aria-label="From"]');
+    expect(from()?.disabled).toBe(false);
+    await type(field("Subject") as HTMLInputElement, "Hello");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    expect(from()?.disabled).toBe(true);
+    expect(from()?.value).toBe("c1");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("starts locked when reopened after a send saved the draft", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  await act(async () => {
+    root.render(
+      <ComposeEmail
+        seed={{ kind: "new" }}
+        accounts={accounts}
+        restore={{
+          seed: { kind: "new" },
+          clientId: "abcdefgh56",
+          fields: {
+            connectionId: "c2",
+            to: ["sam@example.test"],
+            cc: [],
+            bcc: [],
+            subject: "Hello",
+            html: "",
+            text: "x",
+          },
+          forwarded: [],
+          files: [],
+          saved: true,
+          accounts,
+        }}
+        onClose={() => {}}
+      />,
+    );
+  });
+  const from = document.querySelector<HTMLSelectElement>('select[aria-label="From"]');
+  expect(from?.disabled).toBe(true);
+  expect(from?.value).toBe("c2");
+});
+
+it("sends after an autosave that was already in flight", async () => {
+  let finishFirst: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValueOnce(
+    new Promise<{ status: string }>((resolve) => {
+      finishFirst = resolve;
+    }),
+  );
+  draftSave.mockResolvedValue({ status: "saved" });
+  send.mockResolvedValue({ status: "sent" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    await act(async () => button("Send").click());
+    await act(async () => {
+      finishFirst({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("sends again after Undo while the first save is still running", async () => {
+  let finishFirst: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValueOnce(
+    new Promise<{ status: string }>((resolve) => {
+      finishFirst = resolve;
+    }),
+  );
+  draftSave.mockResolvedValue({ status: "saved" });
+  send.mockResolvedValue({ status: "sent" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite?");
+    await act(async () => button("Send").click());
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishFirst({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(2);
+    expect(draftSave.mock.calls[1]?.[0]).toMatchObject({ subject: "Re: Offsite?" });
+    expect(draftSave.mock.invocationCallOrder[0]).toBeLessThan(
+      draftSave.mock.invocationCallOrder[1] ?? Number.POSITIVE_INFINITY,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("locks From at the first save, not at its reply", async () => {
+  let finish: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValue(
+    new Promise<{ status: string }>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  vi.useFakeTimers();
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={{ kind: "new" }}
+          accounts={accounts}
+          connectionId="c1"
+          onClose={() => {}}
+        />,
+      );
+    });
+    const from = () => document.querySelector<HTMLSelectElement>('select[aria-label="From"]');
+    expect(from()?.disabled).toBe(false);
+    await type(field("Subject") as HTMLInputElement, "Hello");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    // The save has started but not answered; the account is already bound.
+    expect(from()?.disabled).toBe(true);
+    expect(from()?.value).toBe("c1");
+    const select = from() as HTMLSelectElement;
+    await act(async () => {
+      select.value = "c2";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(from()?.value).toBe("c1");
+    await act(async () => {
+      finish({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(from()?.value).toBe("c1");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps Send's final save ahead of a later discard", async () => {
+  let finishFirst: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValueOnce(
+    new Promise<{ status: string }>((resolve) => {
+      finishFirst = resolve;
+    }),
+  );
+  draftSave.mockResolvedValue({ status: "saved" });
+  discardDraft.mockResolvedValue({});
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await act(async () =>
+      (document.querySelector("button[aria-label='Discard']") as HTMLButtonElement).click(),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS + 100);
+    });
+    expect(discardDraft).not.toHaveBeenCalled();
+    await act(async () => {
+      finishFirst({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(2);
+    expect(draftSave.mock.invocationCallOrder[0]).toBeLessThan(
+      draftSave.mock.invocationCallOrder[1] ?? Number.POSITIVE_INFINITY,
+    );
+    expect(draftSave.mock.invocationCallOrder[1]).toBeLessThan(
+      discardDraft.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("saves the newest text last after Send, Undo and another Send", async () => {
+  let finishFirst: (value: { status: string }) => void = () => {};
+  draftSave.mockReturnValueOnce(
+    new Promise<{ status: string }>((resolve) => {
+      finishFirst = resolve;
+    }),
+  );
+  draftSave.mockResolvedValue({ status: "saved" });
+  send.mockResolvedValue({ status: "sent" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    await act(async () => button("Send").click());
+    undoSend();
+    const restoring = getOutbox().restoring;
+    await act(async () => {
+      for (const mountedRoot of mounted.splice(0)) mountedRoot.unmount();
+    });
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail
+          seed={reply("reply")}
+          accounts={[]}
+          restore={restoring ?? undefined}
+          onClose={() => {}}
+        />,
+      );
+    });
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite?");
+    await act(async () => button("Send").click());
+    await act(async () => {
+      finishFirst({ status: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    const calls = draftSave.mock.calls.map(([call]) => call.subject);
+    expect(calls.at(-1)).toBe("Re: Offsite?");
+    expect(draftSave.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+      draftSave.mock.invocationCallOrder[1] ?? 0,
+    );
+    undoSend();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("does not save or lock From without a chosen account", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () => {
+      root.render(
+        <ComposeEmail seed={{ kind: "new" }} accounts={accounts} connectionId="" onClose={() => {}} />,
+      );
+    });
+    const from = () => document.querySelector<HTMLSelectElement>('select[aria-label="From"]');
+    await type(field("Subject") as HTMLInputElement, "Hello");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).not.toHaveBeenCalled();
+    expect(from()?.disabled).toBe(false);
+    await act(async () => {
+      const select = from() as HTMLSelectElement;
+      select.value = "c1";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await type(field("Subject") as HTMLInputElement, "Hello there");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(1);
+    expect(from()?.disabled).toBe(true);
+    expect(from()?.value).toBe("c1");
+  } finally {
+    vi.useRealTimers();
+  }
 });

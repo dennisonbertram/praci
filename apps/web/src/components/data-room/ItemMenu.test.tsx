@@ -16,7 +16,10 @@ import { ItemMenu } from "./ItemMenu";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const labels = async (item: { name: string; status: string }, canRetry: boolean) => {
+const labels = async (
+  item: { name: string; status: string; source?: string },
+  canRetry: boolean,
+) => {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -58,4 +61,10 @@ it("keeps Send to agent for a ready file", async () => {
   const found = await labels({ name: "ok.pdf", status: "ready" }, false);
   expect(found).not.toContain("Replace file");
   expect(found.join()).toMatch(/Send to/);
+});
+
+it("offers no Share for a meeting note, which the server always refuses", async () => {
+  const found = await labels({ name: "Notes.md", status: "ready", source: "meeting" }, false);
+  expect(found).not.toContain("Share");
+  expect(await labels({ name: "ok.pdf", status: "ready" }, false)).toContain("Share");
 });

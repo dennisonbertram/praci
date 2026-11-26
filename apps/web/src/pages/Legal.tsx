@@ -1,11 +1,12 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline } from "@rakazo/contracts";
-import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { groupLegalContracts, LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { runErrorAction } from "@rakazo/core";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { Scale, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { FinanceSpace } from "../components/finance/ui";
 import {
   AskAgentButton,
@@ -22,11 +23,14 @@ import { StillLoading } from "../components/ShellSkeleton";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
-import { daysBetween, todayIso } from "../lib/legal-format";
+import { daysBetween, isDueSoon, todayIso } from "../lib/legal-format";
+import { usePollWhile, useReloadWhenAgentIdle, useUrlParam } from "../lib/page-data";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { useOnReturn } from "../lib/use-refetch-while-open";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { errorText, KEY_REJECTED_PATTERN, runErrorText } from "../lib/user-error";
+import { DueSoonChip } from "./legal/DueSoonChip";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
@@ -61,8 +65,11 @@ export function LegalPage({
   onAskAgent?: () => void;
   /** Sends the Legal agent a question about one row, opening its panel first. */
   onAskAbout?: (question: string) => void;
-  /** Tells the shell whether Legal still lacks consent, so the agent's composer waits for the page's Allow. */
-  onConsentChange?: (missing: boolean) => void;
+  /**
+   * Tells the shell why the agent must wait: no model to run on, or the page's Allow still missing.
+   * Null means the agent can run.
+   */
+  onConsentChange?: (waitsFor: "consent" | "model" | null) => void;
   /** Which company Legal shows, and how to switch, when the user has more than one space. */
   spaces?: FinanceSpace[];
   spaceId?: string;
@@ -108,21 +115,23 @@ function Legal({
   settingsOpen: boolean;
   agentBusy: boolean;
   onAskAbout?: (question: string) => void;
-  onConsentChange?: (missing: boolean) => void;
+  onConsentChange?: (waitsFor: "consent" | "model" | null) => void;
 }) {
   const overview = useFinanceQuery(() => rpc.legal.overview(), []);
   // A failed consent read must not hide the page; the agent reports when it cannot read documents.
   const consent = useFinanceQuery(() => rpc.legal.consent(), []);
   const [granted, setGranted] = useState<typeof consent.data>(null);
   // The tab lives in the URL, so the deadline tiles can link straight to it.
-  const [params, setParams] = useSearchParams();
-  const asked = params.get("view");
+  const [asked, setView] = useUrlParam("view", "contracts");
   const view: View = VIEWS.includes(asked as View) ? (asked as View) : "contracts";
-  // A link with due=overdue opens Deadlines on just the overdue ones.
-  const onlyOverdue = view === "deadlines" && params.get("due") === "overdue";
-  const setView = (next: View) =>
-    setParams(next === "contracts" ? {} : { view: next }, { replace: true });
+  // Grouping similar contracts is on unless the URL says group=off.
+  const [due] = useUrlParam("due", "");
+  const [group, setGroup] = useUrlParam("group", "on");
+  const grouped = group !== "off";
+  const setGrouped = (on: boolean) => setGroup(on ? "on" : "off");
   const [scanError, setScanError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   // The failed run whose notice the user closed; the next failed run shows its own.
   const [dismissedRun, setDismissedRun] = useState<string | null>(null);
   // The run Scan now queued, until the overview shows it finished.
@@ -149,15 +158,16 @@ function Legal({
   // The header shows how long this scan has run (it re-renders on every poll), not the last scan's age.
   const scanStart = useRef(0);
   const consentMissing = status?.allowed === false;
+  // No provider to consent to yet: the page offers Add a model instead of Allow.
+  const noModel = Boolean(status) && status?.recipients.length === 0;
+  const waitsFor = !status ? null : noModel ? "model" : consentMissing ? "consent" : null;
   const reportConsent = useRef(onConsentChange);
   reportConsent.current = onConsentChange;
   useEffect(() => {
-    reportConsent.current?.(consentMissing);
-    return () => reportConsent.current?.(false);
-  }, [consentMissing]);
+    reportConsent.current?.(waitsFor);
+    return () => reportConsent.current?.(null);
+  }, [waitsFor]);
 
-  const reload = useRef({ overview: overview.reload, consent: consent.reload });
-  reload.current = { overview: overview.reload, consent: consent.reload };
   // A fresh read replaces a grant made on this page.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the read changes.
   useEffect(() => setGranted(null), [consent.data]);
@@ -206,30 +216,17 @@ function Legal({
     );
   }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "hidden") return;
-      reload.current.overview();
-      reload.current.consent();
-    };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
+  useOnReturn(true, () => {
+    overview.reload();
+    consent.reload();
+  });
   // A chat turn can end a contract or change a deadline, so re-read when the agent stops answering.
-  const wasBusy = useRef(agentBusy);
-  useEffect(() => {
-    if (wasBusy.current && !agentBusy) reload.current.overview();
-    wasBusy.current = agentBusy;
-  }, [agentBusy]);
+  useReloadWhenAgentIdle(agentBusy, overview.reload);
   const settingsWasOpen = useRef(false);
   useEffect(() => {
     if (settingsWasOpen.current && !settingsOpen) {
-      reload.current.overview();
-      reload.current.consent();
+      overview.reload();
+      consent.reload();
     }
     settingsWasOpen.current = settingsOpen;
   }, [settingsOpen]);
@@ -243,23 +240,22 @@ function Legal({
   }, [lastRun]);
   // While a scan runs, re-read the overview until it ends; give up after a few minutes.
   useEffect(() => {
-    if (!running) return;
-    scanStart.current = Date.now();
-    const poll = setInterval(() => reload.current.overview(), SCAN_POLL_MS);
-    const stop = setTimeout(() => {
-      clearInterval(poll);
+    if (running) scanStart.current = Date.now();
+  }, [running]);
+  usePollWhile(!!running, SCAN_POLL_MS, overview.reload, {
+    giveUpMs: SCAN_WAIT_MS,
+    onGiveUp: () => {
       setWaitingFor(null);
       beforeScan.current = null;
       setScanResult(t`Scan is still running. Check back shortly.`);
       timedOut.current = true;
-    }, SCAN_WAIT_MS);
-    return () => {
-      clearInterval(poll);
-      clearTimeout(stop);
-    };
-  }, [running]);
+    },
+  });
 
   const scan = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setScanError("");
     setScanResult("");
     setScanTotal(data?.counts.unreviewedDocuments ?? 0);
@@ -275,6 +271,9 @@ function Legal({
       overview.reload();
     } catch (cause) {
       setScanError(errorText(cause));
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   };
 
@@ -303,10 +302,11 @@ function Legal({
     !running;
   const needsConsent = status?.allowed === false;
   const setupMissing = needsConsent;
-  const scanDisabled = running;
-  // The banners below already explain the other reasons; only this one has none.
+  const scanDisabled = running || starting;
+  // The banners below already explain the other reasons; only this one has none. With a way to open
+  // the models settings the header button says it, so the line would repeat the button.
   const scanReason =
-    !running && status && needsConsent && status.recipients.length === 0
+    !running && noModel && needsConsent && !onOpenSettings
       ? t`Connect a model in Settings first.`
       : "";
   const { counts } = data;
@@ -317,6 +317,8 @@ function Legal({
     lastRun?.status === "failed" &&
     !running &&
     Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
+  const scanFix =
+    lastRun?.status === "failed" && !running ? runErrorAction(lastRun.error) : undefined;
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   // Below the tabs, so the result appearing never moves them.
   const readCount = Math.min(scanTotal, Math.max(0, scanTotal - counts.unreviewedDocuments));
@@ -388,10 +390,15 @@ function Legal({
         }
         actions={
           <>
-            {/* Until consent exists the card holds the one action. */}
-            {setupMissing || noDocuments ? null : (
+            {/* No model to run on: the way forward is the models settings, in Scan now's place. */}
+            {!running && noModel && onOpenSettings ? (
+              <Button variant="outline" onClick={onOpenSettings}>
+                {t`Add a model`}
+              </Button>
+            ) : /* Until consent exists the card holds the one action. */
+            setupMissing || noDocuments ? null : (
               <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
-                {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
+                {running || starting ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
               </Button>
             )}
             <AskAgentButton />
@@ -439,10 +446,15 @@ function Legal({
               <Trans>Last scan failed</Trans>
             )}
           </p>
-          {/* A rejected key is fixed in one place; go straight to its field. */}
-          {keyRejected && onOpenSettings ? (
+          {/* A key or billing failure is fixed in Models; a transient one by scanning again. */}
+          {scanFix === "models" && onOpenSettings ? (
             <Button size="sm" variant="outline" onClick={onOpenSettings}>
-              <Trans>Replace key</Trans>
+              {keyRejected ? <Trans>Replace key</Trans> : <Trans>Open Models settings</Trans>}
+            </Button>
+          ) : null}
+          {scanFix === "retry" ? (
+            <Button size="sm" variant="outline" disabled={starting} onClick={() => void scan()}>
+              <Trans>Retry</Trans>
             </Button>
           ) : null}
           <button
@@ -494,6 +506,10 @@ function Legal({
         </>
       ) : (
         <>
+          {/* The sidebar badge's count; hidden while the Deadlines list already shows exactly those. */}
+          {view === "deadlines" && due === "soon" ? null : (
+            <DueSoonChip count={data.deadlines.filter((d) => isDueSoon(d.dueDate)).length} />
+          )}
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
             <TabsList className="max-w-full justify-start rounded-full" aria-label={t`View`}>
               <TabsTrigger value="contracts" className="rounded-full px-3">
@@ -522,7 +538,23 @@ function Legal({
           {resultLine}
           {uncheckedLine}
           {view === "contracts" ? (
-            <LegalContracts contracts={data.contracts} selfName={selfName} />
+            <LegalContracts
+              contracts={data.contracts}
+              selfName={selfName}
+              grouped={grouped}
+              actions={
+                groupLegalContracts(data.contracts).some((row) => row.kind === "group") ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-pressed={grouped}
+                    onClick={() => setGrouped(!grouped)}
+                  >
+                    <Trans>Group similar</Trans>
+                  </Button>
+                ) : null
+              }
+            />
           ) : null}
           {view === "deadlines" ? (
             <div className="mb-2 flex justify-end">
@@ -541,8 +573,6 @@ function Legal({
             <LegalDeadlines
               deadlines={data.deadlines}
               onChanged={overview.reload}
-              onlyOverdue={onlyOverdue}
-              onShowAll={() => setView("deadlines")}
               // The agent cannot read documents until the page's Allow, so no question goes to it before.
               onAsk={
                 onAskAbout && !consentMissing
@@ -560,6 +590,8 @@ function Legal({
 
 function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<Set<string>>(() => new Set());
+  const pendingRef = useRef(new Set<string>());
   const done = useFinanceQuery(() => rpc.legal.doneDeadlines(), []);
   if (done.error) return <ErrorNotice message={done.error} onRetry={done.retry} />;
   if (!done.data) return <Skeleton aria-busy="true" className="h-24 bg-border" />;
@@ -571,6 +603,9 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
     );
   }
   const reopen = async (id: string) => {
+    if (pendingRef.current.has(id)) return;
+    pendingRef.current.add(id);
+    setPending((current) => new Set(current).add(id));
     setError("");
     try {
       await rpc.legal.updateDeadline({ id, status: "open" });
@@ -580,6 +615,12 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
+      pendingRef.current.delete(id);
+      setPending((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
     }
   };
   return (
@@ -609,7 +650,12 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
               <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
                 {fullDay(deadline.dueDate)}
               </time>
-              <Button size="sm" variant="ghost" onClick={() => void reopen(deadline.id)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending.has(deadline.id)}
+                onClick={() => void reopen(deadline.id)}
+              >
                 {deadline.status === "dismissed" ? <Trans>Restore</Trans> : <Trans>Reopen</Trans>}
               </Button>
             </span>
@@ -655,11 +701,8 @@ function LegalSkeleton() {
   return (
     <div aria-busy="true" className="flex flex-col gap-3">
       <Skeleton className="h-7 w-32" />
-      <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
-        {[0, 1, 2, 3].map((n) => (
-          <Skeleton key={n} className="h-20" />
-        ))}
-      </div>
+      {/* The tab strip that follows the header. */}
+      <Skeleton className="h-9 w-64 rounded-full" />
       <Skeleton className="h-56" />
       <StillLoading />
     </div>

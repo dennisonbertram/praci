@@ -30,6 +30,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Loading: Story = { args: { data: mockIntegrations({ loaded: false }) } };
 export const NothingConnected: Story = { args: { data: mockIntegrations() } };
 export const SignInOnly: Story = {
   args: { data: mockIntegrations({ servers: [granolaServer], bots: [agent] }) },

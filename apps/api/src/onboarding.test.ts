@@ -83,7 +83,7 @@ it("marks only the authorized connector when provider slugs collide", async () =
 });
 
 describe("blank bot greeting", () => {
-  it("posts a fixed greeting that names the user but not the soon-renamed bot", async () => {
+  it("greets the user and asks what the bot is for with a choice card, without a model run", async () => {
     const { deps, actor } = fixture([]);
     (deps.prisma as unknown as { user: unknown }).user = {
       findUnique: vi.fn(async () => ({ name: "Ada Lovelace" })),
@@ -91,9 +91,15 @@ describe("blank bot greeting", () => {
     await seedBlankBotGreeting(deps, actor, { id: "bot", name: "New Bot", threadId: "thread" });
     expect(posted).toHaveLength(1);
     expect(posted[0]?.blocks).toEqual([
+      { kind: "text", text: "Hi Ada." },
       {
-        kind: "text",
-        text: expect.stringMatching(/^Hi Ada\. I'm a blank slate/),
+        kind: "choice",
+        question: "What do you want me for?",
+        options: [
+          { id: "setup-research", letter: "A", label: "Research something" },
+          { id: "setup-recurring", letter: "B", label: "A recurring task" },
+          { id: "setup-email", letter: "C", label: "Help with email" },
+        ],
       },
     ]);
   });
@@ -197,5 +203,85 @@ describe("answering the focus card by typing", () => {
     ]);
     expect(await dismissPendingChoiceInTransaction(tx as never, target)).toBeNull();
     expect(tx.message.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("answering a focus choice atomically", () => {
+  async function staged() {
+    const db = await import("@rakazo/db");
+    const messages = [{ id: "choice", blocks: [{ kind: "choice", answerId: null }] as unknown[] }];
+    const created: unknown[][] = [];
+    let failReply = true;
+    vi.mocked(db.createThreadMessageInTransaction).mockImplementation((async (
+      tx: { stage: (apply: () => void) => void },
+      input: { blocks: unknown[] },
+    ) => {
+      if (failReply) {
+        failReply = false;
+        throw new Error("reply failed");
+      }
+      tx.stage(() => created.push(input.blocks));
+      return { id: "posted" };
+    }) as never);
+    const transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const writes: Array<() => void> = [];
+      const stage = (apply: () => void) => writes.push(apply);
+      const tx = {
+        stage,
+        $executeRaw: vi.fn(),
+        message: {
+          findMany: vi.fn(async () => messages.map((message) => ({ ...message }))),
+          update: vi.fn(async ({ data }: { data: { blocks: unknown[] } }) =>
+            stage(() => {
+              messages[0].blocks = data.blocks;
+            }),
+          ),
+        },
+      };
+      const result = await fn(tx);
+      for (const apply of writes) apply();
+      return result;
+    });
+    const deps = {
+      prisma: {
+        bot: { findFirst: vi.fn(async () => ({ id: "bot", thread: { id: "thread" } })) },
+        $transaction: transaction,
+      },
+      events: { notify: vi.fn() },
+      connectors: { managedProviders: () => [] },
+    } as unknown as Parameters<typeof chooseFocus>[0];
+    const actor = {
+      userId: "user",
+      spaceId: "space",
+      email: "u@rakazo.test",
+      isDeploymentOwner: true,
+    };
+    return { deps, actor, messages, created, transaction };
+  }
+
+  it("keeps the card pending when a reply fails, so a retry posts the reply", async () => {
+    const { deps, actor, messages, created } = await staged();
+    await expect(chooseFocus(deps, actor, "bot", "day")).rejects.toThrow("reply failed");
+    expect(messages[0]?.blocks).toEqual([{ kind: "choice", answerId: null }]);
+    expect(deps.events.notify).not.toHaveBeenCalled();
+    await chooseFocus(deps, actor, "bot", "day");
+    expect(messages[0]?.blocks).toEqual([{ kind: "choice", answerId: "day" }]);
+    expect(created).toHaveLength(2);
+    expect(deps.events.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes nothing when the card is already answered", async () => {
+    const { deps, actor, created } = await staged();
+    await expect(chooseFocus(deps, actor, "bot", "day")).rejects.toThrow();
+    await chooseFocus(deps, actor, "bot", "day");
+    await chooseFocus(deps, actor, "bot", "day");
+    expect(created).toHaveLength(2);
+    expect(deps.events.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an unknown option before opening a transaction", async () => {
+    const { deps, actor, transaction } = await staged();
+    await expect(chooseFocus(deps, actor, "bot", "nope")).rejects.toThrow();
+    expect(transaction).not.toHaveBeenCalled();
   });
 });

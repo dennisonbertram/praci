@@ -125,6 +125,23 @@ it("says which folder a duplicate is already in, and confirms a delete", () => {
   expect(text).toContain("Uploaded to ProductView");
 });
 
+it("shows Cancel on an upload that is progressing", () => {
+  toasts.push({
+    id: 1,
+    name: "large-file.bin",
+    state: { kind: "uploading", fraction: 0.4, cancel: vi.fn() },
+  });
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <DataRoomDropZone userId="u1" />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("40%");
+  expect(container.querySelector('button[aria-label="Cancel"]')).not.toBeNull();
+});
+
 const row = {
   id: "imp1",
   source: "upload",
@@ -152,7 +169,7 @@ it("narrates a zip after the upload reaches 100 percent, then offers View", () =
     );
     return container.textContent ?? "";
   };
-  expect(show({ kind: "uploading", fraction: 1 })).toContain("100%");
+  expect(show({ kind: "uploading", fraction: 1, cancel: vi.fn() })).toContain("100%");
   expect(show({ kind: "importing", progress: null })).toContain("Opening q3.zip");
   expect(show({ kind: "importing", progress: { ...row, stage: "adding" } })).toContain(
     "Found 12 files",
@@ -169,6 +186,46 @@ it("narrates a zip after the upload reaches 100 percent, then offers View", () =
   const done = show({ kind: "imported", count: 12 });
   expect(done).toContain("Added 12 files");
   expect(done).toContain("View");
+});
+
+it("shows both counts on a partly failed zip, and no duplicate line when all failed", () => {
+  const show = (state: UploadToast["state"]) => {
+    toasts.length = 0;
+    toasts.push({ id: 1, name: "q3.zip", state });
+    act(() =>
+      root.render(
+        <MemoryRouter>
+          <DataRoomDropZone userId="u1" />
+        </MemoryRouter>,
+      ),
+    );
+    return container.textContent ?? "";
+  };
+  const partial = show({ kind: "imported", count: 338, failed: 2 });
+  expect(partial).toContain("Added 338 files");
+  expect(partial).toContain("Couldn't import 2 files");
+  expect(partial).toContain("View");
+  expect(show({ kind: "imported", count: 0, failed: 3 })).not.toContain("Already in");
+});
+
+it("offers Retry on a failed upload card and calls it", () => {
+  const retry = vi.fn();
+  toasts.push({ id: 1, name: "deck.pdf", state: { kind: "error", reason: "network", retry } });
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <DataRoomDropZone userId="u1" />
+      </MemoryRouter>,
+    ),
+  );
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (element) => element.textContent === "Retry",
+  );
+  expect(button).toBeDefined();
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  expect(retry).toHaveBeenCalledTimes(1);
 });
 
 it("bounds the toast stack so a batch scrolls instead of leaving the viewport", () => {

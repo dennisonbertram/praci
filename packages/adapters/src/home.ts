@@ -141,6 +141,8 @@ export class LocalAgentHomeStore implements AgentHomeStore {
     const full = await containedExistingPath(this.botDir(botId), filePath);
     const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
+      // A parent can be swapped during open; check the object actually opened.
+      assertContained(await realpath(this.botDir(botId)), await fileHandlePath(handle.fd));
       if (options?.maxBytes !== undefined) {
         const info = await handle.stat();
         if (info.size > options.maxBytes) {

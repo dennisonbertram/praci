@@ -7,6 +7,7 @@ import {
   getMeeting,
   getMeetingSyncState,
   listMeetings,
+  lockMeetingOwner,
   searchMeetings,
   upsertMeeting,
   upsertMeetingSyncState,
@@ -323,5 +324,308 @@ describePostgres("meetings (PostgreSQL)", () => {
     await expect(
       upsertMeetingSyncState(prisma, otherUser, fresh, "wisprflow"),
     ).rejects.toBeInstanceOf(IsolationError);
+  });
+  describe("skipIfRecordedBy", () => {
+    const at = (day: string, from: string, to: string | null, over: Partial<SourceMeeting> = {}) =>
+      meetingFixture({
+        startedAt: `2026-03-${day}T${from}:00.000Z`,
+        endedAt: to ? `2026-03-${day}T${to}:00.000Z` : null,
+        ...over,
+      });
+    const skip = { skipIfRecordedBy: ["omi"] };
+    const tombstones = (externalId: string) =>
+      prisma.meetingTombstone.count({ where: { ...mine, provider: "omi_cloud", externalId } });
+    const cloudRows = (externalId: string) =>
+      prisma.meeting.count({ where: { ...mine, provider: "omi_cloud", externalId } });
+
+    it("tombstones a cloud meeting that overlaps a stored pendant meeting", async () => {
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("01", "10:00", "10:30", { externalId: "p1" }),
+      );
+      const r = await upsertMeeting(
+        prisma,
+        mine,
+        source,
+        "omi_cloud",
+        at("01", "10:05", "10:30", { externalId: "c1" }),
+        skip,
+      );
+      expect(r).toBe("tombstoned");
+      expect(await cloudRows("c1")).toBe(0);
+      expect(await tombstones("c1")).toBe(1);
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("01", "10:05", "10:30", { externalId: "c1" }),
+          skip,
+        ),
+      ).toBe("tombstoned");
+    });
+
+    it("stores back-to-back and under-half-overlap meetings", async () => {
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("02", "10:00", "10:30", { externalId: "p2" }),
+      );
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("02", "10:30", "11:00", { externalId: "c2a" }),
+          skip,
+        ),
+      ).toBe("created");
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("02", "10:20", "11:30", { externalId: "c2b" }),
+          skip,
+        ),
+      ).toBe("created");
+    });
+
+    it("is not blocked by another user's or space's meeting, or a deleted one", async () => {
+      await upsertMeeting(
+        prisma,
+        otherUser,
+        null,
+        "omi",
+        at("03", "10:00", "10:30", { externalId: "p3u" }),
+      );
+      await upsertMeeting(
+        prisma,
+        otherSpace,
+        null,
+        "omi",
+        at("03", "10:00", "10:30", { externalId: "p3s" }),
+      );
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("03", "10:00", "10:30", { externalId: "p3d" }),
+      );
+      await prisma.meeting.updateMany({
+        where: { ...mine, externalId: "p3d" },
+        data: { deletedAt: new Date() },
+      });
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("03", "10:05", "10:30", { externalId: "c3" }),
+          skip,
+        ),
+      ).toBe("created");
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("04", "10:00", "10:30", { externalId: "p4" }),
+      );
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("04", "10:05", null, { externalId: "c4" }),
+          skip,
+        ),
+      ).toBe("deferred");
+    });
+
+    it("never skips an update of a stored meeting, and does nothing without the option", async () => {
+      await upsertMeeting(
+        prisma,
+        mine,
+        source,
+        "omi_cloud",
+        at("05", "10:00", "10:30", { externalId: "c5" }),
+        skip,
+      );
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("05", "10:00", "10:30", { externalId: "p5" }),
+      );
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("05", "10:00", "10:30", {
+            externalId: "c5",
+            title: "new",
+            updatedAt: "2026-03-05T20:00:00.000Z",
+          }),
+          skip,
+        ),
+      ).toBe("updated");
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("05", "10:00", "10:30", { externalId: "c5b" }),
+        ),
+      ).toBe("created");
+    });
+
+    it("a writer holding the owner lock makes a concurrent cloud create wait and then skip", async () => {
+      let release!: () => void;
+      const held = new Promise<void>((r) => {
+        release = r;
+      });
+      let locked!: () => void;
+      const gotLock = new Promise<void>((r) => {
+        locked = r;
+      });
+      const mover = prisma.$transaction(async (tx) => {
+        await lockMeetingOwner(tx, mine);
+        locked();
+        await held;
+        await tx.meeting.create({
+          data: {
+            ...mine,
+            provider: "omi",
+            externalId: "p7",
+            title: "moved",
+            startedAt: new Date("2026-03-07T10:00:00.000Z"),
+            endedAt: new Date("2026-03-07T10:30:00.000Z"),
+            sourceUpdatedAt: new Date(),
+          },
+        });
+      });
+      await gotLock;
+      const cloud = upsertMeeting(
+        prisma,
+        mine,
+        source,
+        "omi_cloud",
+        at("07", "10:00", "10:30", { externalId: "c7" }),
+        skip,
+      );
+      await new Promise((r) => setTimeout(r, 200));
+      release();
+      await mover;
+      expect(await cloud).toBe("tombstoned");
+      expect(await cloudRows("c7")).toBe(0);
+    });
+
+    it("waits for an unfinished cloud conversation instead of storing it", async () => {
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("08", "10:00", null, { externalId: "c8" }),
+          skip,
+        ),
+      ).toBe("deferred");
+      expect(await cloudRows("c8")).toBe(0);
+      expect(await tombstones("c8")).toBe(0);
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("08", "10:00", "10:30", { externalId: "c8", updatedAt: "2026-03-08T20:00:00.000Z" }),
+          skip,
+        ),
+      ).toBe("created");
+      // Finishing over a stored pendant meeting is tombstoned.
+      await upsertMeeting(
+        prisma,
+        mine,
+        null,
+        "omi",
+        at("09", "10:00", "10:30", { externalId: "p9" }),
+      );
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("09", "10:00", null, { externalId: "c9" }),
+          skip,
+        ),
+      ).toBe("deferred");
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("09", "10:00", "10:30", { externalId: "c9", updatedAt: "2026-03-09T20:00:00.000Z" }),
+          skip,
+        ),
+      ).toBe("tombstoned");
+      // A stored cloud meeting with no end keeps updating.
+      await upsertMeeting(
+        prisma,
+        mine,
+        source,
+        "omi_cloud",
+        at("10", "10:00", null, { externalId: "c10" }),
+      );
+      expect(
+        await upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("10", "10:00", null, {
+            externalId: "c10",
+            title: "n",
+            updatedAt: "2026-03-10T20:00:00.000Z",
+          }),
+          skip,
+        ),
+      ).toBe("updated");
+    });
+
+    it("keeps exactly one of two concurrent overlapping pendant and cloud inserts", async () => {
+      const both = await Promise.all([
+        upsertMeeting(prisma, mine, null, "omi", at("06", "10:00", "10:30", { externalId: "p6" }), {
+          skipIfRecordedBy: ["omi_cloud"],
+        }),
+        upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "omi_cloud",
+          at("06", "10:00", "10:30", { externalId: "c6" }),
+          skip,
+        ),
+      ]);
+      expect([...both].sort()).toEqual(["created", "tombstoned"]);
+    });
   });
 });

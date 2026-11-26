@@ -43,6 +43,7 @@ export function ArchivedBotList({
           label={t("Restore")}
           systemImage="arrow.uturn.backward"
           onPress={() => onRestore(bot)}
+          modifiers={[disabled(pending)]}
         />
         {/* biome-ignore lint/a11y/useValidAriaRole: SwiftUI Button role, not an ARIA role. */}
         <Button
@@ -50,6 +51,7 @@ export function ArchivedBotList({
           systemImage="trash"
           role="destructive"
           onPress={() => onDelete(bot)}
+          modifiers={[disabled(pending)]}
         />
       </>
     );

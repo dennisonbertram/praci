@@ -5,6 +5,7 @@ import { atCapPercent, atCapSum, countedSafes } from "@rakazo/core";
 import { Link } from "react-router-dom";
 import { usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { SeeAll, useCappedRows } from "../CappedList";
 
 const percent = (value: number | null) => (value == null ? "—" : `${value.toFixed(1)}%`);
 
@@ -17,6 +18,7 @@ const percent = (value: number | null) => (value == null ? "—" : `${value.toFi
 export function SafeRows({ safes }: { safes: readonly Safe[] }) {
   useHideAmounts();
   const shown = countedSafes(safes);
+  const list = useCappedRows(shown);
   if (shown.length === 0) return null;
   return (
     <section
@@ -24,7 +26,10 @@ export function SafeRows({ safes }: { safes: readonly Safe[] }) {
       className="mt-3 border-t border-border pt-2"
     >
       <div className="flex items-center gap-2 py-1 text-sm font-medium">
-        <Link to="/app/fundraising" className="min-w-0 flex-1 underline-offset-4 hover:underline">
+        <Link
+          to="/app/fundraising"
+          className="flex min-w-0 flex-1 items-center underline-offset-4 hover:underline pointer-coarse:min-h-11"
+        >
           {t`SAFEs, if converted at cap`}
         </Link>
         <span className="tabular-nums" data-testid="safe-sum">
@@ -37,7 +42,7 @@ export function SafeRows({ safes }: { safes: readonly Safe[] }) {
         <span className="w-14 text-end">{t`At cap`}</span>
       </div>
       <ul>
-        {shown.map((safe) => (
+        {list.rows.map((safe) => (
           <li key={safe.id} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
             <span className="min-w-0 flex-1 truncate" title={safe.investorName}>
               {safe.investorName}
@@ -49,6 +54,9 @@ export function SafeRows({ safes }: { safes: readonly Safe[] }) {
           </li>
         ))}
       </ul>
+      <div className="flex justify-end">
+        <SeeAll list={list} />
+      </div>
     </section>
   );
 }

@@ -49,9 +49,9 @@ vi.mock("react-native", () => {
 let root: Root;
 let host: HTMLElement;
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
-function serve(allAgents: boolean, setAccess: () => Promise<unknown> = async () => ({})) {
+function serve(agentShared: boolean, setAccess: () => Promise<unknown> = async () => ({})) {
   m.rpc.mockImplementation(async (path: string) => {
-    if (path === "connections/access") return { allAgents, botIds: ["botA"] };
+    if (path === "connections/access") return { allAgents: false, botIds: ["botA"], agentShared };
     if (path === "bots/list") return [{ id: "bot1", name: "Calendar agent" }];
     return setAccess();
   });
@@ -85,15 +85,14 @@ it("shows the agent, opens its chat, and reflects the server switch state", asyn
   });
 });
 
-it("saves the switch, disabled while saving", async () => {
+it("saves the switch as sharing, disabled while saving", async () => {
   let done: () => void = () => undefined;
   serve(false, () => new Promise((r) => (done = () => r({}))));
   await mount();
   await act(async () => sw().click());
-  expect(m.rpc).toHaveBeenCalledWith("connections/setAccess", {
+  expect(m.rpc).toHaveBeenCalledWith("connections/setExclusive", {
     connectionId: "c1",
-    allAgents: true,
-    botIds: ["botA"],
+    exclusive: false,
   });
   expect(sw().disabled).toBe(true);
   expect(sw().checked).toBe(true);
@@ -121,21 +120,4 @@ it("shows Try again when loading fails and reloads on tap", async () => {
   await flush();
   expect(host.textContent).toContain("Calendar agent");
   expect(sw().checked).toBe(true);
-});
-
-it("ignores a stale load and saves with fresh botIds", async () => {
-  serve(false);
-  await mount();
-  let n = 0;
-  m.rpc.mockImplementation(async (path: string) => {
-    if (path === "connections/access") return { allAgents: false, botIds: [`fresh${++n}`] };
-    if (path === "bots/list") return [{ id: "bot1", name: "Calendar agent" }];
-    return {};
-  });
-  await act(async () => sw().click());
-  expect(m.rpc).toHaveBeenCalledWith("connections/setAccess", {
-    connectionId: "c1",
-    allAgents: true,
-    botIds: ["fresh1"],
-  });
 });

@@ -1,4 +1,5 @@
 import type { InboxMessage } from "@rakazo/contracts";
+import { htmlHasVisibleContent } from "@rakazo/core";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { NativeActionButton } from "../components/native-action-button";
 import { NativeSymbol } from "../components/native-symbol";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 import { dateLocaleForUi, useI18n } from "../lib/i18n";
@@ -32,18 +34,28 @@ export default function InboxMessageScreen() {
   // The iOS 26 header floats over the content, so the message starts below it.
   const headerHeight = useHeaderHeight();
   const [message, setMessage] = useState<InboxMessage | null>(null);
+  const [messageForId, setMessageForId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const openingAgentRef = useRef(false);
+  const currentMessage = messageForId === messageId ? message : null;
 
   useEffect(() => {
     let current = true;
-    getMailMessage(messageId)
-      .then((next) => current && setMessage(next))
+    setMessage(null);
+    setMessageForId(null);
+    setError("");
+    void getMailMessage(messageId)
+      .then((next) => {
+        if (!current) return;
+        setMessage(next);
+        setMessageForId(messageId);
+      })
       .catch((cause: unknown) => current && setError(errorText(cause, t("Could not load mail."))));
     return () => {
       current = false;
     };
-  }, [messageId, t]);
+  }, [attempt, messageId, t]);
 
   const openAgent = useCallback(
     async (thread = false) => {
@@ -66,7 +78,7 @@ export default function InboxMessageScreen() {
     const label = t("Inbox agent");
     const askLabel = t("Ask agent");
     navigation.setOptions({
-      title: message?.subject ?? "",
+      title: currentMessage?.subject ?? "",
       ...(iosAtLeast(26)
         ? {
             unstable_headerRightItems: () => [
@@ -107,7 +119,7 @@ export default function InboxMessageScreen() {
             ),
           }),
     });
-  }, [message?.subject, navigation, openAgent, styles, t]);
+  }, [currentMessage?.subject, navigation, openAgent, styles, t]);
 
   // Links open in the system browser; the module is loaded on first use so older binaries still start.
   const openLink = useCallback(async (url: string) => {
@@ -119,30 +131,46 @@ export default function InboxMessageScreen() {
     }
   }, []);
 
-  if (!message) {
+  if (!currentMessage) {
     return (
       <View style={styles.centered}>
-        {error ? <Text style={styles.error}>{error}</Text> : <ActivityIndicator />}
+        {error ? (
+          <>
+            <Text style={styles.error}>{error}</Text>
+            <NativeActionButton
+              label={t("Try again")}
+              fill={false}
+              onPress={() => setAttempt((n) => n + 1)}
+            />
+          </>
+        ) : (
+          <ActivityIndicator />
+        )}
       </View>
     );
   }
 
-  const sent = new Date(message.date);
+  const sent = new Date(currentMessage.date);
   const date = Number.isNaN(sent.getTime())
-    ? message.date
+    ? currentMessage.date
     : sent.toLocaleString(dateLocaleForUi(), { dateStyle: "medium", timeStyle: "short" });
   return (
     <View style={[styles.screen, iosAtLeast(26) && { paddingTop: headerHeight }]}>
       <View style={styles.meta}>
         <Text style={styles.from} selectable>
-          {message.from}
+          {currentMessage.from}
         </Text>
         <Text style={styles.metaLine} selectable>
-          {message.to}
+          {currentMessage.to}
         </Text>
+        {currentMessage.cc ? (
+          <Text style={styles.metaLine} selectable>
+            {t("Cc")} {currentMessage.cc}
+          </Text>
+        ) : null}
         <View style={styles.dateRow}>
           <Text style={styles.metaLine}>{date}</Text>
-          {message.fromSelf ? (
+          {currentMessage.fromSelf ? (
             <View style={styles.sent} accessible accessibilityLabel={t("Sent")}>
               <NativeSymbol ios="checkmark" android="checkmark" size={12} color={tokens.success} />
               <Text style={styles.metaLine}>{t("Sent")}</Text>
@@ -150,14 +178,14 @@ export default function InboxMessageScreen() {
           ) : null}
         </View>
       </View>
-      {message.attachments.length > 0 ? (
+      {currentMessage.attachments.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chips}
           contentContainerStyle={styles.chipsRow}
         >
-          {message.attachments.map((attachment) => (
+          {currentMessage.attachments.map((attachment) => (
             <Pressable
               key={attachment.id}
               accessibilityRole="button"
@@ -184,12 +212,12 @@ export default function InboxMessageScreen() {
           ))}
         </ScrollView>
       ) : null}
-      {message.html ? (
-        <SandboxedHtmlPreview html={message.html} email onOpenLink={openLink} />
+      {currentMessage.html && htmlHasVisibleContent(currentMessage.html) ? (
+        <SandboxedHtmlPreview html={currentMessage.html} email onOpenLink={openLink} />
       ) : (
         <ScrollView contentContainerStyle={styles.text}>
           <Text style={styles.body} selectable>
-            {message.text}
+            {currentMessage.text}
           </Text>
         </ScrollView>
       )}

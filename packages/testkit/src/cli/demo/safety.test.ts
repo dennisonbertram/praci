@@ -31,16 +31,64 @@ describe("demo safety", () => {
   });
 
   it("only removes a labeled container that is the recorded one", () => {
-    expect(() => assertDemoContainer(null)).not.toThrow();
+    expect(() => assertDemoContainer(null, undefined, 0, "/r")).not.toThrow();
     expect(() =>
-      assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a"),
+      assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a", 0, "/r"),
     ).not.toThrow();
-    expect(() => assertDemoContainer({ id: "a", labels: null })).toThrow(
+    expect(() => assertDemoContainer({ id: "a", labels: null }, undefined, 0, "/r")).toThrow(
       /without the rakazo.demo label/,
     );
-    expect(() => assertDemoContainer({ id: "b", labels: { "rakazo.demo": "1" } }, "a")).toThrow(
-      /not the one/,
+  });
+
+  it("refuses a labeled container it cannot prove this checkout created", () => {
+    const labels = { "rakazo.demo": "1", "rakazo.demo.slot": "3" };
+    // demo:down in checkout B sees checkout A's slot-3 container with no recorded id;
+    // the demo and slot labels are identical across checkouts, so they are not proof.
+    expect(() => assertDemoContainer({ id: "a", labels }, undefined, 3, "/checkouts/b")).toThrow(
+      /cannot be shown to belong to this checkout/,
     );
+    // A container another checkout labeled is refused, and the error names the owner.
+    expect(() =>
+      assertDemoContainer(
+        { id: "a", labels: { ...labels, "rakazo.demo.checkout": "/checkouts/a" } },
+        undefined,
+        3,
+        "/checkouts/b",
+      ),
+    ).toThrow(/\/checkouts\/a/);
+    // The container recorded at this checkout's own start is removable, label or not.
+    expect(() => assertDemoContainer({ id: "a", labels }, "a", 3, "/checkouts/b")).not.toThrow();
+    // A leftover this checkout labeled (state file lost) is removable without a recorded id.
+    expect(() =>
+      assertDemoContainer(
+        { id: "a", labels: { ...labels, "rakazo.demo.checkout": "/checkouts/b" } },
+        undefined,
+        3,
+        "/checkouts/b",
+      ),
+    ).not.toThrow();
+    // A recorded id that does not match is refused just like a missing one.
+    expect(() => assertDemoContainer({ id: "b", labels }, "a", 3, "/checkouts/b")).toThrow(
+      /cannot be shown to belong to this checkout/,
+    );
+    // The checkout marker cannot override an explicit ID recorded by this checkout.
+    expect(() =>
+      assertDemoContainer(
+        { id: "b", labels: { ...labels, "rakazo.demo.checkout": "/checkouts/b" } },
+        "a",
+        3,
+        "/checkouts/b",
+      ),
+    ).toThrow(/cannot be shown to belong to this checkout/);
+    // A recorded id that matches is proof on its own, whatever the checkout label says.
+    expect(() =>
+      assertDemoContainer(
+        { id: "a", labels: { ...labels, "rakazo.demo.checkout": "/checkouts/a" } },
+        "a",
+        3,
+        "/checkouts/b",
+      ),
+    ).not.toThrow();
   });
 
   it("derives ports and container name from the slot", () => {
@@ -67,14 +115,14 @@ describe("demo safety", () => {
 
   it("refuses a container that belongs to a different slot", () => {
     const slot3 = { id: "a", labels: { "rakazo.demo": "1", "rakazo.demo.slot": "3" } };
-    expect(() => assertDemoContainer(slot3, "a", 3)).not.toThrow();
-    expect(() => assertDemoContainer(slot3, "a", 0)).toThrow(/different demo slot/);
-    expect(() => assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a", 3)).toThrow(
-      /different demo slot/,
-    );
+    expect(() => assertDemoContainer(slot3, "a", 3, "/r")).not.toThrow();
+    expect(() => assertDemoContainer(slot3, "a", 0, "/r")).toThrow(/different demo slot/);
+    expect(() =>
+      assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a", 3, "/r"),
+    ).toThrow(/different demo slot/);
     // A pre-slot container (no slot label) is slot 0.
     expect(() =>
-      assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a"),
+      assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a", 0, "/r"),
     ).not.toThrow();
   });
 

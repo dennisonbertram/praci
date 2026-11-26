@@ -17,6 +17,12 @@ import {
 } from "./voice.js";
 
 describe("toVoiceStatus", () => {
+  it("is ready to transcribe when only a transcription provider is selected", () => {
+    const status = toVoiceStatus(null, "openai-compatible");
+    expect(status.transcriptionProvider).toBe("openai-compatible");
+    expect(status.transcriptionReady).toBe(true);
+    expect(toVoiceStatus(null, null).transcriptionReady).toBe(false);
+  });
   it("treats a saved key without a voice as configured but not ready", () => {
     expect(toVoiceStatus({ provider: "elevenlabs", voiceId: "" })).toEqual({
       configured: true,
@@ -551,5 +557,85 @@ describe("transcribeVoice", () => {
     await expect(transcribeVoice(depsFor("cartesia"), actor, audio)).rejects.toThrow(
       "This voice provider does not transcribe audio. Use on-device dictation instead.",
     );
+  });
+});
+
+describe("voice HTTP errors", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const post = async (path: string, deps: VoiceDeps, body: unknown) => {
+    const app = new Hono();
+    mountVoiceHttpRoutes(app, deps, async () => actor);
+    return app.request(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  };
+  const brokenDb = {
+    prisma: {
+      transcriptionSelection: {
+        findUnique: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("Invalid `prisma.transcriptionSelection.findUnique()` invocation"),
+          ),
+      },
+      spaceVoicePreference: {
+        findFirst: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("Invalid `prisma.spaceVoicePreference.findFirst()` invocation"),
+          ),
+      },
+    },
+    secrets: { load: vi.fn(), put: vi.fn() },
+  } as unknown as VoiceDeps;
+
+  it("hides database error text from the transcribe caller", async () => {
+    const res = await post("/api/voice/transcribe", brokenDb, { audioBase64: "AQI=" });
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: "Voice request failed." });
+  });
+
+  it("hides database error text from the speak caller", async () => {
+    const res = await post("/api/voice/speak", brokenDb, { text: "hi" });
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: "Voice request failed." });
+  });
+
+  it("keeps a provider's own failure message and 502", async () => {
+    const deps = {
+      prisma: {
+        spaceVoicePreference: {
+          findFirst: vi.fn().mockResolvedValue({
+            isDefault: true,
+            voiceId: "voice-1",
+            speechModel: null,
+            credential: {
+              id: "cred-1",
+              userId: actor.userId,
+              provider: "openai",
+              secretId: "secret-1",
+              createdAt: new Date(0),
+              updatedAt: new Date(0),
+            },
+          }),
+        },
+        secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "c" }) },
+        transcriptionSelection: { findUnique: vi.fn().mockResolvedValue(null) },
+        aiDataConsent: { count: vi.fn().mockResolvedValue(1) },
+      },
+      secrets: { load: vi.fn().mockReturnValue("k"), put: vi.fn() },
+    } as unknown as VoiceDeps;
+    vi.spyOn(adapters, "createTranscriptionProvider").mockReturnValue({
+      transcribe: vi.fn().mockRejectedValue(new Error("OpenAI rejected the request (401)")),
+      describe: () => ({ capabilities: { usesContext: false } }),
+    } as never);
+    const res = await post("/api/voice/transcribe", deps, { audioBase64: "AQI=" });
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toEqual({ error: "OpenAI rejected the request (401)" });
   });
 });

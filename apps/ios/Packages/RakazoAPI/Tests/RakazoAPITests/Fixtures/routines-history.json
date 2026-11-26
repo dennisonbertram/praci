@@ -1,0 +1,34 @@
+{
+  "json": {
+    "runs": [
+      {
+        "id": "cmvt4w5cg00c1cr9kjchd3uwm",
+        "botId": "artifact-placeholder",
+        "groupId": null,
+        "status": "waiting_input",
+        "error": null,
+        "createdAt": "2026-10-29T06:00:00.016Z",
+        "startedAt": "2026-10-29T06:00:00.038Z",
+        "completedAt": null,
+        "messageId": "cmvt4wcim00cocr9kjwtbnxzg",
+        "preview": null,
+        "waitingOn": null
+      },
+      {
+        "id": "artifact-placeholder",
+        "botId": "artifact-placeholder",
+        "groupId": null,
+        "status": "completed",
+        "error": null,
+        "createdAt": "2026-10-29T03:26:49.442Z",
+        "startedAt": "2026-10-29T00:24:49.439Z",
+        "completedAt": "2026-10-29T00:26:49.439Z",
+        "messageId": null,
+        "preview": null,
+        "silent": true,
+        "waitingOn": null
+      }
+    ],
+    "nextCursor": null
+  }
+}

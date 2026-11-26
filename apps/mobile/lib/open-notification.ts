@@ -61,16 +61,22 @@ export async function openNotificationResponse(
     // Threads switch space themselves. Pages open in the current space, so move to the
     // notification's space first; otherwise the wrong space's page opens and is cleared.
     const spaceId = notificationSpaceId(response.notification.request.content.data);
-    const opensThread =
+    const threadTarget =
       target &&
       "pathname" in target &&
-      (target.pathname === "/thread" || target.pathname === "/group-thread");
+      (target.pathname === "/thread" || target.pathname === "/group-thread")
+        ? target
+        : null;
+    const opensThread = Boolean(threadTarget);
+    const destinationSpaceId = threadTarget ? threadTarget.params.spaceId : spaceId;
+    const changesSpace = Boolean(destinationSpaceId && destinationSpaceId !== selectedSpaceId());
     if (spaceId && !opensThread) {
       if (spaceId !== selectedSpaceId() && !(await selectSpace(spaceId))) {
         openedResponses.delete(key);
         return false;
       }
     }
+    if (target && changesSpace) router.dismissTo("/");
     if (target && "kind" in target) await Linking.openURL(target.url);
     else if (target) router.push(target);
     if (surface) void markSurfaceSeen(surface);

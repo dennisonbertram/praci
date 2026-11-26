@@ -17,25 +17,42 @@ final class AuthenticationModel {
   private(set) var isSignedIn = false
   private(set) var busy = false
   private(set) var capabilities: AuthCapabilities?
+  /// False on a release build that has no saved server yet; the first screen asks for one.
+  private(set) var hasServer: Bool
+  var serverSheetPresented = false
+  private(set) var pendingServer: URL?
+  private(set) var serverLinkError: String?
+  private(set) var serverLinkRevision = 0
   private(set) var errorMessage: String?
   private(set) var notice: String?
 
-  @ObservationIgnored private let client: AuthClient
+  @ObservationIgnored let client: AuthClient
+  @ObservationIgnored private let defaults: UserDefaults
   @ObservationIgnored private let browser = SSOBrowser()
   @ObservationIgnored private var started = false
   @ObservationIgnored private var lastHandledSessionGeneration: UInt64?
   private static let endpointKey = "serverOrigin"
 
-  init() {
-    let saved = UserDefaults.standard.string(forKey: Self.endpointKey)
-    let endpoint = saved.flatMap { try? ServerEndpoint.normalize($0) } ?? ServerEndpoint.defaultURL
+  init(client: AuthClient? = nil, defaults: UserDefaults = .standard) {
+    let saved = defaults.string(forKey: Self.endpointKey)
+    var launch = ServerEndpoint.launchEndpoint(saved: saved)
+    // An update from a build that never saved a server: keep the server its session belongs to.
+    if launch == nil, client == nil, let stored = (try? KeychainSessionStorage().load())?.endpoint {
+      launch = stored
+      defaults.set(stored.absoluteString, forKey: Self.endpointKey)
+    }
+    let endpoint = launch ?? ServerEndpoint.defaultURL
+    hasServer = launch != nil
+    serverSheetPresented = launch == nil
     self.endpoint = endpoint
-    client = AuthClient(endpoint: endpoint, storage: KeychainSessionStorage())
+    self.defaults = defaults
+    self.client = client ?? AuthClient(endpoint: endpoint, storage: KeychainSessionStorage())
   }
 
   func start() async {
     guard !started else { return }
     started = true
+    guard hasServer else { return }
     busy = true
     defer { busy = false }
     do {
@@ -65,6 +82,72 @@ final class AuthenticationModel {
       show(error)
     }
     await sync()
+  }
+
+  /// Shows a message on the sign-in screen, such as after the account was deleted.
+  func showNotice(_ text: String) { notice = text }
+
+  func presentServerSheet() {
+    serverSheetPresented = true
+  }
+
+  func handleExternalURL(_ url: URL) -> Bool {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+      components.scheme?.lowercased() == "rakazo",
+      components.host?.lowercased() == "connect"
+    else {
+      return false
+    }
+
+    serverSheetPresented = true
+    stageServerLink(url.absoluteString)
+    return true
+  }
+
+  @discardableResult
+  func stageServerLink(_ text: String, ifCurrentRevision revision: Int? = nil) -> Bool {
+    if let revision, !isCurrentServerLinkRevision(revision) { return false }
+    serverLinkRevision &+= 1
+    pendingServer = nil
+    serverLinkError = nil
+    do {
+      pendingServer = try ServerLink.parse(text)
+    } catch {
+      serverLinkError =
+        (error as? any LocalizedError)?.errorDescription
+        ?? ServerEndpoint.ValidationError.malformed.errorDescription
+    }
+    return true
+  }
+
+  func isCurrentServerLinkRevision(_ revision: Int) -> Bool {
+    serverLinkRevision == revision
+  }
+
+  func willSignOutWhenChangingServer(to endpoint: URL?) -> Bool {
+    guard isSignedIn,
+      let endpoint,
+      let normalizedEndpoint = try? ServerEndpoint.normalize(endpoint.absoluteString)
+    else {
+      return false
+    }
+    return normalizedEndpoint != self.endpoint
+  }
+
+  func cancelPendingServer() {
+    pendingServer = nil
+    serverLinkError = nil
+  }
+
+  func dismissServerSheet() {
+    cancelPendingServer()
+    serverSheetPresented = false
+  }
+
+  func confirmPendingServer() async -> Bool {
+    guard !busy, let endpoint = pendingServer else { return false }
+    cancelPendingServer()
+    return await changeServer(to: endpoint)
   }
 
   func navigate(to page: Page) {
@@ -129,16 +212,34 @@ final class AuthenticationModel {
     await sync()
   }
 
+  /// Runs before the session ends (sign-out, server change, account deletion), while the server
+  /// still accepts the session. The notification router uses it to unregister push.
+  var beforeSessionEnds: (() async -> Void)?
+
+  /// The person entered the address the screen already holds (the local default on a release
+  /// first launch): keep it as their server and start up against it.
+  func confirmCurrentServer() async {
+    guard !hasServer, !busy else { return }
+    defaults.set(endpoint.absoluteString, forKey: Self.endpointKey)
+    hasServer = true
+    started = false
+    await start()
+  }
+
   func changeServer(to endpoint: URL) async -> Bool {
     guard !busy else { return false }
     busy = true
     errorMessage = nil
     notice = nil
     defer { busy = false }
+    if willSignOutWhenChangingServer(to: endpoint) {
+      await beforeSessionEnds?()
+    }
     do {
       try await client.changeServer(to: endpoint)
       await sync()
-      UserDefaults.standard.set(self.endpoint.absoluteString, forKey: Self.endpointKey)
+      defaults.set(self.endpoint.absoluteString, forKey: Self.endpointKey)
+      hasServer = true
       page = .signIn
       password = ""
       email = ""
@@ -159,6 +260,7 @@ final class AuthenticationModel {
     errorMessage = nil
     notice = nil
     defer { busy = false }
+    await beforeSessionEnds?()
     do {
       try await client.signOut()
     } catch {
@@ -178,7 +280,7 @@ final class AuthenticationModel {
     }
   }
 
-  private func sync() async {
+  func sync() async {
     let snapshot = await client.snapshot()
     endpoint = snapshot.endpoint
     isSignedIn = snapshot.isSignedIn
@@ -191,6 +293,10 @@ final class AuthenticationModel {
   }
 
   private func show(_ error: any Error) {
+    if case AuthClientError.serverUnavailable = error {
+      errorMessage = "Couldn’t reach \(endpoint.serverName)."
+      return
+    }
     errorMessage =
       (error as? any LocalizedError)?.errorDescription ?? "Couldn’t connect. Try again."
   }

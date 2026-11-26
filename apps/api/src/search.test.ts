@@ -3,6 +3,38 @@ import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { querySpaceSearch } from "./search.js";
 
+function makeSql(strings: TemplateStringsArray, ...interpolations: unknown[]) {
+  let text = strings[0] ?? "";
+  const values: unknown[] = [];
+  for (let index = 0; index < interpolations.length; index += 1) {
+    const interpolation = interpolations[index];
+    if (typeof interpolation === "object" && interpolation !== null && "text" in interpolation) {
+      const nested = interpolation as { text: string; values: unknown[] };
+      text += nested.text;
+      values.push(...nested.values);
+    } else {
+      text += "?";
+      values.push(interpolation);
+    }
+    text += strings[index + 1] ?? "";
+  }
+  return { text, values };
+}
+
+vi.mock("@rakazo/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@rakazo/db")>();
+  return {
+    ...actual,
+    Prisma: {
+      sql: makeSql,
+      join: (parts: Array<{ text: string; values: unknown[] }>) => ({
+        text: parts.map((part) => part.text).join(", "),
+        values: parts.flatMap((part) => part.values),
+      }),
+    },
+  };
+});
+
 const actor: Actor = { spaceId: "space-test", userId: "user-test" };
 
 function fixture(count: number) {
@@ -29,7 +61,7 @@ function fixture(count: number) {
       findMany: vi.fn().mockResolvedValueOnce(artifacts).mockResolvedValueOnce(groupArtifacts),
     },
     routine: { findMany: vi.fn().mockResolvedValue([]) },
-    $queryRaw: vi.fn().mockResolvedValue([]),
+    $queryRaw: vi.fn(makeSql).mockResolvedValue([]),
   };
   return { prisma, artifacts, groupArtifacts };
 }
@@ -71,5 +103,35 @@ describe("artifact search batching", () => {
     const { prisma } = fixture(0);
     expect(await querySpaceSearch(prisma as unknown as PrismaClient, actor, "report")).toEqual([]);
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("search filters", () => {
+  it("excludes archived groups from group and artifact search", async () => {
+    const { prisma } = fixture(0);
+    await querySpaceSearch(prisma as unknown as PrismaClient, actor, "report");
+
+    expect(prisma.chatGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ archivedAt: null }),
+      }),
+    );
+    expect(prisma.artifact.findMany.mock.calls[1]?.[0]).toMatchObject({
+      where: { group: { archivedAt: null } },
+    });
+    const groupMessages = prisma.$queryRaw.mock.calls[1]?.[0] as TemplateStringsArray;
+    expect(groupMessages.join("")).toContain('g."archivedAt" IS NULL');
+  });
+
+  it("escapes percent and underscore in name and message searches", async () => {
+    const { prisma } = fixture(0);
+    await querySpaceSearch(prisma as unknown as PrismaClient, actor, "50%_off");
+
+    for (const query of prisma.$queryRaw.mock.calls) {
+      expect(query.slice(1)).toContain("%50\\%\\_off%");
+    }
+    expect(prisma.chatGroup.findMany.mock.calls[0]?.[0]).toMatchObject({
+      where: { name: { contains: "50\\%\\_off" } },
+    });
   });
 });

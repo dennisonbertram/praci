@@ -59,6 +59,23 @@ describe("priorDenialAwaitingOwner", () => {
     await expect(ask(prisma([], 60))).resolves.toMatchObject({ id: "old-59" });
   });
 
+  it("also stands on an email the person already sent from its card", async () => {
+    const wheres: unknown[] = [];
+    const client = prisma();
+    const find = client.externalEffect.findMany;
+    client.externalEffect.findMany = ((args: { where: unknown }) => {
+      wheres.push(args.where);
+      return find(args as never);
+    }) as never;
+    await ask(client);
+    expect(wheres[0]).toMatchObject({
+      OR: [
+        { status: "denied" },
+        { status: "completed", result: { path: ["outcome"], equals: "sent" } },
+      ],
+    });
+  });
+
   it("ignores runs that are not delegated", async () => {
     await expect(ask(prisma(), { trigger: "user" })).resolves.toBeUndefined();
   });

@@ -257,7 +257,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.needsReply[0]).toContain("acct:a@example.test");
     expect(result.needsReply[1]).toContain("Budget question");
     expect(result.needsReply[2]).toContain("Snippet low-new");
-    expect(result.needsReplyListed).toBe("complete: all 3 messages that need a reply are listed");
+    expect(result.needsReplyListed).toBe("complete: all 3 messages that need a reply are listed; lead with the most important few, not every one");
     expect(result.todos).toHaveLength(1);
     expect(result.todos[0]).toContain("Send signed contract");
     expect(result.todos[0]).toContain("2026-10-16");
@@ -307,7 +307,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     for (const id of ids) await t.triage(id, { needsReply: true, priority: "normal" });
     const result = await t.overview();
     expect(result.needsReply).toHaveLength(12);
-    expect(result.needsReplyListed).toBe("complete: all 12 messages that need a reply are listed");
+    expect(result.needsReplyListed).toBe("complete: all 12 messages that need a reply are listed; lead with the most important few, not every one");
   });
 
   it("leaves out a sender the user marked as noise, as the Inbox page's Needs reply group does", async () => {

@@ -1,3 +1,5 @@
+import { safeExternalUrl } from "./setup-config.js";
+
 const OAUTH_POPUP_NAMES = new Set([
   "rakazo-app-connect",
   "rakazo-mcp-oauth",
@@ -5,6 +7,19 @@ const OAUTH_POPUP_NAMES = new Set([
   "rakazo-model-oauth",
   "rakazo-plugin-connect",
 ]);
+
+export function mainWindowNavigation(targetOrigin: string | null, url: string) {
+  if (targetOrigin !== null && safeOrigin(url) === targetOrigin) return { allow: true } as const;
+  return { allow: false, external: safeExternalUrl(url) } as const;
+}
+
+function safeOrigin(targetUrl: string) {
+  try {
+    return new URL(targetUrl).origin;
+  } catch {
+    return null;
+  }
+}
 
 export function shouldOpenInAppPopup(
   appOrigin: string | null,

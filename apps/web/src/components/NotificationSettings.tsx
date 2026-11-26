@@ -25,7 +25,7 @@ export function NotificationSettingsSection() {
     rpc.notifications
       .preferences()
       .then((next) => live && setPrefs(next))
-      .catch(() => {});
+      .catch(() => live && setError(t`Couldn't load notifications`));
     return () => {
       live = false;
     };

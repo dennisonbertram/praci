@@ -45,9 +45,24 @@ import {
   pathFromDirectoryFd,
   win32NtRelativeAvailable,
 } from "./desktop-sandbox-win32-path.js";
-import { sandboxCommandEnvironment } from "./sandbox-command-environment.js";
+import { hostCommandEnvironment } from "./sandbox-command-environment.js";
 
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
+
+/**
+ * Bot commands run directly as this OS user, so a backend may select SANDBOX_PROVIDER=desktop
+ * only inside the desktop app or a local development or test process. Server images set
+ * NODE_ENV=production and must use an isolated provider.
+ */
+export function assertHostCommandsAllowed(
+  env: NodeJS.ProcessEnv = process.env,
+  versions: NodeJS.ProcessVersions = process.versions,
+) {
+  if (versions.electron || env.NODE_ENV === "development" || env.NODE_ENV === "test") return;
+  throw new Error(
+    "SANDBOX_PROVIDER=desktop runs bot commands directly on this host and is limited to local development. Use docker or a remote provider, or local computer access in the desktop app.",
+  );
+}
 
 /** Node FileHandle or Win32 duck-typed handle opened relative to a parent directory. */
 type ContainedHandle = Awaited<ReturnType<typeof open>> | Win32FileHandle;
@@ -716,7 +731,7 @@ async function* streamLocalCommand(
   }
   const child = spawn(direct[0]!, direct.slice(1), {
     cwd,
-    env: sandboxCommandEnvironment(request, process.env),
+    env: hostCommandEnvironment(request),
     detached: process.platform !== "win32",
     shell: false,
   });
@@ -799,7 +814,7 @@ async function* streamLocalCommand(
   }
 }
 
-function killProcessTree(pid: number | undefined) {
+export function killProcessTree(pid: number | undefined) {
   if (!pid) return;
   if (process.platform === "win32") {
     const killer = spawn("taskkill", ["/pid", String(pid), "/t", "/f"], {

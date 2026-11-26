@@ -3,8 +3,10 @@ import type {
   ConnectorTool,
   JobPublisher,
   MailAccount,
+  MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
@@ -119,6 +121,7 @@ describe("selectMailTools", () => {
       "mail_get",
       "mail_grep",
       "mail_modify",
+      "mail_reply_batch",
       "mail_search",
       "mail_send",
       "show_emails",
@@ -193,6 +196,127 @@ describe("mail_search arguments", () => {
       }),
     ).toEqual({ error: "No connected mail account nobody@example.test" });
   });
+
+  it("says an owner account is not allowed, listing the accounts the agent can use", async () => {
+    const { deps } = setup({
+      a: [{ ...base, id: "m1", date: "2026-01-01T00:00:00Z", subject: "Hi" }],
+      b: [],
+    });
+    const b = account("b", "b@example.test");
+    const restricted = {
+      ...deps,
+      accounts: async () => (await deps.accounts()).filter((a) => a.accountRef !== "b"),
+      ownerAccounts: async () => [...(await deps.accounts()), b],
+    };
+    const wanted = { queries: ["hi"], account: "b@example.test" };
+    expect(await mailToolFromTool("mail_search", restricted, context(), wanted)).toEqual({
+      error:
+        "This agent isn't allowed to use b@example.test. It can use: a@example.test. Give it access on that account's Integrations page.",
+    });
+    expect(
+      await mailToolFromTool("mail_search", restricted, context(), {
+        ...wanted,
+        account: "nobody@example.test",
+      }),
+    ).toEqual({ error: "No connected mail account nobody@example.test" });
+  });
+});
+
+describe("mail reconnect", () => {
+  const found = (id: string): EmulatedMessage => ({
+    ...base,
+    id,
+    date: "2026-01-01T00:00:00Z",
+    subject: `Subject ${id}`,
+  });
+
+  /** Two mailboxes plus a prisma stub that records mailSyncState upserts. */
+  function withSyncFlag() {
+    const upserts: Array<Record<string, unknown>> = [];
+    const prisma = {
+      mailSearch: {
+        create: async () => ({ id: "search-1" }),
+        deleteMany: async () => ({ count: 0 }),
+      },
+      mailSyncState: {
+        upsert: async (arg: Record<string, unknown>) => upserts.push(arg),
+      },
+    };
+    const { deps } = setup({ a: [found("a1")], b: [found("b1")] }, { prisma });
+    return { deps, upserts };
+  }
+
+  /** The same provider, but listMessages on account "b" throws the given error. */
+  function listFails(deps: MailToolDeps, error: MailProviderError): MailProvider {
+    const inner = deps.mail;
+    // The provider is a class instance: clone over its prototype so its methods survive.
+    const wrapped = Object.create(Object.getPrototypeOf(inner)) as MailProvider;
+    Object.assign(wrapped, inner);
+    wrapped.listMessages = (account, request, ctx) =>
+      account.accountRef === "b"
+        ? Promise.reject(error)
+        : inner.listMessages(account, request, ctx);
+    return wrapped;
+  }
+
+  it("flags the account and gives the reconnect link when Gmail rejects its token", async () => {
+    const { deps, upserts } = withSyncFlag();
+    const denied = {
+      ...deps,
+      mail: listFails(deps, new MailProviderError("auth", "token rejected")),
+    };
+    const result = await mailToolFromTool("mail_search", denied, context(), { queries: ["hi"] });
+    expect(result).toMatchObject({
+      failedAccounts: ["b@example.test"],
+      reconnect: {
+        accounts: ["b@example.test"],
+        link: "/app/integrations/app/google/gmail",
+        note: expect.stringContaining("[Reconnect Gmail](/app/integrations/app/google/gmail)"),
+      },
+    });
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({
+      where: { connectionId: "conn-b" },
+      create: { needsReconnect: true, lastErrorKind: "auth" },
+      update: { needsReconnect: true, lastErrorKind: "auth" },
+    });
+  });
+
+  it("keeps today's result shape when a search fails for another reason", async () => {
+    const { deps, upserts } = withSyncFlag();
+    const denied = {
+      ...deps,
+      mail: listFails(deps, new MailProviderError("unavailable", "provider returned 500")),
+    };
+    const result = await mailToolFromTool("mail_search", denied, context(), { queries: ["hi"] });
+    expect(result).toMatchObject({ failedAccounts: ["b@example.test"] });
+    expect(result).not.toHaveProperty("reconnect");
+    expect(upserts).toHaveLength(0);
+  });
+
+  it("flags and links a reconnect when another mail tool hits an auth error", async () => {
+    const { deps, upserts } = withSyncFlag();
+    const wrapped = Object.create(Object.getPrototypeOf(deps.mail)) as MailProvider;
+    Object.assign(wrapped, deps.mail);
+    wrapped.getMessage = async () => {
+      throw new MailProviderError("auth", "token rejected");
+    };
+    const only = {
+      ...deps,
+      accounts: async () => [account("a", "a@example.test")],
+      mail: wrapped,
+    };
+    const result = await mailToolFromTool("mail_get", only, context(), { id: "a1" });
+    expect(result).toMatchObject({
+      error: expect.any(String),
+      reconnect: {
+        accounts: ["a@example.test"],
+        link: "/app/integrations/app/google/gmail",
+      },
+    });
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({ where: { connectionId: "conn-a" } });
+  });
 });
 
 describe("mail_get", () => {
@@ -219,6 +343,25 @@ describe("mail_get", () => {
       text: `${"x".repeat(200)}   \n\n`,
     },
   ];
+
+  it("tells a read-only agent how to allow changes on the account", async () => {
+    const { deps } = setup({ a: [], b: [] });
+    const b = account("b", "b@example.test");
+    const readOnly = {
+      ...deps,
+      accounts: async () => [],
+      ownerAccounts: async () => [b],
+      readableAccounts: async () => [b],
+    };
+    const result = await mailToolFromTool("mail_search", readOnly, context(), {
+      queries: ["hi"],
+      account: "b@example.test",
+    });
+    expect(result).toEqual({
+      error:
+        "This agent can read but not change b@example.test. Change that under Access on that account's Integrations page.",
+    });
+  });
 
   it("returns the header block and strips the quoted reply", async () => {
     const { deps } = setup({ a: messages });
@@ -417,6 +560,25 @@ describe("show_emails", () => {
     });
   });
 
+  it("passes the agent's note through, trimmed and cut to 80 characters", async () => {
+    const { deps, publish } = withRows([cached("m1"), cached("m2"), cached("m3")]);
+    await mailToolFromTool("show_emails", deps, context(), {
+      emails: [
+        { id: "m1", note: `  ${"x".repeat(100)}  ` },
+        { id: "m2", note: "   " },
+        { id: "m3" },
+      ],
+    });
+    const [[blocks]] = publish.mock.calls as unknown as [
+      [Array<{ emails: Array<{ note?: string }> }>],
+    ];
+    expect(blocks?.[0]?.emails.map((email) => email.note)).toEqual([
+      "x".repeat(80),
+      undefined,
+      undefined,
+    ]);
+  });
+
   it("falls back to the triage urgency, then Later, when the model gives none", async () => {
     const { deps, publish } = withRows([cached("m1", { priority: "critical" }), cached("m2")]);
     await mailToolFromTool("show_emails", deps, context(), {
@@ -607,6 +769,7 @@ describe("mail write tools", () => {
     expect(await run(deps, "mail_modify", { id: "m1", read: true, archive: true })).toEqual({
       ok: true,
       messages: 2,
+      undo: { id: "m1", addLabels: ["UNREAD", "INBOX"], removeLabels: [] },
     });
     for (const id of ["m1", "m2"]) expect(await labelsOf(deps, id)).toEqual([]);
     expect(await labelsOf(deps, "m3")).toEqual(["INBOX", "UNREAD"]);
@@ -615,6 +778,15 @@ describe("mail write tools", () => {
       [false, false],
       [true, true],
     ]);
+  });
+
+  it("returns the call that undoes an organize change, and running it restores the labels", async () => {
+    const { deps } = withCache();
+    const done = (await run(deps, "mail_modify", { id: "m1", read: true, archive: true })) as {
+      undo: Record<string, unknown>;
+    };
+    await run(deps, "mail_modify", done.undo);
+    expect((await labelsOf(deps, "m1")).sort()).toEqual(["INBOX", "UNREAD"]);
   });
 
   it("also changes older messages of the conversation that are not cached", async () => {
@@ -769,10 +941,13 @@ describe("mail write tools", () => {
   it("flags a reconnect when Gmail refuses the account", async () => {
     const { deps, gmail, sends, sync } = withSends();
     gmail.failNext(401, { urlIncludes: "drafts" });
-    expect(await run(deps, "mail_send", message)).toHaveProperty(
-      "error",
-      expect.stringContaining("reconnected"),
-    );
+    expect(await run(deps, "mail_send", message)).toMatchObject({
+      error: expect.stringContaining("reconnected"),
+      reconnect: {
+        accounts: ["a@example.test"],
+        link: "/app/integrations/app/google/gmail",
+      },
+    });
     expect(sends[0]?.state).toBe("failed");
     expect(sync).toHaveLength(1);
     expect(sync[0]).toMatchObject({
@@ -917,6 +1092,20 @@ describe("mail progress", () => {
       "Looking at more results (page 2)",
       "Found 2 messages",
     ]);
+  });
+
+  it("lists a label-scoped search by label id and never from the metadata cache", async () => {
+    const { deps } = withProgress();
+    const listMessages = vi.fn().mockResolvedValue({ messages: [] });
+    deps.mail = { ...deps.mail, listMessages } as never;
+    const [account] = await deps.accounts();
+    deps.scopeLabelIds = (id) => (id === account?.id ? "L1" : undefined);
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["x"] });
+    expect(listMessages).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ query: "x", labelIds: ["L1"], useCache: false }),
+      expect.anything(),
+    );
   });
 
   it("reports a rate limit as a retry line", async () => {

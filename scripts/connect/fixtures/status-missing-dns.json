@@ -1,0 +1,8 @@
+{
+  "BackendState": "Running",
+  "Self": {},
+  "CurrentTailnet": {
+    "MagicDNSEnabled": true
+  },
+  "CertDomains": ["my-mac.example.ts.net"]
+}

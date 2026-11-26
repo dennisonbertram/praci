@@ -23,6 +23,7 @@ import {
   inboxComposeDraftSave,
   inboxComposePrefill,
   inboxComposeSend,
+  inboxComposeSendDraft,
 } from "./inbox-compose.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
@@ -484,6 +485,28 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(results).toEqual([{ status: "sent" }, { status: "sent" }, { status: "sent" }]);
       expect(gmail.sentOf("box-a")).toHaveLength(2);
       expect(sendRequests()).toHaveLength(2);
+    });
+
+    it("sends a draft saved elsewhere once, even for a repeat or concurrent send", async () => {
+      const saved = await inboxComposeDraftSave(deps(), a, fields({ clientId: "other-save" }));
+      expect(saved).toEqual({ status: "saved" });
+      const draftId = gmail.draftsOf("box-a")[0]?.id as string;
+      // The agent's own draft has no compose record yet: sending creates one for the call.
+      const input = { clientId: "approval_effect-x", connectionId: connA, draftId };
+      const results = await Promise.all([
+        inboxComposeSendDraft(deps(), a, input),
+        inboxComposeSendDraft(deps(), a, input),
+      ]);
+      expect(results).toEqual([{ status: "sent" }, { status: "sent" }]);
+      expect(await inboxComposeSendDraft(deps(), a, input)).toEqual({ status: "sent" });
+      expect(gmail.sentOf("box-a")).toHaveLength(1);
+      expect(
+        await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } }),
+      ).toMatchObject({ state: "sent", draftId });
+      // Another user cannot send it through their own record, or from this account.
+      await expect(
+        inboxComposeSendDraft(deps(), b, { ...input, clientId: "approval_effect-y" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
     it("refuses to send a record that recovery abandoned, and reports failed", async () => {

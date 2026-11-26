@@ -72,6 +72,7 @@ export function CustomConnectionDialog({
   oauthClient = false,
   oauthScope,
   onClose,
+  onAgent,
 }: {
   data: IntegrationsData;
   /** Sign in an existing server that needs a client ID; its connection fields stay locked. */
@@ -88,6 +89,8 @@ export function CustomConnectionDialog({
   oauthClient?: boolean;
   oauthScope?: string;
   onClose: () => void;
+  /** Where Done goes after this dialog added a server: its new agent, where sharing is decided. */
+  onAgent?: (botId: string) => void;
 }) {
   const { t } = useLingui();
   const [view, setView] = useState<View>(
@@ -545,6 +548,14 @@ export function CustomConnectionDialog({
                   placeholder="https://example.com/mcp"
                   onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
                 />
+                {existingServer ? null : (
+                  <p className="mt-2">
+                    <Trans>
+                      A new agent is created for this server, and only it can use the server until
+                      you share it.
+                    </Trans>
+                  </p>
+                )}
               </div>
             )}
             {zernio ? (
@@ -698,17 +709,19 @@ export function CustomConnectionDialog({
                         {label}
                       </Button>
                     ))}
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={() => {
-                        setError(null);
-                        setName("");
-                        setView({ kind: "stdio" });
-                      }}
-                    >
-                      <Trans>Local command</Trans>
-                    </Button>
+                    {data.mcpStdioEnabled ? (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => {
+                          setError(null);
+                          setName("");
+                          setView({ kind: "stdio" });
+                        }}
+                      >
+                        <Trans>Local command</Trans>
+                      </Button>
+                    ) : null}
                     <Button
                       variant="outline"
                       size="xs"
@@ -932,7 +945,13 @@ export function CustomConnectionDialog({
               </DialogDescription>
             ) : null}
             <div className="mt-4 flex justify-end">
-              <Button onClick={close}>
+              <Button
+                onClick={() => {
+                  const agent = createdHere.current && !zernio ? server?.agentBotId : null;
+                  close();
+                  if (agent) onAgent?.(agent);
+                }}
+              >
                 <Trans>Done</Trans>
               </Button>
             </div>

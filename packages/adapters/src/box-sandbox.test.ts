@@ -62,10 +62,11 @@ describe("BoxSandboxProvider", () => {
       { type: "exit", code: 0 },
     ]);
     const executeRequest = fixture.command.mock.calls.find(([request]) =>
-      request.commandRequest.command.includes("TEST_VALUE=works"),
+      request.commandRequest.command.includes("hello"),
     )?.[0];
-    expect(parse(executeRequest?.commandRequest.command ?? "").at(-1)).toBe(
-      "'env' 'TEST_VALUE=works' 'env' '-u' 'FAILED' '--' 'echo' 'hello'",
+    expect(executeRequest?.commandRequest.command).not.toContain("works");
+    expect(parse(executeRequest?.commandRequest.command ?? "").at(-1)).toMatch(
+      /; 'env' '-u' 'FAILED' '--' 'echo' 'hello'$/,
     );
     expect(executeRequest?.commandRequest.cwd).toBe("rakazo-home/notes");
 
@@ -355,6 +356,59 @@ describe("BoxSandboxProvider", () => {
   });
 });
 
+describe("BoxSandboxProvider command environment", () => {
+  it("keeps command secrets out of command text and removes the env file as the command starts", async () => {
+    const fixture = boxFixture();
+    const provider = new BoxSandboxProvider({ apiKey: "test-key" }, fixture.client);
+    const computer = await provider.provision({ botId: "bot_env", homePath: "/unused" }, context);
+    const secret = "fake-secret-'value' $HOME";
+
+    const events = [];
+    for await (const event of provider.execute(
+      computer,
+      { argv: ["printenv", "FAKE_TOKEN"], env: { FAKE_TOKEN: secret } },
+      context,
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      { type: "stdout", data: `${secret}\n` },
+      { type: "exit", code: 0 },
+    ]);
+    const commands = fixture.command.mock.calls.map(([request]) => request.commandRequest.command);
+    expect(commands.some((text) => text.includes("fake-secret"))).toBe(false);
+    expect(commands.some((text) => text.includes("mkdir -p -m 700"))).toBe(true);
+    const [written] = fixture.writeFile.mock.calls.map(([request]) => request.fileWriteRequest);
+    const envFile = written?.path ?? "";
+    expect(envFile).toMatch(/^\/home\/user\/\.rakazo-command-env\/[0-9a-f-]{36}$/);
+    expect(Buffer.from(written?.content ?? "", "base64").toString("utf8")).toContain("fake-secret");
+    const run = parse(commands.find((text) => text.includes(envFile)) ?? "").at(-1);
+    expect(run).toBe(
+      `exec 3< '${envFile}' || exit 1; rm -f -- '${envFile}'; . /dev/fd/3 || exit 1; exec 3<&-; 'printenv' 'FAKE_TOKEN'`,
+    );
+    expect(fixture.files.has(envFile)).toBe(false);
+  });
+
+  it("rejects env names that are not shell identifiers before writing anything", async () => {
+    const fixture = boxFixture();
+    const provider = new BoxSandboxProvider({ apiKey: "test-key" }, fixture.client);
+    const computer = await provider.provision({ botId: "bot_env", homePath: "/unused" }, context);
+    fixture.command.mockClear();
+
+    const run = async () => {
+      for await (const _ of provider.execute(
+        computer,
+        { argv: ["true"], env: { "BAD;NAME": "fake-secret" } },
+        context,
+      ));
+    };
+    await expect(run()).rejects.toThrow("invalid environment variable name");
+    expect(fixture.writeFile).not.toHaveBeenCalled();
+    expect(fixture.command).not.toHaveBeenCalled();
+  });
+});
+
 function boxFixture(options: { state?: string } = {}) {
   const files = new Map<string, Uint8Array>();
   const respond = desktopCommandResponder();
@@ -386,7 +440,30 @@ function boxFixture(options: { state?: string } = {}) {
         const port = command.match(/host (\d+)/)?.[1];
         return finished({ stdout: `https://box-test-${port}.on.ascii.dev?_token=secret` });
       }
-      if (command.includes("TEST_VALUE=works")) return finished({ stdout: "hello\n" });
+      // `exec 3< FILE || exit 1; rm -f -- FILE; . /dev/fd/3 || exit 1; exec 3<&-; argv`
+      const sourced = (parse(command).at(-1) as string | undefined)?.match(
+        /^exec 3< ('[^']*') \|\| exit 1; rm -f -- \1; \. \/dev\/fd\/3 \|\| exit 1; exec 3<&-; ([\s\S]*)$/,
+      );
+      if (sourced) {
+        const envFile = String(parse(sourced[1]!)[0]);
+        const file = files.get(envFile);
+        if (!file) return finished({ exitCode: 1, stderr: "No such file or directory\n" });
+        files.delete(envFile);
+        const env = new Map<string, string>();
+        for (const token of parse(Buffer.from(file).toString("utf8"))) {
+          if (typeof token !== "string" || token === "export") continue;
+          const [name, ...value] = token.split("=");
+          env.set(name!, value.join("="));
+        }
+        const argv = parse(sourced[2]!).filter(
+          (token): token is string => typeof token === "string",
+        );
+        return finished({ stdout: argv[0] === "printenv" ? `${env.get(argv[1]!)}\n` : "hello\n" });
+      }
+      if (command.startsWith("rm -f -- ")) {
+        for (const filePath of parse(command).slice(3)) files.delete(String(filePath));
+        return finished();
+      }
       if (command.includes("find ") && command.includes("rakazo-home/bin")) {
         const target = "/home/user/rakazo-home/bin/tool";
         return finished({

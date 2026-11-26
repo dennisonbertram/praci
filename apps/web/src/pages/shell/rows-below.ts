@@ -33,12 +33,29 @@ export function rowsBelow(
   const scroller = scrollingList(scrollers);
   if (!scroller || scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)
     return 0;
-  // A list that ends on a whole row (see endOnWholeRow) keeps the bar in the margin below it.
-  const barBelow = (Number.parseFloat(scroller.style.marginBottom) || 0) >= moreBarHeight();
-  const edge = scroller.getBoundingClientRect().bottom - (barBelow ? 0 : moreBarHeight());
+  const edge = scroller.getBoundingClientRect().bottom - moreBarHeight();
   let count = 0;
   for (const row of scroller.querySelectorAll<HTMLElement>(rowSelector)) {
     if (row.getBoundingClientRect().bottom > edge + 0.5) count += 1;
   }
   return count;
+}
+
+/**
+ * How far to grow the "+N more" bar upward so it hides the whole of a row it would otherwise cut
+ * in half, so no half row shows behind it.
+ */
+export function moreBarCover(
+  scrollers: (HTMLElement | null)[],
+  rowSelector = "[data-roster-chat],[data-roster-fold],[data-roster-head]",
+) {
+  const scroller = scrollingList(scrollers);
+  if (!scroller) return 0;
+  const edge = scroller.getBoundingClientRect().bottom - moreBarHeight();
+  for (const row of scroller.querySelectorAll<HTMLElement>(rowSelector)) {
+    const box = row.getBoundingClientRect();
+    // The bar covers a cut row whole, so no half row shows.
+    if (box.top < edge - 0.5 && box.bottom > edge + 0.5) return Math.ceil(edge - box.top);
+  }
+  return 0;
 }

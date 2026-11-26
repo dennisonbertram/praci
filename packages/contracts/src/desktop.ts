@@ -1,3 +1,6 @@
+import type { HexMeetingList, HexMeetingShow, HexResult } from "./hex.js";
+import type { RakazoDesktopScanner } from "./scanner.js";
+
 /**
  * `unsupported` covers an unpackaged build and a repository with no published releases, which is
  * the normal state for a fork. It is not an error the user needs to act on. Automatic checks stay
@@ -31,6 +34,37 @@ export interface RakazoDesktopUpdate {
   install: () => Promise<DesktopUpdateState>;
 }
 
+/** Reads the Hex meeting recorder on this Mac (macOS only). Main runs it; the renderer sends no command. */
+export interface RakazoDesktopHex {
+  available: () => Promise<boolean>;
+  /** Meetings overlapping the time from `sinceMs` (Unix milliseconds) to now. */
+  list: (sinceMs: number) => Promise<HexResult<HexMeetingList>>;
+  /** One meeting by its Hex id (digits, a dash, digits). */
+  show: (id: string) => Promise<HexResult<HexMeetingShow>>;
+}
+
+/** On-device speech to text through the installed Hex (Apple silicon). Only text leaves main. */
+export type DesktopSpeechStatus =
+  | { state: "unavailable" }
+  | { state: "not-prepared" }
+  /** `progress` is 0..1 while the model downloads, null while it verifies or loads. */
+  | { state: "preparing"; progress: number | null }
+  | { state: "ready" }
+  | { state: "error" };
+
+export type DesktopSpeechResult = { ok: true; text: string } | { ok: false; retry: boolean };
+
+export interface RakazoDesktopSpeech {
+  status: () => Promise<DesktopSpeechStatus>;
+  /** Downloads and loads the model once; the user's choice is remembered after it succeeds. */
+  prepare: () => Promise<DesktopSpeechStatus>;
+  /** Stops using on-device speech and closes the helper. Model files are kept. */
+  forget: () => Promise<DesktopSpeechStatus>;
+  /** PCM WAV bytes; never downloads a model. */
+  transcribe: (wav: Uint8Array) => Promise<DesktopSpeechResult>;
+  onStatus: (listener: (status: DesktopSpeechStatus) => void) => () => void;
+}
+
 export interface RakazoDesktopOAuthCallback {
   code: string;
   state?: string;
@@ -46,9 +80,17 @@ export interface RakazoDesktop {
     close: () => Promise<void>;
     minimize: () => Promise<void>;
     toggleMaximize: () => Promise<void>;
+    /** Raises and focuses the window (a clicked notification). Optional for older desktops. */
+    focus?: () => Promise<void>;
     state: () => Promise<{ minimized: boolean; maximized: boolean; fullScreen: boolean }>;
   };
   update: RakazoDesktopUpdate;
+  /** Optional: older desktops and non-macOS builds do not have it. */
+  hex?: RakazoDesktopHex;
+  /** Optional: older desktops and builds without on-device speech do not have it. */
+  speech?: RakazoDesktopSpeech;
+  /** Optional: local SANE scanner support on macOS and Linux. */
+  scanner?: RakazoDesktopScanner;
   oauth: {
     /**
      * Open system-browser auth. A redirect_uri must be HTTP loopback with state;

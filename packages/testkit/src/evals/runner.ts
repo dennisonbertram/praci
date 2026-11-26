@@ -7,6 +7,7 @@ import { ACTIVE_RUN_STATUSES, isTerminal } from "@rakazo/core";
 import type { createDb } from "@rakazo/db";
 import { discardBotIntroRun } from "../discard-bot-intro.js";
 import { sessionCookieHeader } from "../index.js";
+import { grantTestModelConsent } from "../test-consent.js";
 import type { EvalCase, Evidence } from "./cases.js";
 import type { ClarificationBlock } from "./clarification.js";
 import { expectedClarificationText } from "./clarification.js";
@@ -176,6 +177,17 @@ export async function runTrial(
         modelProvider: options.connection.provider,
         modelId: options.connection.modelId,
       });
+      if (
+        options.connection.baseUrl &&
+        options.connection.modelId &&
+        new URL(options.connection.baseUrl).hostname === "127.0.0.1"
+      ) {
+        await grantTestModelConsent(prisma, persistedBot, {
+          provider: options.connection.provider,
+          modelId: options.connection.modelId,
+          baseUrl: options.connection.baseUrl,
+        });
+      }
       messagingLinked = false;
       messagingAddress = `U-eval-${randomUUID()}`;
       messaging.resetWitnesses();
@@ -424,7 +436,7 @@ export async function runTrial(
         await prisma.run.findUniqueOrThrow({ where: { id: runId }, select: { createdAt: true } })
       ).createdAt.getTime();
       let seenToolCount = result.toolCalls;
-      const terminal = await poll(async () => {
+      let terminal = await poll(async () => {
         const [run, toolCount] = await Promise.all([
           prisma.run.findUnique({ where: { id: runId }, select: { status: true, error: true } }),
           countCurrentTools().then((count) => count + clearedToolCount),
@@ -447,13 +459,89 @@ export async function runTrial(
           throw new EvalFailure("incomplete", "Tool call budget exceeded");
         if (
           run?.status === "waiting_input" &&
-          (scenario.approvalTool || scenario.expectedClarification)
+          (scenario.approvalTool || scenario.autoApproveTool || scenario.expectedClarification)
         )
           return run;
         if (run && ["waiting_input", "waiting_approval", "paused"].includes(run.status))
           throw new EvalFailure("agent", "Agent requested assistance; no coaching supplied");
         return run && isTerminal(run.status as RunStatus) ? run : undefined;
       }, deadline);
+      const autoApproveTools = scenario.autoApproveTool
+        ? Array.isArray(scenario.autoApproveTool)
+          ? scenario.autoApproveTool
+          : [scenario.autoApproveTool]
+        : [];
+      while (autoApproveTools.length > 0) {
+        const findPendingApproval = async () => {
+          const waitingRuns = await prisma.run.findMany({
+            where: { spaceId: actors[0]!.spaceId, status: "waiting_input" },
+            select: { id: true, botId: true },
+          });
+          if (waitingRuns.length === 0) return null;
+          const messages = await prisma.message.findMany({
+            where: { runId: { in: waitingRuns.map((run) => run.id) }, role: "bot" },
+            orderBy: { seq: "desc" },
+            select: { id: true, runId: true, botId: true, blocks: true },
+          });
+          for (const message of messages) {
+            const block = (message.blocks as Array<Record<string, unknown>>).find(
+              (candidate) =>
+                candidate.kind === "ask" &&
+                autoApproveTools.includes(String(candidate.toolId)) &&
+                candidate.status === "pending" &&
+                typeof candidate.approvalEffectId === "string",
+            );
+            if (block)
+              return {
+                id: message.id,
+                runId: message.runId!,
+                botId: message.botId!,
+              };
+          }
+          return null;
+        };
+        const card = await findPendingApproval();
+        if (!card) {
+          const currentRun = await prisma.run.findUnique({
+            where: { id: runId },
+            select: { status: true },
+          });
+          if (currentRun && currentRun.status !== "waiting_input") {
+            terminal = await poll(async () => {
+              const run = await prisma.run.findUnique({
+                where: { id: runId },
+                select: { status: true, error: true },
+              });
+              if (!run) return undefined;
+              if (isTerminal(run.status as RunStatus)) return run;
+              if (run.status === "waiting_input" && (await findPendingApproval()))
+                return { ...run, status: "waiting_input" as const };
+              return undefined;
+            }, deadline);
+            if (terminal.status === "waiting_input") continue;
+          }
+          break;
+        }
+        await rpc(app, cookie, "threads/answer", {
+          botId: card.botId,
+          runId: card.runId,
+          messageId: card.id,
+          answer: "allow",
+        });
+        const answeredMessageId = card.id;
+        terminal = await poll(async () => {
+          const run = await prisma.run.findUnique({
+            where: { id: runId },
+            select: { status: true, error: true },
+          });
+          if (!run) return undefined;
+          if (isTerminal(run.status as RunStatus)) return run;
+          const nextCard = await findPendingApproval();
+          if (nextCard && nextCard.id !== answeredMessageId)
+            return { ...run, status: "waiting_input" as const };
+          return undefined;
+        }, deadline);
+      }
       if (result.firstResponseMs === null) {
         const firstMessage = await prisma.message.findFirst({
           where: { runId, role: "bot" },

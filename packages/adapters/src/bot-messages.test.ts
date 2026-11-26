@@ -1,5 +1,5 @@
 import { BOT_SHARE_HELD_MESSAGE } from "@rakazo/contracts";
-import { PrivateFragments } from "@rakazo/core";
+import { botMessageAllowsSilence, buildBotMessageWakePrompt, PrivateFragments } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { MessageBotOptions } from "./bot-messages.js";
@@ -33,6 +33,8 @@ function deps(
     uniqueConflictOnCommit?: boolean;
     transactionConflictOnce?: boolean;
     sender?: { audience: string; externalMessageTargets: string[] };
+    /** The target thread's stored messages, newest first. */
+    threadMessages?: { role: string; blocks: unknown[] }[];
   } = {},
 ) {
   const enqueue = vi.fn().mockResolvedValue(undefined);
@@ -64,6 +66,7 @@ function deps(
     message: {
       findUnique: messageFindUnique,
       create: vi.fn().mockResolvedValue({ id: "message-1", seq: 1 }),
+      findMany: vi.fn().mockResolvedValue(options.threadMessages ?? []),
       update: vi.fn().mockResolvedValue({}),
     },
     event: { create: vi.fn().mockResolvedValue({ seq: 7 }) },
@@ -685,6 +688,74 @@ describe("hardening", () => {
     expect(harness.enqueue).not.toHaveBeenCalled();
   });
 
+  it("replays an already delivered internal send before the pending-request guard", async () => {
+    const harness = deps({ alreadyDelivered: { id: "message-1" } });
+    vi.mocked(harness.deps.prisma.message.findMany).mockResolvedValue([
+      {
+        role: "bot",
+        blocks: [
+          { kind: "bot_message_sent", toBotId: "bot-target", intent: "request", text: "chart it" },
+        ],
+      },
+    ] as never);
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "chart it",
+      deliveryKey: "call-1",
+    });
+
+    expect(sent).toMatchObject({ ok: true, replayed: true });
+    expect(harness.tx.run.create).not.toHaveBeenCalled();
+  });
+
+  it("re-checks the pending-request guard inside the transaction", async () => {
+    const harness = deps({
+      threadMessages: [
+        {
+          role: "bot",
+          blocks: [
+            { kind: "bot_message_sent", toBotId: "bot-target", intent: "request", text: "q" },
+          ],
+        },
+      ],
+    });
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "again",
+    });
+
+    expect(sent).toMatchObject({ ok: false, error: expect.stringContaining("is still working") });
+    expect(harness.tx.run.create).not.toHaveBeenCalled();
+    expect(harness.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("refuses an ambiguous name to an internal sender and an external sender alike", async () => {
+    const twins = [
+      { id: "b_1", name: "Ops", title: "", audience: "internal", thread: { id: "t1" } },
+      { id: "b_2", name: "Ops", title: "", audience: "internal", thread: { id: "t2" } },
+    ];
+    const internal = deps({ bots: twins });
+    const refused = await messageBot(internal.deps, run, sender, {
+      confirm_name: "Ops",
+      message: "hi",
+    });
+    expect(refused).toEqual({
+      ok: false,
+      error: "several bots have that name; use bot_id",
+    });
+    expect(internal.tx.run.create).not.toHaveBeenCalled();
+
+    const external = deps({
+      bots: twins,
+      sender: { audience: "external", externalMessageTargets: ["b_1", "b_2"] },
+    });
+    const blocked = await messageBot(external.deps, run, sender, {
+      confirm_name: "Ops",
+      message: "hi",
+    });
+    expect(blocked).toMatchObject({ ok: false, error: EXTERNAL_MESSAGE_REFUSED });
+  });
+
   it("stamps the delivery so a retry can recognise it", async () => {
     const harness = deps();
     await messageBot(harness.deps, run, sender, {
@@ -1039,6 +1110,25 @@ describe("the external chain mark", () => {
     );
   });
 
+  it("taints the receiving run when the message is of external origin", async () => {
+    const h = deps({
+      bots,
+      sender: { audience: "external", externalMessageTargets: ["bot-chief"] },
+    });
+    await messageBot(
+      h.deps,
+      run,
+      { id: "bot-sender", name: "Support" },
+      {
+        bot_id: "bot-chief",
+        message: "x",
+      },
+    );
+    expect(h.tx.run.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ externalTaint: true }) }),
+    );
+  });
+
   it("is not written for an internal sender with no marked chain", async () => {
     const h = deps({ bots });
     await messageBot(h.deps, run, sender, { bot_id: "bot-chief", message: "x" });
@@ -1241,5 +1331,176 @@ describe("messages to an external bot are checked against what the run read", ()
       expect(delivered(h), status).toEqual([]);
       expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe("a delegate that has not answered yet", () => {
+  const pendingRequest = {
+    blocks: [
+      {
+        kind: "bot_message_sent",
+        toBotId: "bot-target",
+        toBotName: "Analyst",
+        text: "x",
+        intent: "request",
+      },
+    ],
+  };
+
+  it("is not sent the same request again", async () => {
+    const harness = deps();
+    (harness.deps.prisma.message.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      pendingRequest,
+    ]);
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "check drafts again",
+    });
+    expect(sent).toMatchObject({ ok: false });
+    expect(harness.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("can be asked a new question after the owner wrote again", async () => {
+    const harness = deps();
+    (harness.deps.prisma.message.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { role: "user", blocks: [{ kind: "text", text: "Do they have receipts?" }] },
+      pendingRequest,
+    ]);
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "do the drafts have receipts?",
+    });
+    expect(sent).toMatchObject({ ok: true });
+  });
+
+  it("can be asked again once it has answered", async () => {
+    const harness = deps();
+    const result = {
+      blocks: [
+        {
+          kind: "bot_message_received",
+          fromBotId: "bot-target",
+          fromBotName: "Analyst",
+          text: "done",
+          intent: "result",
+        },
+      ],
+    };
+    (harness.deps.prisma.message.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      result,
+      pendingRequest,
+    ]);
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "and receipts?",
+    });
+    expect(sent).toMatchObject({ ok: true });
+  });
+
+  it("wakes the requester without forcing a visible message on a progress note", () => {
+    expect(botMessageAllowsSilence("status", true)).toBe(true);
+    expect(botMessageAllowsSilence("result", true)).toBe(false);
+    const prompt = buildBotMessageWakePrompt({
+      from: { id: "b", name: "Analyst" },
+      text: "checking now",
+      intent: "status",
+    });
+    expect(prompt).toContain('do not post a "waiting" message');
+  });
+});
+
+describe("a result while the receiver delegated to several bots", () => {
+  const chief = {
+    id: "bot-chief",
+    name: "Chief",
+    title: "",
+    spawnKey: null,
+    thread: { id: "thread-chief" },
+  };
+  const asked = (id: string, name: string) => ({
+    role: "bot",
+    blocks: [
+      { kind: "bot_message_sent", toBotId: id, toBotName: name, text: "q", intent: "request" },
+    ],
+  });
+  const answered = (id: string, name: string) => ({
+    role: "user",
+    blocks: [
+      {
+        kind: "bot_message_received",
+        fromBotId: id,
+        fromBotName: name,
+        text: `${name} done`,
+        intent: "result",
+      },
+    ],
+  });
+  const typed = { role: "user", blocks: [{ kind: "text", text: "overview?" }] };
+  // Newest first, as the query returns them.
+  const deliver = async (threadMessages: { role: string; blocks: unknown[] }[]) => {
+    const d = deps({ bots: [chief], threadMessages });
+    await messageBot(
+      d.deps,
+      run,
+      { id: "bot-legal", name: "Legal" },
+      { bot_id: "bot-chief", message: "Legal done", intent: "result" },
+      { allowTerminalSource: true },
+    );
+    const blocks = d.tx.message.create.mock.calls.flatMap(
+      ([c]) => (c as { data: { blocks: unknown[] } }).data.blocks,
+    );
+    const received = blocks.find((b) => (b as { kind: string }).kind === "bot_message_received");
+    const taskArgs = d.tx.task.create.mock.calls[0]?.[0] as { data: { prompt: string } };
+    const prompt = taskArgs.data.prompt;
+    return { received, prompt };
+  };
+
+  it("waits and allows silence while two of three delegates have not answered", async () => {
+    const { received, prompt } = await deliver([
+      asked("bot-inbox", "Inbox"),
+      asked("bot-finance", "Finance"),
+      asked("bot-legal", "Legal"),
+      typed,
+    ]);
+    expect(received).toMatchObject({ stillWaitingFor: ["Finance", "Inbox"] });
+    expect(prompt).toContain("still waiting for: Finance, Inbox");
+    const waiting = (received as { stillWaitingFor: string[] }).stillWaitingFor.length > 0;
+    expect(botMessageAllowsSilence("result", true, waiting)).toBe(true);
+  });
+
+  it("asks for one combined answer when the last result arrives", async () => {
+    const { received, prompt } = await deliver([
+      answered("bot-finance", "Finance"),
+      answered("bot-inbox", "Inbox"),
+      asked("bot-legal", "Legal"),
+      asked("bot-finance", "Finance"),
+      asked("bot-inbox", "Inbox"),
+      typed,
+    ]);
+    expect(received).not.toHaveProperty("stillWaitingFor");
+    expect(prompt).toContain("one combined answer");
+    expect(prompt).toContain("present-clearly");
+  });
+
+  it("counts a failure reply and ignores delegations before the user's last message", async () => {
+    const { prompt } = await deliver([
+      answered("bot-inbox", "Inbox"),
+      asked("bot-legal", "Legal"),
+      asked("bot-inbox", "Inbox"),
+      typed,
+      asked("bot-finance", "Finance"),
+    ]);
+    expect(prompt).toContain("one combined answer");
+  });
+
+  it("leaves a single delegation as it is today", async () => {
+    const single = await deliver([asked("bot-legal", "Legal"), typed]);
+    const none = await deliver([]);
+    for (const { received, prompt } of [single, none]) {
+      expect(received).not.toHaveProperty("stillWaitingFor");
+      expect(prompt).not.toContain("combined");
+      expect(prompt).not.toContain("still waiting for:");
+    }
+    expect(botMessageAllowsSilence("result", true, false)).toBe(false);
   });
 });

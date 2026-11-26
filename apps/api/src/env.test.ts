@@ -7,6 +7,43 @@ const base = {
 };
 
 describe("loadEnv", () => {
+  it("lowercases a listed host", () => {
+    expect(
+      loadEnv({ ...base, RAKAZO_TRUSTED_ORIGINS: "https://App.Example.test/" }).trustedOrigins,
+    ).toEqual(["https://app.example.test"]);
+  });
+
+  it("parses RAKAZO_TRUSTED_ORIGINS into http(s) origins and rejects anything else", () => {
+    expect(loadEnv(base).trustedOrigins).toEqual([]);
+    expect(
+      loadEnv({
+        ...base,
+        RAKAZO_TRUSTED_ORIGINS: " https://box.ts.net/ , http://192.168.1.5:5273 ,",
+      }).trustedOrigins,
+    ).toEqual(["https://box.ts.net", "http://192.168.1.5:5273"]);
+    for (const bad of [
+      "not a url",
+      "ftp://box.ts.net",
+      "rakazo://",
+      "*",
+      "https://*",
+      "https://*.example.test",
+      "https://app.example.test?evil.test",
+      "https://app.example.test/path",
+      "https://user@app.example.test",
+    ])
+      expect(() => loadEnv({ ...base, RAKAZO_TRUSTED_ORIGINS: bad }), bad).toThrow(
+        /RAKAZO_TRUSTED_ORIGINS/,
+      );
+  });
+
+  it("leaves PUBLIC_MCP_URL unset for localhost and trims a trailing slash", () => {
+    expect(loadEnv(base).publicMcpUrl).toBeUndefined();
+    expect(loadEnv({ ...base, PUBLIC_MCP_URL: " https://mac.example.ts.net/ " }).publicMcpUrl).toBe(
+      "https://mac.example.ts.net",
+    );
+    expect(() => loadEnv({ ...base, PUBLIC_MCP_URL: "not a url" })).toThrow(/PUBLIC_MCP_URL/);
+  });
   it("keeps the ticket board off unless explicitly enabled", () => {
     expect(loadEnv(base).ticketBoardEnabled).toBe(false);
     for (const value of ["false", "1", ""])

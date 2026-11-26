@@ -181,3 +181,25 @@ export const LastOneDone: Story = {
     meetings: syncedSource,
   },
 };
+
+/** Opened on a phone: a two-line title that opens its email keeps clear of the sender line under it. */
+export const LongTitleOpensEmail: Story = {
+  args: {
+    todos: [
+      {
+        ...todo(
+          "t1",
+          "Follow up on the long running sample thread about the quarterly planning agenda",
+          { from: "Sample Sender", detail: "Needs a reply" },
+        ),
+        messageId: "msg_t1",
+      },
+      {
+        ...todo("t2", "Reply to the sample landlord", { from: "Sample Sender" }),
+        messageId: "msg_t2",
+      },
+    ],
+    onOpen: () => undefined,
+  },
+  play: Expanded.play,
+};

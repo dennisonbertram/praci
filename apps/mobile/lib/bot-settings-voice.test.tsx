@@ -85,6 +85,7 @@ vi.mock("react-native", () => {
       children,
     );
   return {
+    ActivityIndicator: () => createElement("i", { "data-testid": "spinner" }),
     Platform: { OS: "ios" },
     StyleSheet: { create: (styles: unknown) => styles },
     ScrollView: view,
@@ -107,6 +108,15 @@ vi.mock("./i18n", () => {
   return { useI18n: () => ({ t }) };
 });
 vi.mock("../components/bot-avatar", () => ({ BotAvatar: () => null }));
+vi.mock("../components/capped-list", () => ({
+  CappedList: ({
+    items,
+    renderItem,
+  }: {
+    items: unknown[];
+    renderItem: (item: unknown) => ReactNode;
+  }) => createElement("div", null, items.map(renderItem)),
+}));
 vi.mock("../components/computer-mode-picker", () => ({ ComputerModePicker: () => null }));
 vi.mock("../components/native-action-button", () => ({ NativeActionButton: () => null }));
 vi.mock("../components/native-switch", () => ({ NativeSwitch: () => null }));
@@ -278,7 +288,8 @@ describe("bot settings device voice menu", () => {
       expect(label.parentElement!.lastElementChild!.getAttribute("data-style")).toContain(
         '"textAlign":"right"',
       );
-      expect(container.querySelector("i")).toBeNull();
+      // The Check in row above has its own chevron; the Device voice row has none.
+      expect(label.parentElement!.querySelector("i")).toBeNull();
     },
   );
 
@@ -286,11 +297,12 @@ describe("bot settings device voice menu", () => {
     mocks.deviceVoices.mockRejectedValueOnce(new Error("Load failed"));
     await render();
     expect(menu()).toBeNull();
-    expect(container.querySelector("i")).toBeNull();
     const retry = () =>
       [...container.querySelectorAll("button")].find((item) =>
         item.textContent?.includes("Could not load voices"),
       )!;
+    // The Check in row has its own chevron; the failed Device voice row has none.
+    expect(retry().querySelector("i")).toBeNull();
     expect(retry().querySelectorAll("span")[1]!.dataset.style).toContain('"color":"error"');
     mocks.deviceVoices.mockRejectedValueOnce(new Error("Still unavailable"));
     await act(async () => retry().click());

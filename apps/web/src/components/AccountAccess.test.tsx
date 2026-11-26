@@ -109,6 +109,24 @@ it("shows the password deletion path for legacy account security", async () => {
   expect(host.textContent).not.toContain("Send deletion code");
 });
 
+it("moves keyboard focus into the delete form when it opens", async () => {
+  vi.mocked(fetchAccountSecurity).mockResolvedValue({ ...security, hasPassword: true, sso: null });
+  await render();
+  await click("Delete account");
+  expect(document.activeElement).toBe(host.querySelector("#delete-password"));
+});
+
+it("focuses the first passwordless confirmation action, then returns focus on cancel", async () => {
+  await render();
+  await click("Delete account");
+  const signInAgain = Array.from(host.querySelectorAll("button")).find(
+    (button) => button.textContent === "Sign in again",
+  );
+  expect(document.activeElement).toBe(signInAgain);
+  await click("Cancel");
+  expect(document.activeElement).toBe(deleteButton());
+});
+
 function deleteButton() {
   const buttons = Array.from(host.querySelectorAll("button")).filter(
     (button) => button.textContent === "Delete account",

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ReactElement } from "react";
 import { contracts } from "./fixtures";
 import { LegalContracts } from "./LegalContracts";
 
@@ -31,7 +32,7 @@ export const Narrow: StoryObj<typeof meta> = {
   ],
 };
 
-/** A title longer than the card ends in an ellipsis, also under a touch pointer. */
+/** A title longer than the card wraps to a second line, also under a touch pointer. */
 export const LongTitle: StoryObj<typeof meta> = {
   args: {
     contracts: [
@@ -144,4 +145,99 @@ export const TenNarrow: StoryObj<typeof meta> = {
       </div>
     ),
   ],
+};
+
+const holders = ["Ada Example", "Ben Sample", "Cy Fixture", "Dee Mock", "Eli Invented"];
+const warrants = Array.from({ length: 12 }, (_, n) => ({
+  ...contracts[0]!,
+  id: `warrant-${n}`,
+  title: `Series Seed - Warrant to Purchase Tokens (${holders[n % 5]} ${n}) (warrant)`,
+  contractType: "Warrant",
+  counterparties: ["Example Corp", `${holders[n % 5]} ${n}`],
+  effectiveDate: "2021-07-09",
+  expirationDate: "2031-07-09",
+  nextDeadline: "2031-07-09",
+  status: "active" as const,
+}));
+const notes = Array.from({ length: 4 }, (_, n) => ({
+  ...warrants[0]!,
+  id: `note-${n}`,
+  title: `Convertible Note - ${holders[n]}`,
+  contractType: "Note",
+  counterparties: ["Example Corp", holders[n]!],
+}));
+const mixed = [contracts[0]!, ...warrants, contracts[1]!, ...notes];
+const wide = [
+  (Story: () => ReactElement) => (
+    <div className="@container w-[1280px]">
+      <Story />
+    </div>
+  ),
+];
+
+/** Twelve warrants and four notes collapse to two rows; click "+N more" to open one. */
+export const Grouped: StoryObj<typeof meta> = {
+  args: { contracts: mixed, grouped: true, selfName: "Example Corp" },
+  decorators: wide,
+};
+
+/** The same contracts with grouping off: today's flat list. */
+export const Ungrouped: StoryObj<typeof meta> = {
+  args: { contracts: mixed, grouped: false, selfName: "Example Corp" },
+  decorators: wide,
+};
+
+/** Grouped on a phone: one card per group. */
+export const GroupedNarrow: StoryObj<typeof meta> = {
+  args: { contracts: mixed, grouped: true, selfName: "Example Corp" },
+  decorators: Narrow.decorators,
+};
+
+/** Filters and sort come from the URL: active contracts, by value, largest first. */
+export const FilteredAndSorted: StoryObj<typeof meta> = {
+  args: {
+    contracts: [
+      ...contracts,
+      { ...contracts[0]!, id: "x", title: "Data processing addendum", valueCents: "900000" },
+    ],
+  },
+  parameters: { initialEntries: ["/?status=active&sort=value&dir=desc"] },
+  decorators: wide,
+};
+
+/** Nothing matches the search: No matches and Clear filters. */
+export const NoMatches: StoryObj<typeof meta> = {
+  parameters: { initialEntries: ["/?q=zzz"] },
+  decorators: wide,
+};
+
+/** Narrow: the cards have no headers, so the toolbar's Sort control mirrors them. */
+export const NarrowSorted: StoryObj<typeof meta> = {
+  parameters: { initialEntries: ["/?sort=name&dir=desc"] },
+  decorators: Narrow.decorators,
+};
+
+/** Grouping with a sort and a party filter: groups sort by their earliest date and lose members that do not match. */
+export const GroupedFilteredSorted: StoryObj<typeof meta> = {
+  args: { contracts: mixed, grouped: true, selfName: "Example Corp" },
+  parameters: { initialEntries: ["/?type=Warrant&sort=deadline&dir=desc"] },
+  decorators: wide,
+};
+
+/** An active contract that does not renew and whose end date has passed shows the Expired chip. */
+export const Lapsed: StoryObj<typeof meta> = {
+  args: {
+    contracts: [
+      ...contracts,
+      {
+        ...contracts[0]!,
+        id: "lapsed",
+        title: "Hosting Agreement",
+        status: "active",
+        autoRenews: false,
+        expirationDate: "2025-01-31",
+      },
+    ],
+  },
+  decorators: Narrow.decorators,
 };

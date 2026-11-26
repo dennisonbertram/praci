@@ -113,7 +113,7 @@ export function RecipientField({
         spellCheck={false}
         inputMode="email"
         maxLength={1_000}
-        className="h-7 min-w-12 flex-1 bg-transparent text-sm outline-none disabled:opacity-50"
+        className="h-7 min-w-12 flex-1 bg-transparent text-base outline-none disabled:opacity-50 md:text-sm"
         onChange={(event) => {
           const value = event.target.value;
           // A space after a complete address also finishes it, as in Gmail.

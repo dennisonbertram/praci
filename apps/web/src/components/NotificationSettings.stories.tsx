@@ -65,3 +65,14 @@ export const BlockedInBrowser: Story = {
     };
   },
 };
+
+/** The preferences request failed, so the switch stays off and a line says why. */
+export const LoadFailed: Story = {
+  render,
+  beforeEach: () =>
+    mockRpc({
+      "notifications.preferences": () => {
+        throw new Error("Network down");
+      },
+    }),
+};

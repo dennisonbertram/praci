@@ -11,10 +11,18 @@ const state = vi.hoisted(() => ({
   setOptions: vi.fn(),
   alert: vi.fn(),
   openURL: vi.fn(),
+  focus: undefined as (() => undefined | (() => void)) | undefined,
 }));
 vi.mock("expo-router", () => ({
   useFocusEffect: (callback: () => undefined | (() => void)) => {
-    useEffect(() => callback(), [callback]);
+    useEffect(() => {
+      state.focus = callback;
+      const cleanup = callback();
+      return () => {
+        cleanup?.();
+        state.focus = undefined;
+      };
+    }, [callback]);
   },
   useNavigation: () => ({ setOptions: state.setOptions }),
 }));
@@ -168,6 +176,15 @@ const render = () => act(async () => root.render(<InboxCleanupScreen />));
 const procs = () => state.rpc.mock.calls.map(([proc]) => proc as string);
 const boxes = () => [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
 const checks = () => boxes().map((el) => String(el.checked));
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (cause: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
 type Item = { label: string; disabled?: boolean; onPress: () => void };
 const menuItems = (): Item[] => {
   const options = state.setOptions.mock.calls.at(-1)?.[0] as {
@@ -401,6 +418,162 @@ describe("cleanup screen", () => {
     ];
     await act(async () => buttons.find((b) => b.text === "Undo")?.onPress?.());
     expect(state.rpc).toHaveBeenCalledWith("inbox/actions/undo", { batchId: "old-1" });
+  });
+
+  it("alerts when undo could not restore some threads", async () => {
+    historyReply = () => ({
+      actions: [
+        {
+          batchId: "partial-undo",
+          kind: "archive",
+          source: "user",
+          reason: "cleanup",
+          createdAt: new Date().toISOString(),
+          undone: false,
+          threadCount: 5,
+          senders: ["news@lists.example.test"],
+          senderCount: 1,
+        },
+      ],
+    });
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "inbox/cleanup/list") return listReply();
+      if (proc === "inbox/actions/list") return historyReply();
+      if (proc === "inbox/actions/undo") return { restored: 3, failed: 2 };
+      if (proc === "inbox/cleanup/forget") return { ok: true };
+      throw new Error(`unexpected rpc ${proc}`);
+    });
+    await render();
+    const row = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.startsWith("Archive · 5"),
+    );
+    await act(async () => row?.click());
+    const [, , buttons] = state.alert.mock.calls.at(-1) as [
+      string,
+      unknown,
+      { text: string; onPress?: () => void }[],
+    ];
+    await act(async () => buttons.find((b) => b.text === "Undo")?.onPress?.());
+    expect(state.alert).toHaveBeenLastCalledWith("Could not move 2");
+  });
+
+  it("prevents a second undo while the first request is pending", async () => {
+    const pending = deferred<{ restored: number; failed: number }>();
+    historyReply = () => ({
+      actions: [
+        {
+          batchId: "pending-undo",
+          kind: "archive",
+          source: "user",
+          reason: "cleanup",
+          createdAt: new Date().toISOString(),
+          undone: false,
+          threadCount: 5,
+          senders: ["news@lists.example.test"],
+          senderCount: 1,
+        },
+      ],
+    });
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "inbox/cleanup/list") return listReply();
+      if (proc === "inbox/actions/list") return historyReply();
+      if (proc === "inbox/actions/undo") return pending.promise;
+      if (proc === "inbox/cleanup/forget") return { ok: true };
+      throw new Error(`unexpected rpc ${proc}`);
+    });
+    await render();
+    const row = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.startsWith("Archive · 5"),
+    );
+    await act(async () => row?.click());
+    const [, , buttons] = state.alert.mock.calls.at(-1) as [
+      string,
+      unknown,
+      { text: string; onPress?: () => void }[],
+    ];
+    await act(async () => buttons.find((b) => b.text === "Undo")?.onPress?.());
+    const alertCount = state.alert.mock.calls.length;
+    await act(async () => row?.click());
+    if (state.alert.mock.calls.length > alertCount) {
+      const [, , repeatedButtons] = state.alert.mock.calls.at(-1) as [
+        string,
+        unknown,
+        { text: string; onPress?: () => void }[],
+      ];
+      await act(async () => repeatedButtons.find((b) => b.text === "Undo")?.onPress?.());
+    }
+    expect(procs().filter((proc) => proc === "inbox/actions/undo")).toHaveLength(1);
+    await act(async () => pending.resolve({ restored: 5, failed: 0 }));
+  });
+
+  it("disables sender selection and Stop while a cleanup run is pending", async () => {
+    const pending = deferred<{
+      batchId: string;
+      done: number;
+      failed: number;
+      remaining: number;
+    }>();
+    const skipping = sender("news@lists.example.test", {
+      skipInbox: true,
+      preselected: true,
+    });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me" }],
+      senders: [skipping],
+      syncedAt: null,
+    });
+    archiveReply = () => pending.promise;
+    await render();
+    await choose("Archive 4");
+    const stop = [...container.querySelectorAll("button")].find((b) => b.textContent === "Stop");
+    expect(boxes()[0]?.disabled).toBe(true);
+    expect(stop?.disabled).toBe(true);
+    await act(async () => {
+      boxes()[0]?.click();
+      stop?.click();
+    });
+    expect(checks()).toEqual(["true"]);
+    expect(procs()).not.toContain("inbox/cleanup/forget");
+    await act(async () => pending.resolve({ batchId: "run", done: 4, failed: 0, remaining: 0 }));
+  });
+
+  it("keeps the newest sender list when load responses finish out of order", async () => {
+    const first = deferred<ReturnType<typeof listReply>>();
+    const second = deferred<ReturnType<typeof listReply>>();
+    const a = sender("a@lists.example.test", { skipInbox: true, preselected: false });
+    const b = sender("b@lists.example.test", { skipInbox: true, preselected: false });
+    listReply = () => ({ accounts: [], senders: [news], syncedAt: null });
+    await render();
+    listReply = () => first.promise;
+    await act(async () => state.focus?.());
+    listReply = () => second.promise;
+    await act(async () => state.focus?.());
+    await act(async () => second.resolve({ accounts: [], senders: [b], syncedAt: null }));
+    expect(container.textContent).toContain("b@lists.example.test");
+    await act(async () => first.resolve({ accounts: [], senders: [a], syncedAt: null }));
+    expect(container.textContent).toContain("b@lists.example.test");
+    expect(container.textContent).not.toContain("a@lists.example.test");
+  });
+
+  it("alerts on a failed refresh and keeps the current sender list", async () => {
+    const skipping = sender("news@lists.example.test", { skipInbox: true, preselected: false });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me" }],
+      senders: [skipping],
+      syncedAt: null,
+    });
+    await render();
+    listReply = () => {
+      throw new Error("offline");
+    };
+    const stop = [...container.querySelectorAll("button")].find((b) => b.textContent === "Stop");
+    await act(async () => stop?.click());
+    expect(state.alert).toHaveBeenCalledWith("Could not load senders", expect.any(String));
+    expect(container.textContent).toContain("news@lists.example.test");
+    // Another failed refresh (for example on returning to the screen) does not alert again.
+    const alerts = state.alert.mock.calls.length;
+    await act(async () => state.focus?.());
+    expect(state.alert.mock.calls.length).toBe(alerts);
   });
 
   it("says there is nothing to clean up, and offers no menu", async () => {

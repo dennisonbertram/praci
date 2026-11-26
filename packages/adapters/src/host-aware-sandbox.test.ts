@@ -136,6 +136,17 @@ describe("host-aware sandbox", () => {
     await desktop.destroy(computer, ctx);
   });
 
+  it("never runs bot commands on a production backend host", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(() => createRunSandbox("desktop", {})).toThrow(
+        "SANDBOX_PROVIDER=desktop runs bot commands directly on this host",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("only switches docker deployments onto this Mac", () => {
     expect(sandboxKindForBot("docker", "this-mac")).toBe("desktop");
     expect(sandboxKindForBot("docker", "docker")).toBe("docker");

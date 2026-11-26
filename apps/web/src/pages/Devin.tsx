@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { DEVIN_APP_ORIGIN } from "@rakazo/contracts";
 import { Button, Skeleton } from "@rakazo/ui-web";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   AskAgentButton,
   ErrorNotice,
@@ -13,8 +13,10 @@ import {
 import { PageHeader } from "../components/PageHeader";
 import { StillLoading } from "../components/ShellSkeleton";
 import { kindSection } from "../lib/devin-format";
+import { usePollWhile } from "../lib/page-data";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { useOnReturn } from "../lib/use-refetch-while-open";
 import { DevinSessions } from "./devin/DevinSessions";
 
 /** How often the page re-reads the shared session list while it is visible. */
@@ -45,28 +47,33 @@ export function DevinPage({
 function Devin({ onConnect, onReconnect }: { onConnect?: () => void; onReconnect?: () => void }) {
   const query = useFinanceQuery(() => rpc.devin.sessions(), []);
   const data = query.data;
-  const reload = useRef(query.reload);
-  reload.current = query.reload;
+  const reload = query.reload;
 
   // Session state changes in Devin, not here: re-read every minute while visible, and when the
-  // person comes back to the tab.
+  // person comes back to the tab. A browser fires visibilitychange and then focus on return, and
+  // a second read would discard the first one's answer, so the return events share one read.
+  useOnReturn(true, reload);
+  usePollWhile(true, REFRESH_MS, reload);
+  // Right after connecting, the first refresh may still be running: read again every 3 s, for up to
+  // 30 s, instead of calling a not-yet-read organization empty. An interval, not a per-result timer,
+  // so a failed read does not stop the retries.
+  const [firstReadTries, setFirstReadTries] = useState(0);
+  const firstRead = data?.connection.status === "ok" && data.fetchedAt === null;
+  if (!firstRead && firstReadTries !== 0) setFirstReadTries(0);
+  const awaitingFirstRead = firstRead && firstReadTries < 10;
   useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState !== "hidden") reload.current();
-    };
-    const timer = setInterval(refresh, REFRESH_MS);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
-  // The sidebar count reads the same rows; tell it each time they were read.
+    if (!awaitingFirstRead) return;
+    const timer = window.setInterval(() => {
+      setFirstReadTries((tries) => tries + 1);
+      reload();
+    }, 3_000);
+    return () => window.clearInterval(timer);
+  }, [awaitingFirstRead, reload]);
+  // The sidebar count reads the same rows; tell it each time they were read (not on every first-read
+  // retry, which has no rows).
   useEffect(() => {
-    if (data) window.dispatchEvent(new Event("rakazo:notifications-changed"));
-  }, [data]);
+    if (data && !awaitingFirstRead) window.dispatchEvent(new Event("rakazo:notifications-changed"));
+  }, [data, awaitingFirstRead]);
 
   if (!data) {
     return query.error ? (
@@ -80,6 +87,7 @@ function Devin({ onConnect, onReconnect }: { onConnect?: () => void; onReconnect
   }
 
   const { connection, sessions } = data;
+  if (awaitingFirstRead) return <DevinSkeleton />;
   const isConnector = connection.isConnector;
   const paused = connection.status === "rejected" || connection.status === "connector_gone";
   const header = (
@@ -122,10 +130,10 @@ function Devin({ onConnect, onReconnect }: { onConnect?: () => void; onReconnect
 
   const needsYou = sessions.filter((s) => kindSection(s.kind) === "needs_you").length;
   const working = sessions.filter((s) => s.kind === "working").length;
-  // A rate limit with rows on screen is already said by "Updated …"; everything else says so.
+  // Unreachable or rate limited with rows on screen is already said by "Updated …"; with none, say so.
   const failed =
-    connection.status === "unreachable" ||
-    (connection.status === "rate_limited" && sessions.length === 0);
+    (connection.status === "unreachable" || connection.status === "rate_limited") &&
+    sessions.length === 0;
   const reconnect =
     connection.manage && onReconnect ? { label: t`Reconnect`, onClick: onReconnect } : undefined;
   return (

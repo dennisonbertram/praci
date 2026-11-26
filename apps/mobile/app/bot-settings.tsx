@@ -4,6 +4,7 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  isVoiceAgentSpawnKey,
   normalizeCreateBotProfile,
   parseBotAvatarValue,
 } from "@rakazo/contracts";
@@ -16,8 +17,18 @@ import {
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import type { Voice } from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { BotAvatar } from "../components/bot-avatar";
+import { CappedList } from "../components/capped-list";
 import { ComputerModePicker } from "../components/computer-mode-picker";
 import { glassHeaderOptions } from "../components/glass-title";
 import type { MenuPickerChoice } from "../components/menu-picker";
@@ -36,6 +47,8 @@ import { useI18n } from "../lib/i18n";
 import { native, useMobileTokens } from "../lib/native";
 import { errorText } from "../lib/user-error";
 import { stopVoicePlayback } from "../lib/voice";
+
+type CheckInCadence = "off" | "daily" | "every_4h";
 
 type BotSettingsRecord = MobileBot & {
   description?: string;
@@ -56,12 +69,17 @@ export default function BotSettingsScreen() {
   const [modelKey, setModelKey] = useState("");
   const [thinkingLevel, setThinkingLevel] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [crossSpaceCommunication, setCrossSpaceCommunication] = useState(false);
   const [credentials, setCredentials] = useState<MobileModelCredential[]>([]);
   const [catalog, setCatalog] = useState<MobileModel[]>([]);
   const [me, setMe] = useState<MobileMe | null>(null);
   const [modelMetaReady, setModelMetaReady] = useState(false);
   const [modelMetaError, setModelMetaError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [botLoadError, setBotLoadError] = useState<string | null>(null);
+  const [checkInReady, setCheckInReady] = useState(false);
+  const [checkInError, setCheckInError] = useState(false);
+  const [checkInPending, setCheckInPending] = useState(false);
   const [deviceVoiceEnabled, setDeviceVoiceEnabled] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voiceId, setVoiceId] = useState<string | undefined>();
@@ -70,11 +88,19 @@ export default function BotSettingsScreen() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
+  const [skillPending, setSkillPending] = useState<Set<string>>(() => new Set());
   const [skillsError, setSkillsError] = useState<string | null>(null);
   const [notifyOnFinish, setNotifyOnFinish] = useState(true);
+  const [checkIn, setCheckIn] = useState<CheckInCadence>("off");
+  // Saved on its own, never with the rest of the form.
+  const [firewall, setFirewall] = useState(false);
+  // One Firewall save at a time, so an older request cannot commit after a newer one.
+  const [firewallPending, setFirewallPending] = useState(false);
+  const modelMetaRequest = useRef(0);
 
-  useEffect(() => {
+  const loadBot = useCallback(() => {
     if (!botId) return;
+    setBotLoadError(null);
     void rpc<BotSettingsRecord>("bots/get", { botId })
       .then((next) => {
         setBot(next);
@@ -90,10 +116,79 @@ export default function BotSettingsScreen() {
         );
         setThinkingLevel(next.thinkingLevel ?? "");
         setAutoSpeak(next.autoSpeak);
+        setCrossSpaceCommunication(next.crossSpaceCommunication ?? false);
         setNotifyOnFinish(next.notifyOnFinish);
+        setFirewall(next.firewall ?? false);
+        setBotLoadError(null);
       })
-      .catch((err) => setError(errorText(err, t("Could not load bot"))));
+      .catch((err) => setBotLoadError(errorText(err, t("Could not load bot"))));
+  }, [botId, t]);
+
+  useEffect(() => {
+    loadBot();
+  }, [loadBot]);
+
+  const loadCheckIn = useCallback(() => {
+    if (!botId) return;
+    setCheckInError(false);
+    void rpc<{ cadence: CheckInCadence }>("checkIn/get", { botId })
+      .then((next) => {
+        setCheckIn(next.cadence);
+        setCheckInReady(true);
+      })
+      .catch(() => setCheckInError(true));
   }, [botId]);
+
+  useEffect(loadCheckIn, [loadCheckIn]);
+
+  async function chooseCheckIn(cadence: CheckInCadence) {
+    if (checkInPending) return;
+    const previous = checkIn;
+    setCheckInPending(true);
+    setCheckIn(cadence);
+    setError(null);
+    try {
+      await rpc("checkIn/set", { botId, cadence });
+    } catch {
+      setCheckIn(previous);
+      setError(t("Could not save check-in"));
+    } finally {
+      setCheckInPending(false);
+    }
+  }
+
+  const checkInChoices: MenuPickerChoice[] = [
+    { key: "off", label: t("Off") },
+    { key: "daily", label: t("Daily") },
+    { key: "every_4h", label: t("Every 4 hours") },
+  ];
+  const checkInLabel = checkInChoices.find((choice) => choice.key === checkIn)?.label ?? "";
+
+  async function saveFirewall(next: boolean) {
+    setFirewallPending(true);
+    setFirewall(next);
+    setError(null);
+    try {
+      await rpc("bots/update", { botId, firewall: next });
+    } catch (err) {
+      setFirewall(!next);
+      setError(errorText(err, t("Could not save Firewall")));
+    }
+    setFirewallPending(false);
+  }
+
+  // Turning it on saves at once; turning it off asks first.
+  function toggleFirewall(next: boolean) {
+    if (firewallPending) return;
+    if (next) {
+      void saveFirewall(true);
+      return;
+    }
+    Alert.alert(t("Turn off Firewall?"), undefined, [
+      { text: t("Cancel"), style: "cancel" },
+      { text: t("Turn off"), style: "destructive", onPress: () => void saveFirewall(false) },
+    ]);
+  }
 
   const loadSkills = useCallback(() => {
     if (!botId) return;
@@ -106,25 +201,37 @@ export default function BotSettingsScreen() {
   useEffect(loadSkills, [loadSkills]);
 
   async function setSkillEnabled(skill: BotAgentSkill, enabled: boolean) {
+    if (skillPending.has(skill.id)) return;
+    const previous = skill.enabled;
     const mark = (value: boolean) =>
       setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s)));
+    setSkillPending((current) => new Set(current).add(skill.id));
     mark(enabled);
     setSkillsError(null);
     try {
       await rpc("agentSkills/setEnabled", { botId, skillKey: skill.id, enabled });
     } catch {
-      mark(!enabled);
+      mark(previous);
       setSkillsError(t("Could not update skills"));
+    } finally {
+      setSkillPending((current) => {
+        const next = new Set(current);
+        next.delete(skill.id);
+        return next;
+      });
     }
   }
 
-  useEffect(() => {
+  const loadModelMeta = useCallback(() => {
+    const request = ++modelMetaRequest.current;
+    setModelMetaError(null);
     void Promise.all([
       rpc<MobileMe>("me"),
       rpc<MobileModel[]>("models/list"),
       rpc<MobileModelCredential[]>("models/credentials"),
     ])
       .then(([nextMe, nextCatalog, nextCredentials]) => {
+        if (request !== modelMetaRequest.current) return;
         setMe(nextMe);
         setCatalog(nextCatalog);
         setCredentials(nextCredentials);
@@ -132,10 +239,18 @@ export default function BotSettingsScreen() {
         setModelMetaReady(true);
       })
       .catch((err) => {
+        if (request !== modelMetaRequest.current) return;
         setModelMetaReady(false);
         setModelMetaError(errorText(err, t("Could not load model settings")));
       });
   }, [t]);
+
+  useEffect(() => {
+    loadModelMeta();
+    return () => {
+      modelMetaRequest.current += 1;
+    };
+  }, [loadModelMeta]);
 
   const avatar = parseBotAvatarValue(color);
   const avatarSwatch = avatar.kind === "shape" || avatar.kind === "color" ? avatar.color : "";
@@ -317,6 +432,7 @@ export default function BotSettingsScreen() {
         modelId?: string | null;
         thinkingLevel?: ThinkingLevel | null;
         autoSpeak?: boolean;
+        crossSpaceCommunication?: boolean;
         notifyOnFinish?: boolean;
       } = { botId };
       if (profile.name !== bot.name) input.name = profile.name;
@@ -341,6 +457,8 @@ export default function BotSettingsScreen() {
           : null;
       }
       if (autoSpeak !== bot.autoSpeak) input.autoSpeak = autoSpeak;
+      if (crossSpaceCommunication !== (bot.crossSpaceCommunication ?? false))
+        input.crossSpaceCommunication = crossSpaceCommunication;
       if (notifyOnFinish !== bot.notifyOnFinish) input.notifyOnFinish = notifyOnFinish;
       if (computerMode !== bot.computerMode) {
         await rpc(
@@ -406,6 +524,37 @@ export default function BotSettingsScreen() {
       )}
     </View>
   );
+
+  if (!bot) {
+    return (
+      <>
+        <Stack.Screen options={glassHeaderOptions(t("Chat settings"))} />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: tokens.background,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          {botLoadError ? (
+            <>
+              <Text
+                accessibilityRole="alert"
+                style={{ color: tokens.destructive, marginBottom: 16 }}
+              >
+                {botLoadError}
+              </Text>
+              <NativeActionButton label={t("Try again")} onPress={loadBot} />
+            </>
+          ) : (
+            <ActivityIndicator color={native.secondaryLabel} />
+          )}
+        </View>
+      </>
+    );
+  }
 
   return (
     <>
@@ -508,6 +657,24 @@ export default function BotSettingsScreen() {
           </ScrollView>
         )}
         <ComputerModePicker value={computerMode} onChange={setComputerMode} />
+        {isVoiceAgentSpawnKey(bot?.spawnKey) ? null : (
+          <View style={{ marginTop: 20 }}>
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
+                {t("Firewall")}
+              </Text>
+              <NativeSwitch
+                accessibilityLabel={t("Firewall")}
+                disabled={firewallPending}
+                onValueChange={toggleFirewall}
+                value={firewall}
+              />
+            </View>
+            <Text style={{ color: tokens.mutedForeground, fontSize: 13 }}>
+              {t("Treat everything it reads as untrusted. Sends and changes always ask.")}
+            </Text>
+          </View>
+        )}
         <View style={[styles.row, { marginTop: 20 }]}>
           <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
             {t("Read replies aloud")}
@@ -520,6 +687,16 @@ export default function BotSettingsScreen() {
         </View>
         <View style={styles.row}>
           <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
+            {t("Allow cross-space bot communication")}
+          </Text>
+          <NativeSwitch
+            accessibilityLabel={t("Allow cross-space bot communication")}
+            onValueChange={setCrossSpaceCommunication}
+            value={crossSpaceCommunication}
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
             {t("Notifications")}
           </Text>
           <NativeSwitch
@@ -528,6 +705,72 @@ export default function BotSettingsScreen() {
             value={notifyOnFinish}
           />
         </View>
+        {checkInError ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Check in")}
+            accessibilityValue={{ text: t("Try again") }}
+            onPress={loadCheckIn}
+          >
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
+                {t("Check in")}
+              </Text>
+              <Text style={[styles.rowValue, { color: tokens.destructive }]}>{t("Try again")}</Text>
+            </View>
+          </Pressable>
+        ) : (
+          <View style={styles.row}>
+            <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
+              {t("Check in")}
+            </Text>
+            {checkInReady && !checkInPending ? (
+              <MenuPickerMenu
+                choices={checkInChoices}
+                label={t("Check in")}
+                onChange={(key) => void chooseCheckIn(key as CheckInCadence)}
+                value={checkIn}
+              >
+                <View
+                  accessibilityLabel={t("Check in")}
+                  accessibilityRole="button"
+                  accessibilityValue={{ text: checkInLabel }}
+                  accessible
+                  style={styles.voiceTrigger}
+                >
+                  <Text numberOfLines={1} style={[styles.rowValue, { color: tokens.foreground }]}>
+                    {checkInLabel}
+                  </Text>
+                  <NativeSymbol
+                    android="chevron-expand"
+                    color={native.tertiaryLabel}
+                    ios="chevron.up.chevron.down"
+                    size={13}
+                  />
+                </View>
+              </MenuPickerMenu>
+            ) : (
+              // Loading, or a save in flight: no menu to open, so a newer choice cannot race it.
+              <View
+                accessibilityLabel={t("Check in")}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: true }}
+                accessibilityValue={checkInReady ? { text: checkInLabel } : undefined}
+                accessible
+                style={styles.voiceTrigger}
+              >
+                {checkInReady ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.rowValue, { color: tokens.mutedForeground }]}
+                  >
+                    {checkInLabel}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+          </View>
+        )}
         {deviceVoiceEnabled ? (
           voiceError ? (
             <Pressable
@@ -545,18 +788,26 @@ export default function BotSettingsScreen() {
         {skills.length || skillsError ? (
           <View style={{ marginTop: 20 }}>
             <Text style={{ color: tokens.mutedForeground, fontSize: 14 }}>{t("Skills")}</Text>
-            {skills.map((skill) => (
-              <View key={skill.id} style={styles.row}>
-                <Text numberOfLines={1} style={[styles.rowLabel, { color: tokens.foreground }]}>
-                  {skill.name}
-                </Text>
-                <NativeSwitch
-                  accessibilityLabel={t("Use {name}", { name: skill.name })}
-                  onValueChange={(enabled) => void setSkillEnabled(skill, enabled)}
-                  value={skill.enabled}
-                />
-              </View>
-            ))}
+            <CappedList
+              items={skills}
+              title={t("Skills")}
+              error={skillsError}
+              keyOf={(skill) => skill.id}
+              searchFields={(skill) => [skill.name]}
+              renderItem={(skill) => (
+                <View key={skill.id} style={styles.row}>
+                  <Text numberOfLines={1} style={[styles.rowLabel, { color: tokens.foreground }]}>
+                    {skill.name}
+                  </Text>
+                  <NativeSwitch
+                    accessibilityLabel={t("Use {name}", { name: skill.name })}
+                    disabled={skillPending.has(skill.id)}
+                    onValueChange={(enabled) => void setSkillEnabled(skill, enabled)}
+                    value={skill.enabled}
+                  />
+                </View>
+              )}
+            />
             {skillsError ? (
               <Text style={{ color: tokens.destructive, marginTop: 8 }}>{skillsError}</Text>
             ) : null}
@@ -615,9 +866,19 @@ export default function BotSettingsScreen() {
               ) : null}
             </View>
             {modelMetaError ? (
-              <Text style={{ color: tokens.mutedForeground, marginTop: 12, fontSize: 13 }}>
-                {modelMetaError}
-              </Text>
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ color: tokens.mutedForeground, fontSize: 13 }}>
+                  {modelMetaError}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("Try again")}
+                  onPress={loadModelMeta}
+                  style={{ marginTop: 8, minHeight: 36, justifyContent: "center" }}
+                >
+                  <Text style={{ color: tokens.foreground, fontSize: 14 }}>{t("Try again")}</Text>
+                </Pressable>
+              </View>
             ) : null}
           </View>
         ) : null}

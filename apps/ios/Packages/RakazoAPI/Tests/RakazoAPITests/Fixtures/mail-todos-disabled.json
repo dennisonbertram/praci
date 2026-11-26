@@ -1,0 +1,11 @@
+{
+  "json": {
+    "enabled": false,
+    "todos": [],
+    "meetings": {
+      "source": false,
+      "syncing": false,
+      "ready": false
+    }
+  }
+}

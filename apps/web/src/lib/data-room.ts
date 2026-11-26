@@ -31,12 +31,13 @@ export function findDataRoomFolder(folders: DataRoomApiFolder[], path: string[])
 }
 
 /** The id of the folder at `path`, creating whichever folders along it are missing. */
-export async function ensureDataRoomFolder(path: string[]): Promise<string> {
-  const folders = await rpc.dataRoom.folders();
+export async function ensureDataRoomFolder(path: string[], spaceId?: string): Promise<string> {
+  const context = { context: { spaceId } };
+  const folders = await rpc.dataRoom.folders(undefined, context);
   let parentId: string | null = null;
   for (const [depth, name] of path.entries()) {
     const known = findDataRoomFolder(folders, path.slice(0, depth + 1));
-    parentId = known ?? (await rpc.dataRoom.folderCreate({ name, parentId })).id;
+    parentId = known ?? (await rpc.dataRoom.folderCreate({ name, parentId }, context)).id;
   }
   if (!parentId) throw new Error("A folder path needs at least one name");
   return parentId;
@@ -114,17 +115,23 @@ export function uploadToDataRoom(
   folderId: string | undefined,
   onProgress: (fraction: number) => void,
   signal?: AbortSignal,
+  scope?: { source: "scan"; userId: string; spaceId: string },
 ): Promise<DataRoomApiUploadResponse> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DataRoomUploadError("aborted"));
     const request = new XMLHttpRequest();
     signal?.addEventListener("abort", () => {
       request.abort();
       reject(new DataRoomUploadError("aborted"));
     });
-    const query = new URLSearchParams({ name: file.name, ...(folderId ? { folderId } : {}) });
+    const query = new URLSearchParams({
+      name: file.name,
+      ...(folderId ? { folderId } : {}),
+      ...(scope ? { source: scope.source, expectedUserId: scope.userId } : {}),
+    });
     request.open("POST", `/api/data-room/upload?${query}`);
     request.withCredentials = true;
-    withSpaceHeaders().forEach((value, key) => {
+    withSpaceHeaders(undefined, scope?.spaceId).forEach((value, key) => {
       request.setRequestHeader(key, value);
     });
     request.setRequestHeader("content-type", file.type || "application/octet-stream");

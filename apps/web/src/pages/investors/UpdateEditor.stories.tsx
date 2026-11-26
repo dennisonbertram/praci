@@ -1,5 +1,6 @@
 import type { InvestorUpdate } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { UpdateEditor } from "./UpdateEditor";
 
@@ -141,5 +142,54 @@ export const LoadError: Story = {
       "investors.updates.get": () => {
         throw new Error("Could not load this update");
       },
+    }),
+};
+
+/** After Send: the footer reads "Sending…" with Undo and the fields are locked for a few seconds. */
+export const Held: Story = {
+  beforeEach: setup(update({ body: "September went well." })),
+  play: async ({ canvasElement }) => {
+    const send = await within(canvasElement).findByRole("button", { name: "Send" });
+    await userEvent.click(send);
+  },
+};
+
+/** The draft changed elsewhere (the agent, another tab): the save is refused, the server's version replaces the fields, and the header says so. */
+export const ChangedElsewhere: Story = {
+  beforeEach: () => {
+    let gets = 0;
+    mockRpc({
+      "investors.updates.get": () =>
+        ++gets === 1
+          ? update()
+          : update({ body: "The agent rewrote this while you were editing." }),
+      "investors.updates.accounts": accounts,
+      "contacts.list": contacts,
+      "investors.updates.save": () => {
+        throw Object.assign(new Error("This update changed elsewhere."), {
+          code: "CONFLICT",
+        });
+      },
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const checkbox = await within(canvasElement).findByRole("checkbox", {
+      name: /Bo Sample/,
+    });
+    await userEvent.click(checkbox);
+    await within(canvasElement).findByText("Changed elsewhere", undefined, { timeout: 3000 });
+  },
+};
+
+/** The recipients could not be loaded: the alert replaces the To list and Send is disabled. */
+export const RecipientsFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "investors.updates.get": update(),
+      "investors.updates.accounts": accounts,
+      "contacts.list": () => {
+        throw new Error("Could not load recipients");
+      },
+      "investors.updates.save": update(),
     }),
 };

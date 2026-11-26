@@ -6,7 +6,7 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import SignIn from "../app/sign-in";
-import { passwordResetCapabilities } from "./api";
+import { passwordResetCapabilities, signUp } from "./api";
 import type { NativeActionButtonProps } from "./native-controls";
 
 const route = vi.hoisted(() => ({ mode: "in" }));
@@ -31,10 +31,21 @@ vi.mock("react-native", () => {
     TextInput: ({
       placeholder,
       secureTextEntry,
+      value,
+      onChangeText,
     }: {
       placeholder: string;
       secureTextEntry?: boolean;
-    }) => <input aria-label={placeholder} type={secureTextEntry ? "password" : "text"} />,
+      value?: string;
+      onChangeText?: (text: string) => void;
+    }) => (
+      <input
+        aria-label={placeholder}
+        type={secureTextEntry ? "password" : "text"}
+        value={value}
+        onChange={(event) => onChangeText?.(event.target.value)}
+      />
+    ),
     Pressable: ({ children, onPress }: { children: ReactNode; onPress: () => void }) => (
       <button type="button" onClick={onPress}>
         {children}
@@ -103,6 +114,17 @@ function ssoButtons() {
     (button) => button.textContent === "Continue with Example",
   );
 }
+function type(input: Element, value: string) {
+  act(() => {
+    const element = input as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(element, value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+function button(label: string) {
+  return [...host.querySelectorAll("button")].find((item) => item.textContent === label);
+}
 function expectBefore(first: Element, second: Element) {
   expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 }
@@ -159,4 +181,30 @@ it("hides SSO when switching to password recovery", async () => {
   expect(host.querySelector('button[data-prominence="primary"]')?.textContent).toBe(
     "Send reset link",
   );
+});
+
+it("names the verification address and keeps the form when the person changes it", async () => {
+  route.mode = "up";
+  vi.mocked(signUp).mockResolvedValue({ verificationRequired: true });
+  await render();
+  type(host.querySelector('input[aria-label="Name"]')!, "Ada");
+  type(host.querySelector('input[aria-label="Email"]')!, "ada@example.co");
+  type(host.querySelector('input[type="password"]')!, "Str0ng-Passw0rd!");
+  await act(async () => {
+    button("Sign up")!.click();
+  });
+  expect(
+    [...host.querySelectorAll("span")].some(
+      (span) => span.textContent === "A verification link is on its way to ada@example.co.",
+    ),
+  ).toBe(true);
+  expect(button("Back to sign in")).toBeDefined();
+  await act(async () => {
+    button("Use a different email")!.click();
+  });
+  expect(host.querySelector('input[aria-label="Email"]')).toHaveProperty("value", "ada@example.co");
+  expect(host.querySelector('input[aria-label="Name"]')).toHaveProperty("value", "Ada");
+  expect(
+    [...host.querySelectorAll("span")].some((span) => span.textContent === "Sign up for Praci"),
+  ).toBe(true);
 });

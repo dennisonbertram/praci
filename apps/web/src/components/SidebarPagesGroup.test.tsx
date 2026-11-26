@@ -140,3 +140,14 @@ it("has no menu in the rail", () => {
   mount({ rail: true });
   expect(options()).toBeNull();
 });
+
+it("pins the header while the group is open, not when collapsed", async () => {
+  await mount();
+  const header = () =>
+    container.querySelector('[data-testid="sidebar-pages-toggle"]')!.parentElement!;
+  expect(header().classList.contains("sticky")).toBe(true);
+  await act(() =>
+    (container.querySelector('[data-testid="sidebar-pages-toggle"]') as HTMLElement).click(),
+  );
+  expect(header().classList.contains("sticky")).toBe(false);
+});

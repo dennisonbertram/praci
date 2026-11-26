@@ -401,6 +401,44 @@ export function ClearConversationDialog({
   );
 }
 
+export function ArchiveBotsDialog({
+  count,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [archiving, setArchiving] = useState(false);
+  return (
+    <AlertDialog open onOpenChange={closeUnlessBusy(archiving, onCancel)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            <Trans>Archive {count} email chats?</Trans>
+          </AlertDialogTitle>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={archiving}>
+            <Trans>Cancel</Trans>
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={archiving}
+            onClick={() => {
+              setArchiving(true);
+              void onConfirm();
+            }}
+          >
+            <Trans>Archive</Trans>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function DeleteBotDialog({
   bot,
   onCancel,

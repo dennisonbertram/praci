@@ -1,6 +1,6 @@
 import type { NotificationChannel } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
-import { deletePushEndpoint } from "@rakazo/db";
+import { channelSwitches, deletePushEndpoint } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
 export const OUTBOX_MAX_ATTEMPTS = 5;
@@ -11,7 +11,12 @@ const BATCH = 25;
 
 type Db = Pick<
   PrismaClient,
-  "notification" | "notificationDelivery" | "notificationEndpoint" | "thread" | "$queryRaw"
+  | "notification"
+  | "notificationDelivery"
+  | "notificationEndpoint"
+  | "notificationPreference"
+  | "thread"
+  | "$queryRaw"
 >;
 
 /** 1 minute after the first failure, then 2, 4, 8. */
@@ -77,6 +82,12 @@ async function deliverOne(
     where: { id: delivery.notificationId },
   });
   if (!notification || notification.shownAt || notification.seenAt) return finish("skipped");
+  // The switch may have been turned off after this delivery was queued (it waits, then retries).
+  const switches = await channelSwitches(deps.prisma, {
+    spaceId: notification.spaceId,
+    userId: notification.userId,
+  });
+  if (switches[delivery.channel] === false) return finish("skipped");
   const channel = deps.channels.find((c) => c.channel === delivery.channel);
   const thread = notification.threadId
     ? await deps.prisma.thread.findUnique({

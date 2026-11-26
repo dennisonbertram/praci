@@ -66,7 +66,7 @@ export default function ArchivedBots() {
 
   function remove(bot: MobileBot) {
     if (pending) return;
-    confirmDeleteBot(bot, () => removed(bot.id));
+    confirmDeleteBot(bot, () => removed(bot.id), setPending);
   }
 
   async function open(bot: MobileBot) {

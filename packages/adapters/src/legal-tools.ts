@@ -12,6 +12,7 @@ import {
   IsolationError,
   LEGAL_NOT_LEGAL_TYPE,
   LegalRevisionError,
+  LegalStaleRevisionError,
   parseLegalDay,
 } from "@rakazo/db";
 import * as z from "zod";
@@ -55,9 +56,13 @@ const LEGAL_WRITE_TOOLS = new Set([
   "legal_link",
 ]);
 
-/** Serializes work on one Legal agent (routine creation, scan runs) across API and worker processes. */
-export async function lockLegalBot(tx: Pick<PrismaClient, "$executeRaw">, botId: string) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`legal-bot:${botId}`}, 0))`;
+/** Serializes work on one agent of a kind (routine creation, runs) across API and worker processes. */
+export async function lockAgentBot(
+  tx: Pick<PrismaClient, "$executeRaw">,
+  kind: string,
+  botId: string,
+) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${kind}-bot:${botId}`}, 0))`;
 }
 
 /**
@@ -306,7 +311,10 @@ export async function legalToolFromTool(
         const current = await repo.updateDeadline(actor, rest.id, { proposeRemoval: true });
         return {
           deadline: toLegalDeadline(current),
-          note: "Proposed for removal; the founder confirms.",
+          note:
+            current.status === "open"
+              ? "Proposed for removal; the founder confirms."
+              : "Closed by the founder; left unchanged.",
         };
       }
       const row = await repo.upsertDeadline(actor, {
@@ -338,6 +346,11 @@ export async function legalToolFromTool(
     }
     return { error: `Unknown legal tool ${name}` };
   } catch (error) {
+    if (error instanceof LegalStaleRevisionError) {
+      return {
+        error: `a newer analysis of this document is already stored (revision ${error.stored}); nothing was recorded`,
+      };
+    }
     if (error instanceof LegalRevisionError) {
       return {
         error: `revision is newer than the document's current revision (${error.current}); use the revision returned with the document`,
@@ -486,13 +499,10 @@ async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
   if (q.view === "contracts") {
     const rows = await repo.listContracts(actor, {
       limit: q.limit,
+      status: q.status,
       excludeConnectionIds: deps.deniedConnectionIds,
     });
-    return {
-      contracts: rows
-        .filter((row) => !q.status || row.status === q.status)
-        .map((row) => toLegalContract(row)),
-    };
+    return { contracts: rows.map((row) => toLegalContract(row)) };
   }
   if (q.view === "deadlines") {
     const today = parseLegalDay((deps.now?.() ?? new Date()).toISOString().slice(0, 10)) as Date;

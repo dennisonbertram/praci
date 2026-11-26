@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -12,6 +12,7 @@ import { fitImageSize } from "../lib/inline-image";
 import { iosAtLeast } from "../lib/native-controls";
 import { errorText } from "../lib/user-error";
 import { GlassIconButton } from "./glass-icon-button";
+import { NativeActionButton } from "./native-action-button";
 
 export type ImageArtifactPreviewTarget = {
   artifactId: string;
@@ -172,8 +173,13 @@ export function ImageArtifactViewer({
       message: errorText(error, t("Could not load image")),
     });
 
+  const [attempt, setAttempt] = useState(0);
+  const sharingInProgress = useRef(false);
+  const load = () => setAttempt((value) => value + 1);
+
   useEffect(() => {
     let cancelled = false;
+    setState({ status: "loading" });
     void imageArtifactPreview(requestTarget(), target.artifactId, target.mimeType)
       .then(({ uri, size }) => {
         if (!cancelled) setState({ status: "ready", uri, natural: size });
@@ -185,13 +191,19 @@ export function ImageArtifactViewer({
       cancelled = true;
     };
     // The request target is derived from the two ids below.
-  }, [targetBotId, targetGroupId, target.artifactId, target.mimeType]);
+  }, [targetBotId, targetGroupId, target.artifactId, target.mimeType, attempt]);
 
   // Re-resolve the file before sharing: it re-downloads when the OS purged the cache since load.
-  const share = () =>
+  const share = () => {
+    if (sharingInProgress.current) return;
+    sharingInProgress.current = true;
     void imageArtifactUri(requestTarget(), target.artifactId, target.mimeType)
       .then((uri) => shareLocalFile(uri, target.mimeType, target.name))
-      .catch((error) => Alert.alert(t("Could not share image"), errorText(error, t("Try again."))));
+      .catch((error) => Alert.alert(t("Could not share image"), errorText(error, t("Try again."))))
+      .finally(() => {
+        sharingInProgress.current = false;
+      });
+  };
 
   return (
     // Insets come from the SafeAreaProvider mounted by app/image.tsx, seeded with the window
@@ -253,9 +265,14 @@ export function ImageArtifactViewer({
             onClose={onClose}
             onError={() => fail(new Error(t("Could not load image")))}
           />
+        ) : state.status === "error" ? (
+          <View style={styles.error}>
+            <Text style={[styles.message, { color: tokens.mutedForeground }]}>{state.message}</Text>
+            <NativeActionButton label={t("Try again")} onPress={load} prominence="secondary" />
+          </View>
         ) : (
           <Text style={[styles.message, { color: tokens.mutedForeground }]}>
-            {state.status === "error" ? state.message : t("Loading image…")}
+            {t("Loading image…")}
           </Text>
         )}
       </View>
@@ -275,4 +292,5 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", gap: 8 },
   stage: { flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   message: { fontSize: 15, textAlign: "center", padding: 24 },
+  error: { alignItems: "center", gap: 12 },
 });

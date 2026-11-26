@@ -133,6 +133,10 @@ export function OnboardingPage() {
   const needsIntegrationSetup = integrationSetup?.needsSetup ?? false;
   const [integrationServers, setIntegrationServers] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
+  const [startupLoadFailed, setStartupLoadFailed] = useState(false);
+  const [catalogLoadFailed, setCatalogLoadFailed] = useState(false);
+  // One retry at a time, so a late answer cannot reset what the person has started typing.
+  const [retrying, setRetrying] = useState(false);
   const [provider, setProvider] = useState("openrouter");
   const [modelId, setModelId] = useState("");
   const modelIdRef = useRef(modelId);
@@ -153,6 +157,7 @@ export function OnboardingPage() {
   const resetOpenAiCompatibleProbe = modelProbe.reset;
   const createStartedRef = useRef(false);
   const deploymentDefaultModelRef = useRef<string | null>(null);
+  const startupMeRef = useRef<Awaited<ReturnType<typeof rpc.me>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [preflightTesting, setPreflightTesting] = useState(false);
@@ -200,29 +205,69 @@ export function OnboardingPage() {
     onConnected: () => connectedBySignIn(OPENROUTER_PROVIDER),
   });
 
-  useEffect(() => {
-    void Promise.all([
-      rpc.me(),
-      rpc.models.list().catch(() => []),
-      rpc.integrationSetup.get().catch(() => null),
-    ])
-      .then(([me, models, integrations]) => {
-        setIntegrationSetup(integrations);
-        setCatalog(models);
-        deploymentDefaultModelRef.current = me.defaultModel;
-        const preferred =
-          models.find(
+  async function loadStartup() {
+    setStartupLoadFailed(false);
+    setRetrying(true);
+    try {
+      const [me, modelResult, integrations] = await Promise.all([
+        rpc.me(),
+        rpc.models.list().then(
+          (models) => ({ models, failed: false as const }),
+          () => ({ models: [], failed: true as const }),
+        ),
+        rpc.integrationSetup.get().catch(() => null),
+      ]);
+      const { models, failed } = modelResult;
+      startupMeRef.current = me;
+      setIntegrationSetup(integrations);
+      setCatalog(models);
+      setCatalogLoadFailed(failed);
+      deploymentDefaultModelRef.current = me.defaultModel;
+      const preferred =
+        models.find(
+          (entry) => entry.provider === me.defaultProvider && entry.id === me.defaultModel,
+        ) ??
+        models.find((entry) => entry.provider === me.defaultProvider) ??
+        models[0];
+      if (preferred) {
+        setProvider(preferred.provider);
+        setModelId(preferred.provider === OPENAI_COMPATIBLE_PROVIDER_ID ? "" : preferred.id);
+      }
+      setStep(me.needsModel ? "model" : integrations?.needsSetup ? "integrations" : "bot");
+    } catch {
+      setStartupLoadFailed(true);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  async function retryCatalogLoad() {
+    setRetrying(true);
+    try {
+      const models = await rpc.models.list();
+      setCatalog(models);
+      setCatalogLoadFailed(false);
+      const me = startupMeRef.current;
+      const preferred = me
+        ? (models.find(
             (entry) => entry.provider === me.defaultProvider && entry.id === me.defaultModel,
           ) ??
           models.find((entry) => entry.provider === me.defaultProvider) ??
-          models[0];
-        if (preferred) {
-          setProvider(preferred.provider);
-          setModelId(preferred.provider === OPENAI_COMPATIBLE_PROVIDER_ID ? "" : preferred.id);
-        }
-        setStep(me.needsModel ? "model" : integrations?.needsSetup ? "integrations" : "bot");
-      })
-      .catch(() => setStep("bot"));
+          models[0])
+        : models[0];
+      if (preferred) {
+        setProvider(preferred.provider);
+        setModelId(preferred.provider === OPENAI_COMPATIBLE_PROVIDER_ID ? "" : preferred.id);
+      }
+    } catch {
+      setCatalogLoadFailed(true);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadStartup();
     return () => {
       modelProbe.invalidate();
     };
@@ -370,7 +415,9 @@ export function OnboardingPage() {
       },
       onError: (err) => {
         if (!preflightStillCurrent(revision)) return;
-        setPreflightFailure(classifyModelConnectionFailure(err, { modelId }));
+        setPreflightFailure(
+          classifyModelConnectionFailure(err, { modelId, secrets: [apiKey.trim()] }),
+        );
         setNotice(null);
       },
     });
@@ -547,13 +594,8 @@ export function OnboardingPage() {
       }
       // Onboarding continues conversationally in the thread: greeting first,
       // then the focus choice (immediate for the first bot).
-      const started = await rpc.onboarding
-        .start({ botId: bot.id })
-        .then(() => true)
-        .catch(() => false);
-      if (started) {
-        await rpc.onboarding.promptFocus({ botId: bot.id }).catch(() => undefined);
-      }
+      await rpc.onboarding.start({ botId: bot.id });
+      await rpc.onboarding.promptFocus({ botId: bot.id });
       navigate(`/app/${bot.id}`);
     } catch (err) {
       createStartedRef.current = false;
@@ -566,12 +608,36 @@ export function OnboardingPage() {
     void createFirstBot();
   }, [step]);
 
-  if (step === "loading" || (step === "bot" && !error)) return <ShellSkeleton />;
+  if (step === "loading" && !startupLoadFailed) return <ShellSkeleton />;
+  if (step === "bot" && !error) return <ShellSkeleton />;
 
   return (
     <div className="min-h-full bg-background px-6 py-12">
       <div className="mx-auto w-full max-w-[560px]">
-        {step === "model" ? (
+        {startupLoadFailed ? (
+          <div>
+            <p className="text-sm text-destructive">
+              <Trans>Could not load</Trans>
+            </p>
+            <Button className="mt-4" disabled={retrying} onClick={() => void loadStartup()}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : null}
+        {step === "model" && catalogLoadFailed ? (
+          <div>
+            <h1 className="text-[32px] font-medium text-foreground">
+              <Trans>Connect a model</Trans>
+            </h1>
+            <p className="mt-8 text-sm text-destructive">
+              <Trans>Could not load</Trans>
+            </p>
+            <Button className="mt-4" disabled={retrying} onClick={() => void retryCatalogLoad()}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : null}
+        {step === "model" && !catalogLoadFailed ? (
           <div>
             <h1 className="text-[32px] font-medium text-foreground">
               <Trans>Connect a model</Trans>
@@ -614,8 +680,9 @@ export function OnboardingPage() {
                         </Trans>
                       )}
                     </p>
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Input
+                        className="min-w-0 flex-1 basis-48"
                         value={pasteCode}
                         onChange={(e) => setPasteCode(e.target.value)}
                         aria-label={t`Authorization code or callback URL`}

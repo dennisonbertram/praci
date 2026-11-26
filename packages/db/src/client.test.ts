@@ -117,6 +117,22 @@ describe("createPool", () => {
   });
 });
 
+describe("failover resilience", () => {
+  it("probes quiet connections and bounds a query on a dead one", () => {
+    const pool = createPool("postgres://u:p@127.0.0.1:1/db");
+    pools.push(pool);
+    expect(pool.options).toMatchObject({
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
+      query_timeout: 330_000,
+    });
+  });
+
+  it("counts a query timeout on a cut connection as an interruption", () => {
+    expect(isDatabaseInterruption(new Error("Query read timeout"))).toBe(true);
+  });
+});
+
 describe("isDatabaseInterruption", () => {
   const known = (code: string, message: string) =>
     new Prisma.PrismaClientKnownRequestError(message, { code, clientVersion: "7.10.0" });

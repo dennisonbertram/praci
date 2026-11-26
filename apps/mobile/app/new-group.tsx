@@ -1,7 +1,7 @@
-import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
+import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, GROUP_NAME_MAX } from "@rakazo/contracts";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, TextInput } from "react-native";
 import { BotMemberPicker } from "../components/bot-member-picker";
 import { NativeActionButton } from "../components/native-action-button";
 import type { MobileBot } from "../lib/api";
@@ -18,12 +18,30 @@ export default function NewGroup() {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadingBots, setLoadingBots] = useState(true);
+  const [botsLoadFailed, setBotsLoadFailed] = useState(false);
   const [pending, setPending] = useState(false);
+  const mounted = useRef(false);
+
+  async function loadBots() {
+    setLoadingBots(true);
+    setBotsLoadFailed(false);
+    try {
+      const nextBots = await rpc<MobileBot[]>("bots/list");
+      if (mounted.current) setBots(nextBots.filter((bot) => !bot.archivedAt));
+    } catch {
+      if (mounted.current) setBotsLoadFailed(true);
+    } finally {
+      if (mounted.current) setLoadingBots(false);
+    }
+  }
 
   useEffect(() => {
-    void rpc<MobileBot[]>("bots/list")
-      .then((nextBots) => setBots(nextBots.filter((bot) => !bot.archivedAt)))
-      .catch(() => undefined);
+    mounted.current = true;
+    void loadBots();
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   async function create() {
@@ -41,14 +59,16 @@ export default function NewGroup() {
         name: name.trim(),
         botIds: selected,
       });
+      if (!mounted.current) return;
       router.replace({
         pathname: "/group-thread",
         params: { groupId: group.id, name: group.name },
       });
     } catch (err) {
+      if (!mounted.current) return;
       setError(errorText(err, t("Could not create group")));
     } finally {
-      setPending(false);
+      if (mounted.current) setPending(false);
     }
   }
 
@@ -57,6 +77,7 @@ export default function NewGroup() {
       <Stack.Screen options={{ title: t("New group") }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
         style={{ flex: 1, backgroundColor: tokens.background }}
         contentContainerStyle={{ padding: 24 }}
       >
@@ -64,6 +85,9 @@ export default function NewGroup() {
         <TextInput
           value={name}
           onChangeText={setName}
+          maxLength={GROUP_NAME_MAX}
+          returnKeyType="done"
+          onSubmitEditing={() => void create()}
           placeholder={t("Name this group")}
           placeholderTextColor={tokens.mutedForeground}
           style={{
@@ -78,12 +102,28 @@ export default function NewGroup() {
         <Text style={{ color: tokens.mutedForeground, fontSize: 14, marginTop: 20 }}>
           {t("Members")}
         </Text>
-        <BotMemberPicker
-          bots={bots}
-          selected={selected}
-          onChange={setSelected}
-          disabled={pending}
-        />
+        {loadingBots ? <ActivityIndicator /> : null}
+        {!loadingBots && botsLoadFailed ? (
+          <>
+            <Text style={{ color: tokens.destructive, marginTop: 12 }}>
+              {t("Could not load bots")}
+            </Text>
+            <NativeActionButton
+              label={t("Try again")}
+              onPress={() => void loadBots()}
+              prominence="secondary"
+              style={{ marginTop: 12 }}
+            />
+          </>
+        ) : null}
+        {!loadingBots && !botsLoadFailed ? (
+          <BotMemberPicker
+            bots={bots}
+            selected={selected}
+            onChange={setSelected}
+            disabled={pending}
+          />
+        ) : null}
         {error ? <Text style={{ color: tokens.destructive, marginTop: 12 }}>{error}</Text> : null}
         <NativeActionButton
           disabled={

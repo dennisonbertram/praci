@@ -1,22 +1,32 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { SidebarPagesState, SidebarPageTemplate } from "@rakazo/contracts";
+import type {
+  Bot,
+  SidebarPageInput,
+  SidebarPagesState,
+  SidebarPageTemplate,
+} from "@rakazo/contracts";
 import { SIDEBAR_PAGE_TEMPLATES } from "@rakazo/contracts";
 import {
+  BotAvatar,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { Ellipsis, LayoutDashboard } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { desktopBridge } from "../lib/desktop";
 import { rpc } from "../lib/rpc";
 import { sidebarPageCopy } from "../lib/sidebar-page-copy";
+import { SIDEBAR_PAGES_CHANGED_EVENT } from "../lib/sidebar-pages-event";
 import { errorText } from "../lib/user-error";
 import { AddSidebarPage } from "./AddSidebarPage";
 import { SidebarPageLink } from "./SidebarPageLink";
 import { usePagesCollapsed } from "./SidebarPagesGroup";
+
+export { SIDEBAR_PAGES_CHANGED_EVENT };
 
 /** The user's added sidebar pages, then the "+ Add page" row. */
 export function SidebarPages({
@@ -25,7 +35,10 @@ export function SidebarPages({
   rail = false,
   hidden = [],
   onListed,
+  bots = [],
 }: {
+  /** The user's bots: a bot page shows its bot's avatar, and the add menu names the bot. */
+  bots?: readonly Pick<Bot, "id" | "name" | "color" | "status">[];
   hidden?: readonly string[];
   /** Reports the added pages, so the group's menu can offer them too. */
   onListed?: (pages: { key: string; label: string }[]) => void;
@@ -45,18 +58,21 @@ export function SidebarPages({
   const latest = useRef(0);
 
   useEffect(() => {
-    // Nothing can be added in this build, so there is nothing to load.
-    if (!templates.some((template) => template.available)) return;
     let active = true;
-    const seen = latest.current;
-    void rpc.sidebarPages
-      .list()
-      .then((next) => active && latest.current === seen && setState(next))
-      .catch((cause) => active && setError(errorText(cause)));
+    const load = () => {
+      const seen = latest.current;
+      void rpc.sidebarPages
+        .list()
+        .then((next) => active && latest.current === seen && setState(next))
+        .catch((cause) => active && setError(errorText(cause)));
+    };
+    load();
+    window.addEventListener(SIDEBAR_PAGES_CHANGED_EVENT, load);
     return () => {
       active = false;
+      window.removeEventListener(SIDEBAR_PAGES_CHANGED_EVENT, load);
     };
-  }, [templates]);
+  }, []);
 
   /** Runs a mutation and applies its response unless a newer mutation started; true if the request succeeded. */
   const mutate = useCallback(async (run: () => Promise<SidebarPagesState>) => {
@@ -72,52 +88,87 @@ export function SidebarPages({
     }
   }, []);
 
-  const add = async (template: SidebarPageTemplate) => {
-    const added = await mutate(() => rpc.sidebarPages.add({ templateKey: template.key }));
+  const surface = desktopBridge() ? "desktop" : "web";
+  type Row = {
+    key: string;
+    label: string;
+    route: string;
+    icon: ReactNode;
+    input: SidebarPageInput;
+  };
+  const rows = (state?.pages ?? []).flatMap((page): Row[] => {
+    if ("pageId" in page) {
+      const bot = bots.find((candidate) => candidate.id === page.botId);
+      return [
+        {
+          key: `page:${page.pageId}`,
+          label: page.title,
+          route: `/app/pages/${page.botId}/${page.pageId}`,
+          icon: (
+            <BotAvatar
+              color={bot?.color ?? ""}
+              identity={page.botId}
+              size={24}
+              status={bot?.status}
+            />
+          ),
+          input: { pageId: page.pageId },
+        },
+      ];
+    }
+    const template = templates.find((candidate) => candidate.key === page.templateKey);
+    return template?.available && template.platforms.includes(surface)
+      ? [
+          {
+            key: template.key,
+            label: t(sidebarPageCopy(template.key).label),
+            route: template.route,
+            icon: <LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />,
+            input: { templateKey: template.key },
+          },
+        ]
+      : [];
+  });
+
+  const open = async (input: SidebarPageInput, route: string) => {
+    const added = await mutate(() => rpc.sidebarPages.add(input));
     if (added) {
       onOpen?.();
-      navigate(template.route);
+      navigate(route);
     }
   };
 
-  const remove = async (template: SidebarPageTemplate) => {
-    const removed = await mutate(() => rpc.sidebarPages.remove({ templateKey: template.key }));
-    if (removed && matchPath({ path: template.route, end: false }, pathRef.current)) {
+  const remove = async (row: Row) => {
+    const removed = await mutate(() => rpc.sidebarPages.remove(row.input));
+    if (removed && matchPath({ path: row.route, end: false }, pathRef.current)) {
       navigate("/app");
     }
   };
 
-  const added = state?.pages.map((page) => page.templateKey) ?? [];
-  const surface = desktopBridge() ? "desktop" : "web";
-  const rows = added.flatMap((key) => {
-    const template = templates.find((candidate) => candidate.key === key);
-    return template?.available && template.platforms.includes(surface) ? template : [];
-  });
-  const listed = rows.map((template) => ({
-    key: template.key,
-    label: t(sidebarPageCopy(template.key).label),
-  }));
+  const listed = rows.map(({ key, label }) => ({ key, label }));
   const listedKey = listed.map((page) => `${page.key}:${page.label}`).join("|");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: listedKey stands for listed.
   useEffect(() => onListed?.(listed), [listedKey, onListed]);
-  const isCurrent = (template: SidebarPageTemplate) =>
-    matchPath({ path: template.route, end: false }, pathname) != null;
+  const isCurrent = (row: Row) => matchPath({ path: row.route, end: false }, pathname) != null;
   const addable = templates.filter((template) => state?.addable.includes(template.key));
+  const addableBotPages = (state?.botPages ?? []).flatMap(({ botId, pages }) => {
+    const bot = bots.find((candidate) => candidate.id === botId);
+    return bot ? [{ bot, pages }] : [];
+  });
 
   return (
     <>
-      {rows.map((template) =>
-        hidden.includes(template.key) || (collapsed && !isCurrent(template)) ? null : (
-          <div key={template.key} className="group relative">
+      {rows.map((row) =>
+        hidden.includes(row.key) || (collapsed && !isCurrent(row)) ? null : (
+          <div key={row.key} className="group relative flex flex-col">
             <SidebarPageLink
-              testId={`sidebar-page-${template.key}`}
-              current={isCurrent(template)}
-              icon={<LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={t(sidebarPageCopy(template.key).label)}
+              testId={`sidebar-page-${row.key}`}
+              current={isCurrent(row)}
+              icon={row.icon}
+              label={row.label}
               rail={rail}
               onOpen={() => {
                 onOpen?.();
-                navigate(template.route);
+                navigate(row.route);
               }}
             />
             {rail ? null : (
@@ -129,7 +180,7 @@ export function SidebarPages({
                   <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => void remove(template)}>
+                  <DropdownMenuItem onClick={() => void remove(row)}>
                     <Trans>Remove from sidebar</Trans>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -140,9 +191,16 @@ export function SidebarPages({
       )}
       <AddSidebarPage
         templates={rail || collapsed ? [] : addable}
+        botPages={rail || collapsed ? [] : addableBotPages}
         onAdd={(key) => {
           const template = templates.find((candidate) => candidate.key === key);
-          if (template) void add(template);
+          if (template) void open({ templateKey: key }, template.route);
+        }}
+        onAddPage={(pageId) => {
+          const group = addableBotPages.find((entry) =>
+            entry.pages.some((page) => page.id === pageId),
+          );
+          if (group) void open({ pageId }, `/app/pages/${group.bot.id}/${pageId}`);
         }}
         onOpenMenu={() => setError("")}
       />

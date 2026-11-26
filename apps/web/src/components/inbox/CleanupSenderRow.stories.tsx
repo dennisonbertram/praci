@@ -64,6 +64,11 @@ export const Learned: Story = {
   args: { sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned: () => undefined },
 };
 
+/** Three "No reply needed" corrections stopped Needs reply for this sender. */
+export const NeedsReplyStopped: Story = {
+  args: { sender: { ...sender, noReplyCount: 3 }, onForgetLearned: () => undefined },
+};
+
 /** Never ticked, and Archive future mail and Unsubscribe leave it out. */
 export const LooksLikeSpam: Story = {
   args: {

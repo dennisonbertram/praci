@@ -12,7 +12,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -160,6 +164,51 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   ]);
   expect(page).toContain("Updated");
   expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+const unpricedHolding = (symbol: string, tokenAddress: string, rawBalance: string) => ({
+  walletId: "w1",
+  chainId: 8453,
+  tokenAddress,
+  symbol,
+  name: symbol,
+  decimals: 18,
+  rawBalance,
+  usdPrice: null,
+  usdValueCents: null,
+  syncedAt: "2026-10-14T10:00:00.000Z",
+});
+
+it("puts every unpriced holding, impersonators included, behind one line that opens in place", async () => {
+  const base = data();
+  rpcMock.crypto.mockResolvedValue({
+    ...base,
+    holdings: [
+      // Listed first on purpose: priced rows stay ahead whatever the order.
+      unpricedHolding("USDC", "0x5555555555555555555555555555555555555555", `9${"0".repeat(40)}`),
+      unpricedHolding("ODD", "0x6666666666666666666666666666666666666666", "5000000000000000000"),
+      ...base.holdings,
+    ],
+  });
+  await show();
+  // The Holdings table is the last one on the page.
+  const rows = () =>
+    [...[...container.querySelectorAll("table")].at(-1)!.querySelectorAll("tbody tr")].map(
+      (tr) => tr.textContent ?? "",
+    );
+  expect(rows().map((r) => r.slice(0, 3))).toEqual(["ETH", "USD", "2 u"]);
+  expect(rows().some((r) => r.includes("ODD"))).toBe(false);
+  const toggle = [...container.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("2 unpriced tokens"),
+  ) as HTMLButtonElement;
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => toggle.click());
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  const open = rows();
+  expect(open.some((r) => r.includes("ODD"))).toBe(true);
+  // A balance of 9e40 never prints its digits.
+  expect(open.join(" ")).toContain("9e+");
+  expect(open.join(" ")).not.toContain("9,000,000");
 });
 
 const points = (n: number) =>

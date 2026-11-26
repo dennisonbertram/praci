@@ -246,6 +246,20 @@ export const AccountDetail: StoryObj<typeof FinanceAccountPage> = {
   beforeEach: () => mockRpc({ "finance.account": account }),
 };
 
+export const AccountDetailAtTransactionLimit: StoryObj<typeof FinanceAccountPage> = {
+  render: () => <FinanceAccountPage id="acct_treasury" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.account": {
+        ...account,
+        transactions: Array.from({ length: 500 }, (_, index) => ({
+          ...transaction,
+          id: `txn_${index}`,
+        })),
+      },
+    }),
+};
+
 export const CardDetail: StoryObj<typeof FinanceAccountPage> = {
   render: () => <FinanceAccountPage id="acct_card" />,
   beforeEach: () =>

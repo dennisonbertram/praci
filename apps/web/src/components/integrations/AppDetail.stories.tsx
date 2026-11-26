@@ -77,6 +77,7 @@ export const AgentShared: Story = {
         access: {
           conn_1: {
             allAgents: true,
+            agentShared: true,
             botIds: [],
             effectiveAccess: { shared: "all", botIds: ["bot_ada", "bot_bram"] },
           },

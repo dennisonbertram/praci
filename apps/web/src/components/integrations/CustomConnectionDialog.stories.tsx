@@ -19,6 +19,7 @@ const data = {
   financeSources: [],
   setup: null,
   catalogFailed: false,
+  meetingsFailed: false,
   feedEnabled: true,
   refresh: async () => {},
 } satisfies IntegrationsData;

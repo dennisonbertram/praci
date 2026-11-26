@@ -1,5 +1,5 @@
 import type { McpServer } from "@rakazo/contracts";
-import { ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
+import { BREX_CARDS_MCP_ENDPOINT, ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
@@ -112,6 +112,19 @@ export const BankNoAgent: Story = {
   args: { data: mockIntegrations({ servers: [mercury()] }) },
 };
 
+/** Signed in, but the bank refused the token during a sync: the page matches the tile. */
+export const BankNeedsReconnect: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [mercury({ oauthStatus: "connected" })],
+      financeSources: [
+        { provider: "mercury", serverId: "srv_1", status: "needs_reconnect", lastSyncedAt: null },
+      ],
+    }),
+  },
+};
+
 export const CanCreateAgent: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: {
@@ -157,6 +170,67 @@ export const WithAgentShared: Story = {
   },
 };
 
+const brexData = mockIntegrations({
+  servers: [
+    mockServer("srv_1", "Brex cards", {
+      slug: "brex-cards",
+      transport: "streamable_http",
+      endpoint: BREX_CARDS_MCP_ENDPOINT,
+      oauthStatus: "none",
+      agentBotId: "brex_demo",
+      agentExclusive: true,
+      writesEnabled: true,
+    }),
+  ],
+  bots: [makeBot({ id: "brex_demo", name: "Brex agent" })],
+});
+
+/** The space owner: cards with row buttons, the controls form and Replace token; no sharing control. */
+export const BrexCardsOwner: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: brexData },
+  beforeEach: () =>
+    mockRpc({
+      "brexCards.cards": {
+        serverId: "srv_1",
+        agentBotId: "brex_demo",
+        writesEnabled: true,
+        cards: [
+          {
+            cardId: "card_demo_1",
+            name: "Design tools",
+            lastFour: "4242",
+            ownerUserId: "user_demo_1",
+            status: "ACTIVE",
+            limitCents: 20_000,
+            currency: "USD",
+            duration: "MONTHLY",
+          },
+        ],
+      },
+      "brexCards.getControls": {
+        maxNewCardLimitCents: 100_000,
+        maxCardLimitCents: 500_000,
+        maxSpendLimitBaseCents: 1_000_000,
+        maxCardsPerDay: 5,
+        allowedDurations: ["MONTHLY", "ONE_TIME"],
+        oneTimeMaxDays: 90,
+      },
+    }),
+};
+
+/** Anyone but the current space owner is refused the read and sees none of the owner's sections. */
+export const BrexCardsMember: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: brexData },
+  beforeEach: () =>
+    mockRpc({
+      "brexCards.cards": () => {
+        throw Object.assign(new Error("Only the space owner can do this."), { code: "FORBIDDEN" });
+      },
+    }),
+};
+
 export const NeedsReconnect: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: {
@@ -175,6 +249,20 @@ export const LocalCommand: Story = {
           transport: "stdio",
           endpoint: null,
           command: "demo-mcp-server",
+          oauthStatus: "none",
+        }),
+      ],
+    }),
+  },
+};
+
+export const MalformedStoredEndpoint: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [
+        mockServer("srv_1", "Legacy connection", {
+          endpoint: "not-a-url?token=redacted-example",
           oauthStatus: "none",
         }),
       ],

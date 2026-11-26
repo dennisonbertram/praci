@@ -120,3 +120,14 @@ export const page = {
   updatedBy: "bot" as const,
   updatedAt: "2026-10-20T12:00:00.000Z",
 };
+
+/** The GTM bot's page list: one page, so the panel opens it. */
+export const pageList = [
+  {
+    id: "page_gtm",
+    title: "Launch notes",
+    kind: "blocks" as const,
+    revision: 1,
+    updatedAt: page.updatedAt,
+  },
+];

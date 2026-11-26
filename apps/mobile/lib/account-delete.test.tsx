@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   replaceWithSignIn: vi.fn(),
   prompt: vi.fn(),
   requestCode: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("expo-router", () => ({
@@ -78,6 +79,7 @@ vi.mock("../components/avatar-style", () => ({
   useAvatarStyle: () => ({ avatarStyle: "organic", updateAvatarStyle: vi.fn() }),
 }));
 vi.mock("../components/bot-avatar", () => ({ BotAvatar: () => null }));
+vi.mock("../components/data-export-row", () => ({ DataExportRow: () => null }));
 vi.mock("../components/native-symbol", () => ({ NativeSymbol: () => null }));
 vi.mock("../components/native-segmented-control", () => ({ NativeSegmentedControl: () => null }));
 vi.mock("../components/native-action-button", () => ({
@@ -99,7 +101,7 @@ vi.mock("../components/settings-group", () => ({
   useStackedSettings: () => false,
   SettingsLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   SettingsGroup: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
-  SettingsSwitch: () => null,
+  SettingsSwitch: ({ label }: { label: string }) => <button type="button">{label}</button>,
   SettingsRow: ({
     title,
     onPress,
@@ -123,11 +125,7 @@ vi.mock("./api", () => ({
   fetchAccountSecurity: state.fetchAccountSecurity,
   loadSessionToken: async () => "token",
   requestAccountDeletionCode: state.requestCode,
-  rpc: async (proc: string) => {
-    if (proc === "me") return { email: "me@example.test", name: "Me" };
-    if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
-    return [];
-  },
+  rpc: state.rpc,
   selectedSpaceId: () => null,
   signOut: state.signOut,
 }));
@@ -191,6 +189,12 @@ beforeEach(() => {
   state.prompt.mockReset();
   state.requestCode.mockReset().mockResolvedValue(undefined);
   state.fetchAccountSecurity.mockReset().mockImplementation(async () => state.security);
+  state.rpc.mockReset().mockImplementation(async (proc: string) => {
+    if (proc === "me") return { email: "me@example.test", name: "Me" };
+    if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
+    if (proc === "notifications/preferences") return { hasPhone: true, channels: { push: true } };
+    return [];
+  });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -333,5 +337,83 @@ describe("Account delete", () => {
     await render();
     expect(buttons("Change password")).toHaveLength(shown ? 1 : 0);
     expect(buttons("Delete account")).toHaveLength(1);
+  });
+});
+
+describe("Account initial loads", () => {
+  it("shows and retries a security options load failure", async () => {
+    state.fetchAccountSecurity
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValue({ hasPassword: true, passwordChangeEnabled: true });
+    await render();
+
+    expect(container.textContent).toContain("Could not load this page.");
+    expect(buttons("Change password")).toHaveLength(0);
+    expect(buttons("Try again")).toHaveLength(1);
+
+    await press("Try again");
+
+    expect(buttons("Change password")).toHaveLength(1);
+    expect(container.textContent).not.toContain("Could not load this page.");
+    expect(buttons("Try again")).toHaveLength(0);
+  });
+
+  it("shows a load failure and retry when notification preferences fail, then shows the switch", async () => {
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "notifications/preferences") throw new Error("Offline");
+      if (proc === "me") return { email: "me@example.test", name: "Me" };
+      if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
+      return [];
+    });
+    await render();
+    expect(container.textContent).toContain("Could not load this page.");
+    expect(buttons("Try again")).toHaveLength(1);
+    expect(buttons("Phone notifications")).toHaveLength(0);
+    const meCallsBeforeRetry = state.rpc.mock.calls.filter(([proc]) => proc === "me").length;
+    const usageCallsBeforeRetry = state.rpc.mock.calls.filter(
+      ([proc]) => proc === "usage/summary",
+    ).length;
+
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "notifications/preferences") return { hasPhone: true, channels: { push: true } };
+      if (proc === "me") return { email: "me@example.test", name: "Me" };
+      if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
+      return [];
+    });
+    await press("Try again");
+    expect(buttons("Phone notifications")).toHaveLength(1);
+    expect(buttons("Try again")).toHaveLength(0);
+    expect(state.rpc.mock.calls.filter(([proc]) => proc === "me")).toHaveLength(meCallsBeforeRetry);
+    expect(state.rpc.mock.calls.filter(([proc]) => proc === "usage/summary")).toHaveLength(
+      usageCallsBeforeRetry,
+    );
+    expect(
+      state.rpc.mock.calls.filter(([proc]) => proc === "notifications/preferences"),
+    ).toHaveLength(2);
+  });
+
+  it("shows a load failure when account details fail", async () => {
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "me") throw new Error("Offline");
+      if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
+      if (proc === "notifications/preferences") return { hasPhone: true, channels: { push: true } };
+      return [];
+    });
+    await render();
+    expect(container.textContent).toContain("Could not load this page.");
+    expect(buttons("Try again")).toHaveLength(1);
+  });
+
+  it("keeps the phone notification switch hidden when the account has no phone", async () => {
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "me") return { email: "me@example.test", name: "Me" };
+      if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
+      if (proc === "notifications/preferences") return { hasPhone: false, channels: {} };
+      return [];
+    });
+    await render();
+    expect(buttons("Phone notifications")).toHaveLength(0);
+    expect(buttons("Try again")).toHaveLength(0);
+    expect(container.textContent).not.toContain("Could not load this page.");
   });
 });

@@ -38,6 +38,9 @@ export function defaultCatalogModelId(
   return usableModelId(entry?.id);
 }
 
+/** A run pinned to a provider the user has no connection for. */
+export const PINNED_PROVIDER_NOT_CONNECTED = "Connect that model provider first";
+
 export class UnavailableModelForAuthError extends Error {
   constructor(message = UNAVAILABLE_MODEL_FOR_AUTH_MESSAGE) {
     super(message);
@@ -326,7 +329,7 @@ export async function validateConnectedModelChoice(
   modelId: string,
 ) {
   const credential = await findModelCredential(prisma, actor, provider);
-  if (!credential) return "Connect that model provider first";
+  if (!credential) return PINNED_PROVIDER_NOT_CONNECTED;
   if (!usableModelId(modelId)) return "Unknown model for that provider";
   if (isCatalogModelChoice(provider, modelId)) return undefined;
   // Free-form saved IDs only resolve at runtime for openai-compatible connections.
@@ -348,6 +351,8 @@ export async function validateConnectedModelChoice(
 export type ModelChoice = {
   modelProvider: string | null;
   modelId: string | null;
+  /** The owner's connection this model runs on; null uses the default lookup. */
+  modelCredentialId?: string | null;
   thinkingLevel: string | null;
 };
 
@@ -364,12 +369,14 @@ export function runModelChoice(
     return {
       modelProvider: run.modelProvider,
       modelId: run.modelId,
+      ...(run.modelCredentialId ? { modelCredentialId: run.modelCredentialId } : {}),
       thinkingLevel: run.thinkingLevel,
     };
   }
   return {
     modelProvider: bot.modelProvider,
     modelId: bot.modelId,
+    ...(bot.modelCredentialId ? { modelCredentialId: bot.modelCredentialId } : {}),
     thinkingLevel: bot.thinkingLevel,
   };
 }
@@ -378,6 +385,7 @@ export function runModelChoice(
 export function routineRunModelPin(routine: ModelChoice): {
   modelProvider?: string;
   modelId?: string;
+  modelCredentialId?: string | null;
   thinkingLevel?: string | null;
   modelPinned?: true;
 } {
@@ -385,6 +393,7 @@ export function routineRunModelPin(routine: ModelChoice): {
   return {
     modelProvider: routine.modelProvider,
     modelId: routine.modelId,
+    ...(routine.modelCredentialId ? { modelCredentialId: routine.modelCredentialId } : {}),
     thinkingLevel: routine.thinkingLevel,
     modelPinned: true,
   };
@@ -403,9 +412,31 @@ export function inboundRoutineModelPin(routines: readonly ModelChoice[]) {
       pin.modelPinned === first.modelPinned &&
       pin.modelProvider === first.modelProvider &&
       pin.modelId === first.modelId &&
+      (pin.modelCredentialId ?? null) === (first.modelCredentialId ?? null) &&
       (pin.thinkingLevel ?? null) === (first.thinkingLevel ?? null),
   );
   return agreed ? first : {};
+}
+
+/**
+ * Routines of one inbound delivery whose connection pins differ cannot share a turn: one turn runs
+ * on one connection, and falling back to the bot's would ignore a pin the owner chose. This splits
+ * them into groups that agree. Without any connection pin there is one group, as before.
+ */
+export function splitRoutinesByConnectionPin<T extends ModelChoice>(routines: readonly T[]): T[][] {
+  if (!routines.some((routine) => routine.modelCredentialId)) return [[...routines]];
+  const groups = new Map<string, T[]>();
+  for (const routine of routines) {
+    const pin = routineRunModelPin(routine);
+    const key = JSON.stringify([
+      pin.modelProvider ?? null,
+      pin.modelId ?? null,
+      pin.modelCredentialId ?? null,
+      pin.thinkingLevel ?? null,
+    ]);
+    groups.set(key, [...(groups.get(key) ?? []), routine]);
+  }
+  return [...groups.values()];
 }
 
 /** Why a pinned model cannot run on the credential that was found for it. */
@@ -414,7 +445,7 @@ export function pinnedModelCredentialError(
   credential: { defaultModel: string | null } | null,
 ): string | undefined {
   if (!choice.modelProvider || !usableModelId(choice.modelId)) return undefined;
-  if (!credential) return "Connect that model provider first";
+  if (!credential) return PINNED_PROVIDER_NOT_CONNECTED;
   const modelId = usableModelId(choice.modelId);
   if (
     modelId &&

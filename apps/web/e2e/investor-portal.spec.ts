@@ -73,7 +73,8 @@ test("an emailed update opens in the portal with only that update, and Revoke ki
   const main = page.getByRole("main");
   await expect(main.getByLabel("Subject")).toHaveValue(subject);
   await main.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/investors$/);
+  // Send is held for the undo window first.
+  await expect(page).toHaveURL(/\/app\/investors$/, { timeout: 30_000 });
 
   // The Gmail emulator holds the message, and the link is in it.
   const { userId } = await rpc<{ userId: string }>(page, "me", {});

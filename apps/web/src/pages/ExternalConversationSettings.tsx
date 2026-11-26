@@ -22,6 +22,12 @@ function ambientValue(mode: ListenMode): boolean | null {
   return mode === "inherit" ? null : mode === "listen";
 }
 
+function normalizeRollupHours(value: string, fallback: number): number {
+  const parsed = Number(value);
+  if (value.trim() === "" || !Number.isFinite(parsed)) return fallback;
+  return Math.max(1, Math.min(720, Math.round(parsed)));
+}
+
 export function ExternalConversationSettings({
   conversation,
   bot,
@@ -39,6 +45,7 @@ export function ExternalConversationSettings({
   const [policies, setPolicies] = useState<AutomatedSenderPolicies>(
     conversation.automatedSenderPolicies,
   );
+  const [rollupDrafts, setRollupDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +75,11 @@ export function ExternalConversationSettings({
     nextMode: AutomatedSenderPolicyMode,
   ) {
     setSaved(false);
+    setRollupDrafts((current) => {
+      const next = { ...current };
+      delete next[senderId];
+      return next;
+    });
     setPolicies((current) => ({
       ...current,
       [senderId]: {
@@ -105,6 +117,7 @@ export function ExternalConversationSettings({
               key={option.value}
               type="button"
               aria-pressed={mode === option.value}
+              disabled={saving}
               onClick={() => {
                 setMode(option.value);
                 setSaved(false);
@@ -129,6 +142,7 @@ export function ExternalConversationSettings({
               type="button"
               title={t`Use default guidance`}
               aria-label={t`Use default guidance`}
+              disabled={saving}
               onClick={() => {
                 setRules(null);
                 setSaved(false);
@@ -145,12 +159,13 @@ export function ExternalConversationSettings({
         </span>
         <textarea
           value={rules ?? bot.teamChatRules}
+          disabled={saving}
           maxLength={4000}
           onChange={(event) => {
             setRules(event.target.value);
             setSaved(false);
           }}
-          placeholder={t`Engage when... Ignore...`}
+          placeholder={t`Engage when… Ignore…`}
           rows={6}
           className="mt-2 w-full resize-y rounded-lg border border-border bg-transparent px-3 py-2.5 text-[13.5px] leading-5 text-foreground outline-none focus:border-muted-foreground"
         />
@@ -176,6 +191,7 @@ export function ExternalConversationSettings({
                     <select
                       aria-label={t`${sender.name} handling`}
                       value={policy.mode}
+                      disabled={saving}
                       onChange={(event) =>
                         setSenderMode(
                           sender.id,
@@ -198,20 +214,33 @@ export function ExternalConversationSettings({
                       <input
                         aria-label={t`${sender.name} rollup hours`}
                         type="number"
+                        step={1}
                         min={1}
                         max={720}
-                        value={policy.rollupHours ?? 6}
+                        value={rollupDrafts[sender.id] ?? String(policy.rollupHours ?? 6)}
                         onChange={(event) => {
-                          const rollupHours = Math.max(
-                            1,
-                            Math.min(720, Number(event.target.value)),
+                          setRollupDrafts((current) => ({
+                            ...current,
+                            [sender.id]: event.target.value,
+                          }));
+                          setSaved(false);
+                        }}
+                        onBlur={(event) => {
+                          const rollupHours = normalizeRollupHours(
+                            event.currentTarget.value,
+                            policy.rollupHours ?? 6,
                           );
                           setPolicies((current) => ({
                             ...current,
                             [sender.id]: { name: sender.name, mode: "rollup", rollupHours },
                           }));
-                          setSaved(false);
+                          setRollupDrafts((current) => {
+                            const next = { ...current };
+                            delete next[sender.id];
+                            return next;
+                          });
                         }}
+                        disabled={saving}
                         className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-end text-[12.5px] text-foreground"
                       />
                       <Trans>hours</Trans>
@@ -238,20 +267,32 @@ export function ExternalConversationSettings({
         <Button
           disabled={saving}
           onClick={() => {
+            const normalizedPolicies = { ...policies };
+            for (const [senderId, draft] of Object.entries(rollupDrafts)) {
+              const policy = normalizedPolicies[senderId];
+              if (policy?.mode === "rollup") {
+                normalizedPolicies[senderId] = {
+                  ...policy,
+                  rollupHours: normalizeRollupHours(draft, policy.rollupHours ?? 6),
+                };
+              }
+            }
+            setPolicies(normalizedPolicies);
+            setRollupDrafts({});
             setSaving(true);
             setSaved(false);
             setError(null);
             void onSave({
               teamChatAmbientEnabled: ambientValue(mode),
               teamChatRules: rules,
-              automatedSenderPolicies: policies,
+              automatedSenderPolicies: normalizedPolicies,
             })
               .then(() => setSaved(true))
               .catch((cause) => setError(errorText(cause, t`Could not save`)))
               .finally(() => setSaving(false));
           }}
         >
-          {saving ? <Trans>Saving...</Trans> : <Trans>Save</Trans>}
+          {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
         {saved ? <SuccessPop label={t`Saved`} /> : null}
       </div>

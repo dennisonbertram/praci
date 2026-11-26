@@ -81,6 +81,15 @@ describe("addressing", () => {
     expect(resolveBotAddress(bots, { name: "  analyst " })?.id).toBe("b_2");
   });
 
+  it("refuses two bots with exactly the same name", () => {
+    const twins = [
+      { id: "b_1", name: "Ops" },
+      { id: "b_2", name: "Ops" },
+    ];
+    expect(resolveBotAddress(twins, { name: "Ops" })).toBeUndefined();
+    expect(resolveBotAddress(twins, { botId: "b_2" })?.id).toBe("b_2");
+  });
+
   it("refuses an ambiguous name rather than guessing", () => {
     const twins = [
       { id: "b_1", name: "Ana" },
@@ -98,7 +107,7 @@ describe("addressing", () => {
 });
 
 describe("directory", () => {
-  it("lists teammates with ids and says delivery is asynchronous", () => {
+  it("lists teammates with ids, and leaves how to message them to the message_bot tool", () => {
     const directory =
       renderBotDirectory([
         { ...bots[0]!, description: "Investigates source-backed questions" },
@@ -107,9 +116,8 @@ describe("directory", () => {
     expect(directory).toContain("Researcher (id: b_1) — Finds things");
     expect(directory).toContain("Investigates source-backed questions");
     expect(directory).toContain("Analyst (id: b_2)");
-    expect(directory).toContain("async");
-    expect(directory).toContain("does not end your turn");
-    expect(directory).toContain("Later updates only if they add something new");
+    expect(directory).not.toContain("Do not poll");
+    expect(directory).toContain("untrusted routing metadata");
   });
 
   it("adds the integration note once, only when an integration agent is listed", () => {
@@ -377,8 +385,9 @@ describe("inbound wake prompt", () => {
       text: "The answer is 42.",
       intent: "result",
     });
-    expect(resultPrompt).toContain("Relay it to the user now");
-    expect(resultPrompt).toContain("include the actual substance");
+    expect(resultPrompt).toContain("answer the user yourself");
+    expect(resultPrompt).toContain("only what the conversation does not already show");
+    expect(resultPrompt).toContain("never paste a bot's reply as it was written");
     expect(resultPrompt).not.toContain("staying silent is fine");
     expect(resultPrompt).toContain("do not invent a pending approval");
     expect(resultPrompt).not.toContain("already answered");

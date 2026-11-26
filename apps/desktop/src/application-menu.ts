@@ -8,6 +8,8 @@ export function buildApplicationMenuTemplate(
     changeServer: () => void;
     stopLocalStack: () => void;
   },
+  /** Only a stack this app started can be stopped from the menu. */
+  managesLocalStack: boolean,
 ): MenuItemConstructorOptions[] {
   const localSettings: MenuItemConstructorOptions = {
     id: "local-server-settings",
@@ -26,6 +28,7 @@ export function buildApplicationMenuTemplate(
   const stopStack: MenuItemConstructorOptions = {
     id: "stop-local-stack",
     label: "Stop Local Stack",
+    visible: managesLocalStack,
     // The stack keeps running after quit (bots are always on); this is the explicit off switch.
     click: () => {
       handlers.stopLocalStack();

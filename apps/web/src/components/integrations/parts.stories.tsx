@@ -59,6 +59,33 @@ export const ToggleList: StoryObj = {
   },
 };
 
+/** All and None set every agent at once; None leaves the owning agent on. */
+export const ToggleListAllNone: StoryObj = {
+  render: () => {
+    const owner = mockBots[0]!.id;
+    const [on, setOn] = useState(new Set([owner]));
+    return (
+      <div className="w-80">
+        <AgentToggleList
+          bots={mockBots}
+          appName="Sample app"
+          ownerBotId={owner}
+          isOn={(id) => on.has(id)}
+          onToggle={(id, next) =>
+            setOn((cur) => {
+              const out = new Set(cur);
+              if (next) out.add(id);
+              else out.delete(id);
+              return out;
+            })
+          }
+          onSetAll={(next) => setOn(new Set(next ? mockBots.map((b) => b.id) : [owner]))}
+        />
+      </div>
+    );
+  },
+};
+
 export const ToggleListDisabled: StoryObj = {
   render: () => (
     <div className="w-80">
@@ -120,4 +147,72 @@ export const OpenLinks: StoryObj = {
       ))}
     </div>
   ),
+};
+
+/** Above 8 agents the list gets search and an On/Off filter; agents that are on come first. */
+export const ToggleListLong: StoryObj = {
+  render: () => {
+    const bots = Array.from({ length: 12 }, (_, i) => ({
+      ...mockBots[i % mockBots.length]!,
+      id: `bot_${i}`,
+      name: `Agent ${String.fromCharCode(65 + i)}`,
+    }));
+    const [on, setOn] = useState(new Set(["bot_3", "bot_7"]));
+    return (
+      <div className="w-96">
+        <AgentToggleList
+          bots={bots}
+          appName="Sample app"
+          isOn={(id) => on.has(id)}
+          onSetAll={() => undefined}
+          onToggle={(id, next) =>
+            setOn((prev) => {
+              const copy = new Set(prev);
+              if (next) copy.add(id);
+              else copy.delete(id);
+              return copy;
+            })
+          }
+        />
+      </div>
+    );
+  },
+};
+
+/** Under each agent that is on, "Allow changes" starts off; the owning agent shows the connection's own switch. */
+export const ToggleListWithChanges: StoryObj = {
+  render: () => {
+    const owner = mockBots[0]!.id;
+    const [on, setOn] = useState(new Set([owner, mockBots[1]!.id]));
+    const [writing, setWriting] = useState(new Set<string>());
+    return (
+      <div className="w-96">
+        <AgentToggleList
+          bots={mockBots}
+          appName="Sample app"
+          ownerBotId={owner}
+          isOn={(id) => on.has(id)}
+          writes={{
+            enabled: true,
+            isWriting: (id) => writing.has(id),
+            onToggle: (id, next) =>
+              setWriting((prev) => {
+                const copy = new Set(prev);
+                if (next) copy.add(id);
+                else copy.delete(id);
+                return copy;
+              }),
+          }}
+          onToggle={(id, next) =>
+            setOn((prev) => {
+              const copy = new Set(prev);
+              if (next) copy.add(id);
+              else copy.delete(id);
+              return copy;
+            })
+          }
+        />
+      </div>
+    );
+  },
 };

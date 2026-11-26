@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import { startModelEmulator } from "./model-emulator.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
@@ -123,6 +124,11 @@ describe.skipIf(!databaseAvailable)("finance agent tools in a real run (offline 
       }
       const bot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: finance.id } });
       const owner = { spaceId: bot.spaceId, userId: bot.userId };
+      await grantTestModelConsent(handles.prisma, owner, {
+        provider: model.model.provider,
+        modelId: model.model.id,
+        baseUrl: model.baseUrl,
+      });
       await handles.prisma.connection.create({
         data: {
           ...owner,

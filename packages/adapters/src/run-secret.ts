@@ -1,5 +1,6 @@
 import type { AdapterContext, ManagedConnectorProvider, SecretStore } from "@rakazo/adapter-kit";
 import {
+  BOT_SECRET_VALUE_MAX_LENGTH,
   encodeLoginSecret,
   LoginSecretValue,
   MessageBlock as MessageBlockSchema,
@@ -7,15 +8,13 @@ import {
 } from "@rakazo/contracts";
 import { isSecretAskBlock } from "@rakazo/core";
 import type { PrismaClient, RunSecretWriter } from "@rakazo/db";
-import { withTransactionRetry } from "@rakazo/db";
+import { runSecretKind, withTransactionRetry } from "@rakazo/db";
 import type { ApprovalPausedToolResult } from "./approval-effect.js";
 import { resolveDuplicateEffectGate } from "./approval-effect.js";
 import { prepareBotSecret } from "./bot-secrets.js";
 import { persistPreparedSecret } from "./secret-persistence.js";
 
-export function runSecretKind(runId: string): string {
-  return `run-secret:${runId}`;
-}
+export { runSecretKind };
 
 export function normalizeSecretAskPurpose(purpose: string | undefined): SecretAskPurpose {
   return SecretAskPurpose.safeParse(purpose).data ?? "otp";
@@ -151,6 +150,7 @@ export function createRunSecretWriter(secretStore: SecretStore): RunSecretWriter
             },
           });
         if (
+          input.answer.length > BOT_SECRET_VALUE_MAX_LENGTH ||
           (ask.credential && run.userId !== input.answeredByUserId) ||
           (ask.credential?.auth.type === "login") !== Boolean(input.username?.trim()) ||
           (ask.credential?.auth.type === "login" &&

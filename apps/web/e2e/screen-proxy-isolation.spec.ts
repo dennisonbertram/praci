@@ -103,10 +103,16 @@ for (const mode of ["development", "preview"] as const) {
       };
       function installApp(server: Pick<ViteDevServer, "middlewares">) {
         server.middlewares.use((req, res, next) => {
+          // A script file, not inline: in preview the app's CSP applies to this page too.
           if (req.url === "/app") {
             res.setHeader("Content-Type", "text/html");
             res.end(
-              '<!doctype html><title>Fake app</title><body><script>localStorage.setItem("app-data", "private-app-data"); document.cookie = "app-session=fake-session; Path=/";</script></body>',
+              '<!doctype html><title>Fake app</title><body><script src="/app.js"></script></body>',
+            );
+          } else if (req.url === "/app.js") {
+            res.setHeader("Content-Type", "text/javascript");
+            res.end(
+              'localStorage.setItem("app-data", "private-app-data"); document.cookie = "app-session=fake-session; Path=/";',
             );
           } else if (req.url === "/session") {
             res.setHeader("Content-Type", "application/json");
@@ -225,7 +231,11 @@ for (const mode of ["development", "preview"] as const) {
       test(`iframe remains isolated with sandbox attribute ${sandbox ?? "absent"}`, async ({
         page,
       }) => {
-        await page.goto(`${origin}/app`);
+        const app = await page.goto(`${origin}/app`);
+        // The app's own policy must still let it frame the screen proxy.
+        if (mode === "preview") {
+          expect(app?.headers()["content-security-policy"]).toContain("frame-src 'self'");
+        }
         await page.evaluate(
           ({ url, sandbox }) => {
             const frame = document.createElement("iframe");

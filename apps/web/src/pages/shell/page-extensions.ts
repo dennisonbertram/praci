@@ -5,6 +5,7 @@ import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 import { PageChartNode } from "./page-chart-extension";
 import { PageGtmNode } from "./page-gtm-extension";
+import { PageMetricNode, PageTableNode } from "./page-live-extensions";
 
 /** Everything a stored page may contain, so loading never drops content. */
 export const PAGE_EXTENSIONS = [
@@ -19,4 +20,6 @@ export const PAGE_EXTENSIONS = [
   Image,
   PageChartNode,
   PageGtmNode,
+  PageMetricNode,
+  PageTableNode,
 ];

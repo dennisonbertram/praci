@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
-import { BotAvatar, Button } from "@rakazo/ui-web";
+import { BotAvatar, Button, cn } from "@rakazo/ui-web";
 import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -60,9 +60,12 @@ export function EmailAgentPanel({
   bot,
   onClose,
   onReplyWithDraft,
+  embedded,
 }: {
   bot: Bot;
   onClose: () => void;
+  /** Inside EmailSidePanel, which has the header, the close button and the left border. */
+  embedded?: boolean;
   /** Opens the Reply composer with the agent's draft as its text, or a failed send as it was written. */
   onReplyWithDraft: (draft: string, failed?: ComposerDraft) => void;
 }) {
@@ -110,6 +113,15 @@ export function EmailAgentPanel({
     () => ({
       editableBotName: (id: string | undefined) => outer?.editableBotName(id),
       disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
+      canSend: (id: string | undefined) => outer?.canSend(id) ?? false,
+      sendDraft: async (message: { id: string; runId?: string | null }) => {
+        await rpc.threads.sendDraft({
+          botId: bot.id,
+          runId: message.runId ?? "",
+          messageId: message.id,
+        });
+        await load();
+      },
       openComposer: (failed: ComposerDraft) => onReplyWithDraft(failed.body, failed),
     }),
     [outer, onReplyWithDraft],
@@ -182,40 +194,45 @@ export function EmailAgentPanel({
     <aside
       data-testid="email-agent-panel"
       aria-label={t`Email agent`}
-      className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
+      className={cn(
+        "flex h-full min-h-0 w-full flex-col bg-background",
+        !embedded && "border-s border-sidebar-border",
+      )}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 max-md:justify-start">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t`Back to email`}
-          className="-ms-2 md:hidden"
-          onClick={onClose}
-        >
-          <ArrowLeft aria-hidden="true" className="rtl:rotate-180" />
-        </Button>
-        <button
-          type="button"
-          aria-label={t`Open email agent full screen`}
-          title={t`Open full screen`}
-          onClick={() => navigate(`/app/${bot.id}`)}
-          className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-        >
-          <BotAvatar color={bot.color} identity={bot.id} size={22} status={bot.status} />
-          <span className="truncate text-sm font-medium" dir="auto">
-            <Trans>Email agent</Trans>
-          </span>
-        </button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t`Close agent`}
-          className="max-md:hidden"
-          onClick={onClose}
-        >
-          <PanelRightClose aria-hidden="true" />
-        </Button>
-      </div>
+      {embedded ? null : (
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 max-md:justify-start">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t`Back to email`}
+            className="-ms-2 md:hidden"
+            onClick={onClose}
+          >
+            <ArrowLeft aria-hidden="true" className="rtl:rotate-180" />
+          </Button>
+          <button
+            type="button"
+            aria-label={t`Open email agent full screen`}
+            title={t`Open full screen`}
+            onClick={() => navigate(`/app/${bot.id}`)}
+            className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+          >
+            <BotAvatar color={bot.color} identity={bot.id} size={22} status={bot.status} />
+            <span className="truncate text-sm font-medium" dir="auto">
+              <Trans>Email agent</Trans>
+            </span>
+          </button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t`Close agent`}
+            className="max-md:hidden"
+            onClick={onClose}
+          >
+            <PanelRightClose aria-hidden="true" />
+          </Button>
+        </div>
+      )}
       {snapshot ? (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <BotToolControlsContext.Provider value={controls}>

@@ -39,6 +39,8 @@ export const SourceMeetingSchema = z.object({
   /** True when the transcript was cut to MEETING_TRANSCRIPT_MAX_BYTES. */
   transcriptTruncated: z.boolean().optional(),
   updatedAt: IsoDate,
+  /** A content version for a source whose update time does not change on an edit; compared for equality. */
+  version: z.string().optional(),
   deleted: z.boolean().optional(),
 });
 export type SourceMeeting = z.infer<typeof SourceMeetingSchema>;
@@ -68,11 +70,13 @@ export type MeetingsStatus = z.infer<typeof MeetingsStatusSchema>;
 
 export const MeetingConnectInputSchema = z.object({ apiKey: z.string().max(512) });
 
-/** One stored meeting in the plain list: title and date only. */
+/** One stored meeting in the plain list: title, date and source. */
 export const StoredMeetingSchema = z.object({
   id: z.string(),
   title: z.string(),
   startedAt: IsoDate,
+  endedAt: IsoDate.nullable(),
+  provider: z.string(),
 });
 export type StoredMeeting = z.infer<typeof StoredMeetingSchema>;
 
@@ -83,3 +87,100 @@ export const StoredMeetingsPageSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type StoredMeetingsPage = z.infer<typeof StoredMeetingsPageSchema>;
+
+const MEETING_SOURCE_NAMES: Record<string, string> = {
+  granola: "Granola",
+  omi: "Omi",
+  omi_cloud: "Omi cloud",
+  hex: "Hex",
+  praci: "Praci",
+  wisprflow: "Wispr Flow",
+};
+/** The provider ids the Source filter offers. */
+export const MEETING_SOURCES = Object.keys(MEETING_SOURCE_NAMES);
+/** The source's display name; a provider this app does not know shows as its own id. */
+export const meetingSourceName = (provider: string) => MEETING_SOURCE_NAMES[provider] ?? provider;
+
+/** One stored meeting for its page: what the digest found, the user's to-dos from it, and the transcript. */
+export const StoredMeetingDetailSchema = StoredMeetingSchema.extend({
+  summary: z.string(),
+  decisions: z.array(z.string()),
+  followUps: z.array(z.string()),
+  todos: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string(),
+      /** YYYY-MM-DD */
+      dueOn: z.string().nullable(),
+      doneAt: IsoDate.nullable(),
+    }),
+  ),
+  transcript: z.string().nullable(),
+  /** True when part of a recording could not be transcribed. */
+  partial: z.boolean(),
+  /** True when "Merge with previous" applies: the previous meeting is from the same source and ended within 30 minutes before this one began. */
+  canMergeWithPrevious: z.boolean().optional(),
+  /** True while the meeting's digest is still to come, so the page keeps looking. */
+  summarizing: z.boolean(),
+  /** Commitments from the digest that belong to other people; the user's own are in `todos`. */
+  actionItems: z.array(
+    z.object({ owner: z.string(), text: z.string(), /** YYYY-MM-DD */ due: z.string().nullable() }),
+  ),
+});
+export type StoredMeetingDetail = z.infer<typeof StoredMeetingDetailSchema>;
+
+/** The most audio one chunk upload may carry. */
+export const MEETING_CAPTURE_CHUNK_MAX_BYTES = 4 * 1024 * 1024;
+/** The longest text one device chunk may carry. */
+export const MEETING_CAPTURE_TEXT_MAX_CHARS = 20_000;
+
+export const MeetingRecordingPolicySchema = z.enum(["remind", "confirm", "off"]);
+export type MeetingRecordingPolicy = z.infer<typeof MeetingRecordingPolicySchema>;
+
+export const MeetingCaptureTrackSchema = z.enum(["microphone", "system"]);
+export type MeetingCaptureTrack = z.infer<typeof MeetingCaptureTrackSchema>;
+
+const CaptureId = z.string().min(1).max(100);
+const ChunkPosition = {
+  track: MeetingCaptureTrackSchema,
+  seq: z.number().int().min(0).max(1_000_000),
+  startMs: z.number().int().min(0).max(86_400_000),
+  endMs: z.number().int().min(0).max(86_400_000),
+};
+
+export const MeetingCaptureStartInputSchema = z.object({
+  /** Chosen by the client for this recording; starting twice with it returns the same capture. */
+  clientId: z.string().min(1).max(100),
+  title: z.string().max(500).optional(),
+  engine: z.enum(["device", "server"]),
+  tracks: z.array(MeetingCaptureTrackSchema).min(1).max(2),
+  /** Required when the space's policy is "confirm". */
+  consentConfirmed: z.boolean().optional(),
+});
+export const MeetingCaptureStartOutputSchema = z.object({ captureId: CaptureId });
+
+export const MeetingCaptureAppendTextInputSchema = z.object({
+  captureId: CaptureId,
+  ...ChunkPosition,
+  text: z.string().max(MEETING_CAPTURE_TEXT_MAX_CHARS),
+});
+
+export const MeetingCaptureFinishInputSchema = z.object({
+  captureId: CaptureId,
+  endedAt: IsoDate,
+  /** Pieces the server refused for good; any marks the meeting partial. */
+  lostChunks: z.number().int().min(0).max(1_000_000).optional(),
+});
+
+/** The caller's capture that is recording or waiting to be stored; null when there is none. */
+export const MeetingCaptureActiveSchema = z
+  .object({
+    captureId: CaptureId,
+    title: z.string().nullable(),
+    engine: z.enum(["device", "server"]),
+    tracks: z.array(MeetingCaptureTrackSchema),
+    status: z.enum(["recording", "finishing"]),
+    startedAt: IsoDate,
+  })
+  .nullable();
+export type MeetingCaptureActive = z.infer<typeof MeetingCaptureActiveSchema>;

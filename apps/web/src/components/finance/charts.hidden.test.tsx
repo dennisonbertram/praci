@@ -56,7 +56,7 @@ it("draws a chart that first appeared hidden once amounts are shown again", asyn
     ),
   );
   await act(async () => setHideAmounts(false));
-  expect(el.querySelector('svg[aria-label="Balance"]')).not.toBeNull();
+  expect(el.querySelector('svg[aria-label^="Balance:"]')).not.toBeNull();
   act(() => root.unmount());
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });

@@ -34,11 +34,19 @@ vi.mock("react-native", () => {
     Platform: { OS: "ios" },
     TextInput: ({
       value,
+      editable,
       onChangeText,
     }: {
       value?: string;
+      editable?: boolean;
       onChangeText?: (value: string) => void;
-    }) => <input value={value ?? ""} onChange={(event) => onChangeText?.(event.target.value)} />,
+    }) => (
+      <input
+        value={value ?? ""}
+        disabled={editable === false}
+        onChange={(event) => onChangeText?.(event.target.value)}
+      />
+    ),
   };
 });
 vi.mock("../components/native-action-button", () => ({ NativeActionButton: () => null }));
@@ -47,10 +55,8 @@ vi.mock("../components/sheet-header", () => ({
   trailingHeaderOptions: (_label: string, onSave: () => void) => ({ onSave }),
 }));
 vi.mock("./api", () => ({
-  apiBaseWarning: () => null,
   currentApiBase: () => "https://api.rakazo.test",
   defaultApiBase: () => "https://api.rakazo.test",
-  normalizeApiBase: (value: string) => ({ ok: true, url: value }),
   probeApiBase: state.probe,
   resetApiBase: vi.fn(),
   saveApiBase: state.save,
@@ -102,4 +108,11 @@ it("shows the probe error and stores nothing when the server cannot be reached",
   expect(container.textContent).toContain("Could not reach that server");
   expect(state.save).not.toHaveBeenCalled();
   expect(state.back).not.toHaveBeenCalled();
+});
+
+it("locks the server address while checking it", async () => {
+  state.probe.mockReturnValue(new Promise(() => {}));
+  await act(async () => root.render(<ServerScreen />));
+  act(() => state.save_!());
+  expect(container.querySelector("input")?.disabled).toBe(true);
 });

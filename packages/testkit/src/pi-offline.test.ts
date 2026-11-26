@@ -6,6 +6,7 @@ import type { AgentRunRequest, AgentRuntimeEvent, ConnectorTool } from "@rakazo/
 import { PiAgentRuntime } from "@rakazo/adapters";
 import * as Core from "@rakazo/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { estimateTextTokens } from "../../adapters/src/context-selection.js";
 import type { ModelEmulatorRequest } from "./model-emulator.js";
 import { startModelEmulator } from "./model-emulator.js";
 
@@ -104,7 +105,13 @@ describe("real Pi against an offline model HTTP endpoint", () => {
         { type: "text", text: "Saved." },
       ]);
       expect(events.at(-1)).toEqual({ type: "done", text: "Saved." });
-      expect(delay.mock.calls.map(([delayMs]) => delayMs)).toEqual([2_000, 8_000]);
+      // Each wait is the backoff step plus up to a quarter of it as jitter.
+      const waits = delay.mock.calls.map(([delayMs]) => delayMs);
+      expect(waits).toHaveLength(2);
+      for (const [index, step] of [2_000, 8_000].entries()) {
+        expect(waits[index]).toBeGreaterThanOrEqual(step);
+        expect(waits[index]).toBeLessThan(step * 1.25);
+      }
     } finally {
       delay.mockRestore();
     }
@@ -115,7 +122,7 @@ describe("real Pi against an offline model HTTP endpoint", () => {
     async (contextStrategy) => {
       const decisions: Array<{ droppedMessages: number; truncatedToolResults: number }> = [];
       const assertBounded = (request: ModelEmulatorRequest) => {
-        expect(Buffer.byteLength(JSON.stringify(request.messages))).toBeLessThan(7168);
+        expect(estimateTextTokens(JSON.stringify(request.messages))).toBeLessThan(7168);
         expect(JSON.stringify(request.messages)).toContain("Save hello to notes.txt.");
       };
       const server = await startModelEmulator({
@@ -155,7 +162,7 @@ describe("real Pi against an offline model HTTP endpoint", () => {
                 role: "user" as const,
                 content: `Old message ${index} ${"filler ".repeat(80)}`,
               })),
-              executeTool: async () => ({ original: "large evidence ".repeat(6000) }),
+              executeTool: async () => ({ original: "0".repeat(90_000) }),
             },
           ),
         ),
@@ -329,7 +336,7 @@ describe("real Pi against an offline model HTTP endpoint", () => {
         },
         {
           expect(request) {
-            expect(Buffer.byteLength(JSON.stringify(request.messages))).toBeLessThan(7168);
+            expect(estimateTextTokens(JSON.stringify(request.messages))).toBeLessThan(7168);
             expect(latestToolResult(request)?.tool_call_id).toBe("child-write");
             expect(String(latestToolResult(request)?.content)).toContain("truncated");
             expect(JSON.stringify(request.messages)).toContain("Save hello to notes.txt.");
@@ -362,7 +369,7 @@ describe("real Pi against an offline model HTTP endpoint", () => {
                 },
               },
             ],
-            executeTool: async () => ({ original: "large child evidence ".repeat(3000) }),
+            executeTool: async () => ({ original: "0".repeat(63_000) }),
           },
         ),
       ),
@@ -390,7 +397,7 @@ describe("real Pi against an offline model HTTP endpoint", () => {
           expect(request) {
             expect(request.messages.at(-1)).toMatchObject({
               role: "user",
-              content: [{ type: "text", text: "Save hello to notes.txt." }],
+              content: "Save hello to notes.txt.",
             });
             expect(request.tools).toContainEqual(
               expect.objectContaining({

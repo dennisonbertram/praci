@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DATA_ROOM_CHANGED } from "./data-room";
 import { rpc } from "./rpc";
 
@@ -36,6 +36,7 @@ const EMPTY: Glance = {
   legalDueSoon: 0,
   devinNeedsYou: 0,
   devinConnected: false,
+  brexConnected: false,
   gtmNeedsYou: 0,
   dataRoomWaiting: 0,
   hasTickets: false,
@@ -66,6 +67,11 @@ export function useSidebarGlance(
   }, []);
 
   useEffect(refresh, [refresh, pathname]);
+  const wasAttended = useRef(attended);
+  useEffect(() => {
+    if (!wasAttended.current && attended) refresh();
+    wasAttended.current = attended;
+  }, [attended, refresh]);
   useEffect(() => {
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
     // An upload, retry or delete moves the Data room's failed count.

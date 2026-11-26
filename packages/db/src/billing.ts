@@ -30,20 +30,22 @@ export function createBillingAccount(
 
 /**
  * Loads the customer's current subscription and overwrites the stored snapshot (`null` clears
- * it). The write only lands if no sync that started later has written first, so an older read
- * never replaces a newer one. Returns false when no account is stored for the customer.
+ * it). Returns false, without reading the clock or calling `load`, when no account is stored for
+ * the customer. Otherwise the write only lands if no sync that started later has written first,
+ * so an older read never replaces a newer one; a skipped stale write still returns true.
  */
 export async function syncBillingSnapshot(
   prisma: PrismaClient,
   customerId: string,
   load: () => Promise<BillingSubscriptionSnapshot | null>,
 ): Promise<boolean> {
+  if ((await prisma.billingAccount.count({ where: { customerId } })) === 0) return false;
   // The database clock, so API instances with skewed clocks still order correctly.
   const [{ startedAt }] = await prisma.$queryRaw<[{ startedAt: Date }]>(
     Prisma.sql`SELECT clock_timestamp() AS "startedAt"`,
   );
   const snapshot = await load();
-  const written = await prisma.billingAccount.updateMany({
+  await prisma.billingAccount.updateMany({
     where: { customerId, OR: [{ syncedAt: null }, { syncedAt: { lt: startedAt } }] },
     data: {
       subscriptionId: snapshot?.subscriptionId ?? null,
@@ -64,8 +66,7 @@ export async function syncBillingSnapshot(
       data: { subscribedAt: startedAt },
     });
   }
-  if (written.count > 0) return true;
-  return (await prisma.billingAccount.count({ where: { customerId } })) > 0;
+  return true;
 }
 
 /** Billable seats: every organization member, never fewer than one. */

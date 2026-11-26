@@ -39,6 +39,7 @@ export type EvalCase = {
   steps: Step[];
   files?: string[];
   approvalTool?: string;
+  autoApproveTool?: string | string[];
   expectedClarification?: true;
   connections?: string[];
   taughtSkill?: true;
@@ -243,6 +244,14 @@ export const EVAL_CASES: EvalCase[] = [
     id: "slack-customer-update",
     purpose:
       "Answer a colleague in Slack from the matching Salesforce renewal and Zendesk support records.",
+    autoApproveTool: [
+      "SALESFORCE_SEARCH_ACCOUNTS",
+      "SALESFORCE_LIST_OPPORTUNITIES",
+      "ZENDESK_SEARCH_ORGANIZATIONS",
+      "ZENDESK_LIST_TICKETS",
+      "message_bot",
+      "message_outside",
+    ],
     connections: [CUSTOMER_SUPPORT_PROVIDERS.salesforce, CUSTOMER_SUPPORT_PROVIDERS.zendesk],
     steps: [
       {

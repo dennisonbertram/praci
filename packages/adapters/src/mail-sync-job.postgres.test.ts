@@ -17,6 +17,7 @@ import {
   mailSyncStatus,
   requestMailSync,
   runMailSyncJob,
+  sweepMailSyncs,
   syncAfterSend,
   waitForMailSync,
 } from "./mail-sync-job.js";
@@ -615,6 +616,81 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
 
       failEnqueue = true;
       await expect(syncAfterSend({ prisma, jobs }, account, ctx(), 100)).resolves.toBeUndefined();
+    });
+  });
+
+  describe("sweepMailSyncs", () => {
+    /** Sets the sync state with ages in minutes (null: unset), then returns the connection's scope. */
+    async function conn(
+      ref: string,
+      state: {
+        synced?: number | null;
+        failed?: number | null;
+        backoffMin?: number;
+        reconnect?: boolean;
+      },
+      owner = { spaceId, userId },
+      status = "connected",
+    ) {
+      const account = await connect(ref, owner);
+      if (status !== "connected")
+        await prisma.connection.update({ where: { id: account.id }, data: { status } });
+      const ago = (m: number | null | undefined) =>
+        m == null ? null : new Date(Date.now() - m * 60_000);
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: account.id,
+          lastSyncedAt: ago(state.synced),
+          lastErrorAt: ago(state.failed),
+          lastErrorKind: state.failed == null ? null : "unavailable",
+          needsReconnect: state.reconnect ?? false,
+          backoffUntil:
+            state.backoffMin === undefined
+              ? null
+              : new Date(Date.now() + state.backoffMin * 60_000),
+        },
+      });
+      return { ...owner, connectionId: account.id };
+    }
+    const sweep = async () => {
+      await sweepMailSyncs({ prisma, jobs });
+      return syncJobs().map((j) => j.payload);
+    };
+
+    it("requests stale and failed connections, each in its own scope, and skips the rest", async () => {
+      const stale = await conn("sw-stale", { synced: 30 });
+      const never = await conn("sw-never", {});
+      const fresh = await conn("sw-fresh", { synced: 2 });
+      const failed = await conn("sw-failed", { synced: 4, failed: 3 });
+      const failedJustNow = await conn("sw-failed-now", { synced: 4, failed: 0.5 });
+      const reconnect = await conn("sw-auth", { synced: 60, failed: 10, reconnect: true });
+      // A flag set by a one-off failed call is retried after an hour, so it clears once Gmail accepts the token.
+      const staleReconnect = await conn("sw-auth-old", {
+        synced: 200,
+        failed: 90,
+        reconnect: true,
+      });
+      const limited = await conn("sw-limited", { synced: 60, failed: 10, backoffMin: 5 });
+      const gone = await conn("sw-gone", { synced: 60 }, undefined, "disconnected");
+      const otherScope = { spaceId: otherSpaceId, userId: otherUserId };
+      const other = await conn("sw-other", { synced: 30 }, otherScope);
+
+      const requested = await sweep();
+      for (const scope of [stale, never, failed, other, staleReconnect])
+        expect(requested).toContainEqual(scope);
+      for (const scope of [fresh, failedJustNow, reconnect, limited, gone])
+        expect(requested.map((p) => p.connectionId)).not.toContain(scope.connectionId);
+      // Every job carries the space and user that own the connection, never the caller's.
+      expect(requested.find((p) => p.connectionId === other.connectionId)).toEqual(other);
+    });
+
+    it("does not queue a second job while one is pending", async () => {
+      const stale = await conn("sw-twice", { synced: 30 });
+      await sweep();
+      await sweep();
+      expect(syncJobs().filter((j) => j.payload.connectionId === stale.connectionId)).toHaveLength(
+        1,
+      );
     });
   });
 });

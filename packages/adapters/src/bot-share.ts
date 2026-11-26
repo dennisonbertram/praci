@@ -189,7 +189,7 @@ export async function answerBotShare(
     {
       bot_id: request.toBotId,
       message: BOT_SHARE_DECLINED_MESSAGE,
-      intent: request.intent,
+      intent: "fyi",
       deliveryKey: `share-declined:${effect.id}`,
     },
     { ...common, serverText: true },

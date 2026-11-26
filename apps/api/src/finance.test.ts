@@ -74,6 +74,7 @@ import {
   financeSpend,
   financeTransaction,
   financeVendor,
+  onFinanceServerReconnected,
 } from "./finance.js";
 
 const NOW = new Date("2026-10-14T12:00:00Z");
@@ -98,9 +99,23 @@ function table(rows: Row[]) {
     Object.entries(where).every(([key, value]) => row[key] === value);
   return {
     rows,
-    findMany: vi.fn(async ({ where }: { where?: Row } = {}) =>
-      rows.filter((r) => matches(r, where)),
-    ),
+    findMany: vi.fn(async ({ where, orderBy }: { where?: Row; orderBy?: Row } = {}) => {
+      const hit = rows.filter((r) => matches(r, where));
+      const [field, dir] = Object.entries(orderBy ?? {})[0] ?? [];
+      if (!field || !dir) return hit;
+      const key = (r: Row) => r[field] as number | Date | string;
+      return [...hit].sort((x, y) =>
+        key(x) < key(y)
+          ? dir === "desc"
+            ? 1
+            : -1
+          : key(x) > key(y)
+            ? dir === "desc"
+              ? -1
+              : 1
+            : 0,
+      );
+    }),
     findFirst: vi.fn(
       async ({ where }: { where?: Row } = {}) => rows.find((r) => matches(r, where)) ?? null,
     ),
@@ -120,6 +135,11 @@ function table(rows: Row[]) {
       const made = { id: `row-${rows.length + 1}`, ...create };
       rows.push(made);
       return made;
+    }),
+    updateMany: vi.fn(async ({ where, data }: { where: Row; data: Row }) => {
+      const hit = rows.filter((r) => matches(r, where));
+      for (const r of hit) Object.assign(r, data);
+      return { count: hit.length };
     }),
     update: vi.fn(async ({ where, data }: { where: Row; data: Row }) => {
       const row = rows.find((r) => matches(r, where));
@@ -186,6 +206,7 @@ function setup(
       | "financeBill"
       | "financeTreasuryYield"
       | "financeSyncState"
+      | "safeSyncState"
       | "bot"
       | "botMcpServer"
       | "financeWallet"
@@ -208,6 +229,7 @@ function setup(
     financeBill: t("financeBill"),
     financeTreasuryYield: t("financeTreasuryYield"),
     financeSyncState: t("financeSyncState"),
+    safeSyncState: t("safeSyncState"),
     bot: t("bot"),
     botMcpServer: t("botMcpServer"),
     financeWallet: t("financeWallet"),
@@ -217,6 +239,7 @@ function setup(
     financeExchangeConnection: t("financeExchangeConnection"),
     financeExchangeBalance: t("financeExchangeBalance"),
     financeExchangeSnapshot: t("financeExchangeSnapshot"),
+    cryptoPriceDay: { findMany: async () => [] },
   };
   const enqueue = vi.fn(async () => undefined);
   const createBot = vi.fn(async () => ({ id: "finance-bot" }));
@@ -372,6 +395,36 @@ describe("finance overview", () => {
     expect(accounts.map((x) => x.id)).toEqual(["acc-a"]);
   });
 
+  it("returns the newest live non-USD rows it left out, and only the actor's own", async () => {
+    const d: Actor = {
+      userId: "user-a",
+      spaceId: "space-2",
+      email: "a@rakazo.test",
+      isDeploymentOwner: false,
+    };
+    const { deps } = setup({
+      financeTransaction: [
+        txn(a, { id: "eu-old", currency: "EUR", postedAt: new Date("2026-10-01T00:00:00Z") }),
+        txn(a, { id: "usd" }),
+        txn(a, { id: "eu-new", currency: "EUR", postedAt: new Date("2026-10-09T00:00:00Z") }),
+        txn(a, { id: "eu-dead", currency: "EUR", status: "other" }),
+        txn(b, {
+          id: "eu-other-user",
+          currency: "EUR",
+          postedAt: new Date("2026-10-10T00:00:00Z"),
+        }),
+        txn(d, {
+          id: "eu-other-space",
+          currency: "EUR",
+          postedAt: new Date("2026-10-11T00:00:00Z"),
+        }),
+      ],
+    });
+    const out = await financeOverview(deps, a);
+    expect(out.excludedNonUsd.map((t) => t.id)).toEqual(["eu-new", "eu-old"]);
+    expect(out.excludedNonUsdCount).toBe(2);
+  });
+
   it("reports no runway when only card accounts exist (Brex only), and one when cash exists", async () => {
     const brexOnly = setup({
       financeAccount: [account(a, { id: "acc-card", provider: "brex", kind: "card" })],
@@ -453,6 +506,29 @@ describe("finance overview", () => {
     expect(failed.enqueue).not.toHaveBeenCalled();
   });
 
+  it("syncs a source whose sign-in works but whose reconnect flag is stale, throttled after a failure", async () => {
+    const expired = (ago: number) =>
+      setup({
+        mcpServer: [server(a)],
+        financeSyncState: [
+          {
+            mcpServerId: "srv-1",
+            ...scope(a),
+            lastSyncedAt: new Date(NOW.getTime() - 3_600_000),
+            lastErrorAt: new Date(NOW.getTime() - ago),
+            lastError: "Sign-in expired",
+            needsReconnect: true,
+          },
+        ],
+      });
+    const old = expired(20 * 60_000);
+    expect((await financeOverview(old.deps, a)).sources[0]?.status).toBe("needs_reconnect");
+    expect(old.enqueue).toHaveBeenCalledTimes(1);
+    const recent = expired(60_000);
+    await financeOverview(recent.deps, a);
+    expect(recent.enqueue).not.toHaveBeenCalled();
+  });
+
   it("does not show another user's server or sync state", async () => {
     const { deps } = setup({
       mcpServer: [server(b)],
@@ -498,6 +574,24 @@ describe("finance detail lookups", () => {
     });
   });
 
+  it("reads only the vendor's own transactions for a recurring charge and a transaction page", async () => {
+    const { deps, prisma } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [txn(a, { id: "t-1" }), txn(b, { id: "t-2" })],
+    });
+    const findMany = vi.spyOn(prisma.financeTransaction, "findMany");
+    await financeTransaction(deps, a, { id: "t-1" });
+    await financeRecurring(deps, a, { key: "acme" }).catch(() => undefined);
+    expect(findMany).toHaveBeenCalledTimes(2);
+    for (const call of findMany.mock.calls) {
+      expect(call[0]?.where).toMatchObject({
+        userId: a.userId,
+        spaceId: a.spaceId,
+        vendorKey: "acme",
+      });
+    }
+  });
+
   it("returns the user's own transaction with its account", async () => {
     const { deps } = setup({ financeAccount: [account(a)], financeTransaction: [txn(a)] });
     const out = await financeTransaction(deps, a, { id: "t-1" });
@@ -509,6 +603,30 @@ describe("finance detail lookups", () => {
     expect(out.account).toMatchObject({ id: "acc-1", balanceCents: 5000 });
     expect(out.vendorName).toBe("Acme Inc.");
     expect(out.vendorIsSubscription).toBe(false);
+  });
+
+  it("returns an account's whole history, newest first, and only its own", async () => {
+    const d: Actor = {
+      userId: "user-a",
+      spaceId: "space-2",
+      email: "a@rakazo.test",
+      isDeploymentOwner: false,
+    };
+    const own = Array.from({ length: 25 }, (_, i) =>
+      txn(a, { id: `t-${i}`, postedAt: new Date(Date.UTC(2026, 9, 1 + i)) }),
+    );
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        ...own,
+        txn(b, { id: "other-user", postedAt: new Date(Date.UTC(2026, 10, 1)) }),
+        txn(d, { id: "other-space", postedAt: new Date(Date.UTC(2026, 10, 2)) }),
+      ],
+    });
+    const out = await financeAccountDetail(deps, a, { id: "acc-1" });
+    expect(out.transactions.map((t) => t.id)).toEqual(own.map((r) => r.id as string).reverse());
+    expect(out.transactions.map((t) => t.id)).not.toContain("other-user");
+    expect(out.transactions.map((t) => t.id)).not.toContain("other-space");
   });
 
   it("builds a category page from its own spend only", async () => {
@@ -1293,5 +1411,65 @@ describe("finance pages with the real calculations", () => {
     expect(overview.breakdownByPeriod?.month.vendor).toEqual([
       { key: "cloudnine-hosting", label: "Cloudnine Hosting", cents: 481_200 },
     ]);
+  });
+});
+
+describe("finance reconnect", () => {
+  const expiredState = (actor: Actor, mcpServerId = "srv-1"): Row => ({
+    mcpServerId,
+    ...scope(actor),
+    lastSyncedAt: new Date(NOW.getTime() - 3_600_000),
+    lastErrorAt: new Date(NOW.getTime() - 60_000),
+    lastError: "Sign-in expired",
+    needsReconnect: true,
+  });
+
+  it("clears the expired sign-in, enqueues a sync, and leaves another user's state alone", async () => {
+    const { deps, prisma, enqueue } = setup({
+      mcpServer: [server(a), server(b, { id: "srv-b" })],
+      financeSyncState: [expiredState(a), expiredState(b, "srv-b")],
+      safeSyncState: [
+        { ...scope(a), needsReconnect: true, lastError: "Sign-in expired" },
+        { ...scope(b), needsReconnect: true, lastError: "Sign-in expired" },
+      ],
+    });
+    await onFinanceServerReconnected(deps, a, "srv-1");
+    expect((await financeOverview(deps, a)).sources[0]?.status).toBe("ok");
+    expect(prisma.financeSyncState.rows[0]).toMatchObject({
+      needsReconnect: false,
+      lastError: null,
+      lastErrorAt: null,
+    });
+    expect(prisma.safeSyncState.rows[0]).toMatchObject({ needsReconnect: false, lastError: null });
+    expect(prisma.financeSyncState.rows[1]).toMatchObject({ needsReconnect: true });
+    expect(prisma.safeSyncState.rows[1]).toMatchObject({ needsReconnect: true });
+    expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ name: "finance.sync" }));
+  });
+
+  it("shows needs_reconnect again when the fresh sync fails with an expired sign-in", async () => {
+    const { deps, prisma } = setup({
+      mcpServer: [server(a)],
+      financeSyncState: [expiredState(a)],
+    });
+    await onFinanceServerReconnected(deps, a, "srv-1");
+    // What a failed sync writes (finance-sync.ts fail()).
+    Object.assign(prisma.financeSyncState.rows[0]!, {
+      needsReconnect: true,
+      lastError: "Sign-in expired",
+      lastErrorAt: NOW,
+    });
+    expect((await financeOverview(deps, a)).sources[0]?.status).toBe("needs_reconnect");
+  });
+
+  it("does not fail when the enqueue fails or the server belongs to someone else", async () => {
+    const { deps, prisma, enqueue } = setup({
+      mcpServer: [server(a)],
+      financeSyncState: [expiredState(a)],
+    });
+    enqueue.mockRejectedValueOnce(new Error("queue down"));
+    await expect(onFinanceServerReconnected(deps, a, "srv-1")).resolves.toBeUndefined();
+    await onFinanceServerReconnected(deps, b, "srv-1");
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(prisma.financeSyncState.rows[0]).toMatchObject({ needsReconnect: false });
   });
 });

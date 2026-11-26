@@ -1,7 +1,12 @@
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createThreadEvents } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { MAIL_APPROVAL_STALE_MS, reconcileMailApprovals } from "./mail-approval-recovery.js";
+import { resolveDuplicateEffectGate } from "./approval-effect.js";
+import {
+  MAIL_APPROVAL_STALE_MS,
+  mailApprovalAgentNote,
+  reconcileMailApprovals,
+} from "./mail-approval-recovery.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -135,7 +140,8 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
       answeredByUserId: ids.user,
       answer: "deny",
       mailDenial: {
-        note: "The user edited this email on the approval card and the outcome of their send is not known yet. Do not send it again; they should check Sent.",
+        // The claim note a draft save or a send writes, as the API does.
+        note: mailApprovalAgentNote(a.effect.kind === "mail_send"),
         mail: { subject: "Edited", connectionId },
       },
     });
@@ -205,6 +211,33 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
     await reconcile(later());
     expect((await card(a.message.id))?.outcome).toBe("sent");
     expect(await note(a.effect.id)).toContain("Do not send it again");
+    // What the agent reads on resume: sent, not a denial.
+    const settled = await prisma.externalEffect.findUniqueOrThrow({ where: { id: a.effect.id } });
+    expect(settled.status).toBe("completed");
+    expect(resolveDuplicateEffectGate(settled, "mail_send")).toMatchObject({
+      action: "return",
+      result: { ok: true, outcome: "sent" },
+    });
+  });
+
+  it("settles a draft the person sent now as a send, not as a saved draft", async () => {
+    const a = await waitingApproval("mail_draft");
+    await events().answerRunInput({
+      spaceId: ids.space,
+      threadId,
+      runId: a.run.id,
+      messageId: a.message.id,
+      answeredByUserId: ids.user,
+      answer: "deny",
+      mailDenial: { note: mailApprovalAgentNote(true), mail: { connectionId, tool: "mail_send" } },
+    });
+    // The process died after the draft was written but before the provider was asked to send it.
+    await prisma.composeSend.updateMany({
+      where: { clientId: `approval_${a.effect.id}` },
+      data: { draftId: "d-1" },
+    });
+    await reconcile(later());
+    expect((await card(a.message.id))?.outcome).toBe("failed");
   });
 
   it("settles a draft save by whether a draft id was stored", async () => {

@@ -4,14 +4,15 @@ import type { BotPage } from "@rakazo/contracts";
 import { splitPage } from "@rakazo/core";
 import { Button, Input, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { useFinanceQuery } from "../components/finance/ui";
+import { Link } from "react-router-dom";
 import { GtmBlockContext } from "../components/gtm/GtmBlock";
 import { GtmCalendar } from "../components/gtm/GtmCalendar";
 import { PageHeader } from "../components/PageHeader";
 import { StillLoading } from "../components/ShellSkeleton";
+import { usePageQuery, useUrlParam } from "../lib/page-data";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { GtmChannels } from "./gtm/GtmChannels";
@@ -30,9 +31,9 @@ export function GtmPage({
   onAskAgent?: () => void;
   agentOpen?: boolean;
 }) {
-  const overview = useFinanceQuery(() => rpc.gtm.overview(), [botId]);
-  const [params, setParams] = useSearchParams();
-  const calendar = params.get("view") === "calendar";
+  const overview = usePageQuery(() => rpc.gtm.overview(), [botId]);
+  const [view, setView] = useUrlParam("view", "plan");
+  const calendar = view === "calendar";
   const [page, setPage] = useState<BotPage | null>();
   const hadContent = useRef(false);
   if (page?.content.trim()) hadContent.current = true;
@@ -42,24 +43,12 @@ export function GtmPage({
   const [error, setError] = useState("");
   const lock = useRef(false);
   const [now, setNow] = useState(Date.now());
-  const reload = useRef(overview.reload);
-  reload.current = overview.reload;
+  useRefetchWhileOpen(true, () => overview.reload());
   useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState !== "hidden") reload.current();
-    };
-    const timer = setInterval(() => {
-      setNow(Date.now());
-      refresh();
-    }, 30_000);
-    window.addEventListener("focus", refresh);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-    };
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
   }, []);
   const changed = () => {
-    overview.reload();
     window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
   };
   const data = overview.data;
@@ -74,9 +63,12 @@ export function GtmPage({
         ).values(),
       ]
     : [];
-  // Before a goal exists there is nothing to plan: just the goal card and the Connect row.
+  // Without a goal, show both tabs when posting is ready; otherwise hide empty planning.
   const bare =
-    Boolean(data) && !data?.goal && !Object.values(data?.groups ?? {}).some((g) => g.length);
+    data != null &&
+    !data.goal &&
+    data.postingCapability !== "ready" &&
+    !Object.values(data?.groups ?? {}).some((g) => g.length);
   const saveGoal = async () => {
     if (!botId || lock.current) return;
     lock.current = true;
@@ -198,12 +190,7 @@ export function GtmPage({
               ) : null}
             </section>
             {bare ? null : (
-              <Tabs
-                value={calendar ? "calendar" : "plan"}
-                onValueChange={(value) =>
-                  setParams(value === "calendar" ? { view: "calendar" } : {}, { replace: true })
-                }
-              >
+              <Tabs value={calendar ? "calendar" : "plan"} onValueChange={setView}>
                 <TabsList>
                   <TabsTrigger value="plan">
                     <Trans>Plan</Trans>
@@ -282,13 +269,13 @@ export function GtmPage({
                 ) : null}
                 {!agentLayout && !bare ? (
                   <>
-                    <GtmChannels overview={data} />
                     <GtmPlan
                       title={t`Needs you`}
                       items={data.groups.needs_you}
                       overview={data}
                       onChange={changed}
                     />
+                    <GtmChannels overview={data} />
                     <GtmPlan
                       title={t`In progress`}
                       items={data.groups.in_progress}

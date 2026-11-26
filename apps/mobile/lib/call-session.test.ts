@@ -50,6 +50,8 @@ function fakes(opts: { onDevice?: boolean } = {}) {
   const unwatch = vi.fn();
   let reply: (messageId: string, text: string, runId?: string) => void = () => undefined;
   let ended: (ended: CallEnded) => void = () => undefined;
+  let runEnded: (runId: string, status: "failed" | "cancelled", error?: string) => void = () =>
+    undefined;
   const spoken: string[] = [];
   let handlers: DictationHandlers | null = null;
   const stopSpeaking = vi.fn(() => {
@@ -87,9 +89,10 @@ function fakes(opts: { onDevice?: boolean } = {}) {
       speeches.push(next);
       return next.promise;
     },
-    watch: (_botId, onReply, onCallEnded) => {
+    watch: (_botId, onReply, onCallEnded, onRunEnded) => {
       reply = onReply;
       ended = onCallEnded;
+      runEnded = onRunEnded;
       return unwatch;
     },
   };
@@ -110,6 +113,8 @@ function fakes(opts: { onDevice?: boolean } = {}) {
     say: (text: string) =>
       recordings[recordings.length - 1]?.resolve({ base64: text, mimeType: "audio/m4a" }),
     replyWith: (messageId: string, text: string, runId?: string) => reply(messageId, text, runId),
+    runEnded: (runId: string, status: "failed" | "cancelled", error?: string) =>
+      runEnded(runId, status, error),
     endedCall: (callId: string | undefined, farewell?: string) => ended({ callId, farewell }),
   };
 }
@@ -459,6 +464,77 @@ describe("mobile call session", () => {
     expect(fake.signals[0]?.aborted).toBe(true);
     expect(getSnapshot()).toMatchObject({ muted: true, phase: "listening" });
     expect(fake.recordings).toHaveLength(1);
+  });
+
+  it("returns to listening with the error when the turn's run fails", async () => {
+    const fake = fakes();
+    startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
+    await flush();
+    fake.say("hello");
+    await flush();
+    expect(getSnapshot()?.phase).toBe("thinking");
+    fake.runEnded("run-1", "failed");
+    await flush();
+    expect(getSnapshot()).toMatchObject({
+      phase: "listening",
+      caption: "Something went wrong. Try again.",
+    });
+    expect(fake.waits).toEqual(["preload", "start", "stop"]);
+    expect(fake.recordings).toHaveLength(2);
+  });
+
+  it("returns to listening when the run fails before the send response arrives", async () => {
+    const fake = fakes();
+    const reply = deferred<string | undefined>();
+    fake.send.mockImplementationOnce(() => reply.promise);
+    startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
+    await flush();
+    fake.say("hello");
+    await flush();
+    fake.runEnded("run-1", "failed");
+    reply.resolve("run-1");
+    await flush();
+    expect(getSnapshot()).toMatchObject({
+      phase: "listening",
+      caption: "Something went wrong. Try again.",
+    });
+  });
+
+  it("returns to listening with no caption when the turn's run is cancelled", async () => {
+    const fake = fakes();
+    startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
+    await flush();
+    fake.say("hello");
+    await flush();
+    fake.runEnded("run-1", "cancelled");
+    await flush();
+    expect(getSnapshot()).toMatchObject({ phase: "listening", caption: "" });
+    expect(fake.waits).toEqual(["preload", "start", "stop"]);
+    expect(fake.recordings).toHaveLength(2);
+  });
+
+  it("ignores a run ending that is not the turn's run", async () => {
+    const fake = fakes();
+    startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
+    await flush();
+    fake.say("hello");
+    await flush();
+    fake.runEnded("run-other", "failed", "x");
+    await flush();
+    expect(getSnapshot()?.phase).toBe("thinking");
+    expect(fake.waits).toEqual(["preload", "start"]);
+  });
+
+  it("hangs up instead of listening when a goodbye turn's run fails", async () => {
+    const fake = fakes();
+    startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
+    await flush();
+    fake.say("that's all, bye");
+    await flush();
+    fake.runEnded("run-1", "failed", "x");
+    await flush();
+    expect(getSnapshot()).toBeNull();
+    expect(fake.unwatch).toHaveBeenCalled();
   });
 
   it("hangs up once the bot has answered a goodbye", async () => {

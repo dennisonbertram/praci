@@ -105,7 +105,7 @@ test("GTM opens its plan and docked agent on desktop and phone", async ({ page }
   await captureScreenshot(page, testInfo, "gtm-plan-desktop");
   const emailCard = page.locator('[data-item-id="email_demo"]');
   await emailCard.scrollIntoViewIfNeeded();
-  await expect(emailCard.getByRole("button", { name: "Approve", exact: true })).toBeDisabled();
+  await expect(emailCard.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
   await captureScreenshot(page, testInfo, "gtm-email-desktop");
   await page.getByRole("tab", { name: "Calendar", exact: true }).click();
   await expect(page.getByTestId("gtm-calendar-grid")).toBeVisible();

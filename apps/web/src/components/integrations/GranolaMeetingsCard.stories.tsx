@@ -76,3 +76,6 @@ export const ConsentOff: Story = { args: { status: { ...connected, consentOff: t
 export const Disconnected: Story = { args: { status: { ...connected, status: "disconnected" } } };
 export const NoAgent: Story = { args: { status: { ...connected, agentBotId: null } } };
 export const BothRoutesConnected: Story = { args: { status: connected, bothRoutes: true } };
+
+/** The status call failed before anything was shown: a retry, not the key form. */
+export const LoadFailed: Story = { args: { loadFailed: true, onRetry: fn() } };

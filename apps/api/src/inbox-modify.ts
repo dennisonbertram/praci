@@ -7,11 +7,13 @@ import type {
   InboxBulkInput,
   InboxBulkResult,
   InboxMarkReadInput,
+  InboxMarkReadManyInput,
   InboxMoveInput,
   InboxMoveOutput,
   MailActionKind,
 } from "@rakazo/contracts";
 import type { Prisma } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound, providerFailure } from "./inbox.js";
 import { flagReconnect } from "./inbox-compose.js";
@@ -192,6 +194,7 @@ interface BulkRow {
 async function bulk(
   deps: ModifyDeps,
   actor: Actor,
+  operation: string,
   messageIds: string[],
   skip: (row: BulkRow) => BulkOutcome | null,
   apply: (messageId: string) => Promise<unknown>,
@@ -227,7 +230,15 @@ async function bulk(
         await apply(id);
         outcomes.set(id, "done");
       } catch (error) {
-        if (!(error instanceof ORPCError)) throw error;
+        if (!(error instanceof ORPCError)) {
+          // Keep the results of the ids already done; the cause is logged without ids or addresses.
+          getLogger().warn("inbox bulk item failed", {
+            operation,
+            reason: error instanceof Error ? error.name : "unknown",
+          });
+          outcomes.set(id, "unavailable");
+          continue;
+        }
         outcomes.set(
           id,
           error.code === "NOT_FOUND"
@@ -267,6 +278,7 @@ export const inboxArchiveMany = async (
     await bulk(
       deps,
       actor,
+      "inbox.archive",
       input.messageIds,
       archiveSkip(input),
       (messageId) => inboxArchive(deps, actor, { messageId }, signal),
@@ -284,12 +296,30 @@ export const inboxUnarchiveMany = async (
     await bulk(
       deps,
       actor,
+      "inbox.unarchive",
       input.messageIds,
       () => null,
       (messageId) => inboxUnarchive(deps, actor, { messageId }, signal),
       signal,
     )
   ).result;
+
+export function inboxMarkReadMany(
+  deps: ModifyDeps,
+  actor: Actor,
+  input: InboxMarkReadManyInput,
+  signal?: AbortSignal,
+) {
+  return bulk(
+    deps,
+    actor,
+    input.read ? "inbox.markRead" : "inbox.markUnread",
+    input.messageIds,
+    () => null,
+    (messageId) => inboxMarkRead(deps, actor, { messageId, read: input.read }, signal),
+    signal,
+  ).then(({ result }) => result);
+}
 
 /**
  * Spam and trash are label changes the user asks for by clicking; the agent's `mail_modify` still
@@ -335,6 +365,7 @@ export async function inboxCleanupMove(
   return bulk(
     deps,
     actor,
+    op === "archive" ? "inbox.archive" : MOVES.spam.operation,
     messageIds,
     () => null,
     (messageId) =>
@@ -356,6 +387,7 @@ export async function inboxMoveMany(
   const { result, rows } = await bulk(
     deps,
     actor,
+    move.operation,
     input.messageIds,
     (row) =>
       (input.op === "notSpam" ? row.isSpam || row.pile === "spam" : row.inInbox)
@@ -365,26 +397,6 @@ export async function inboxMoveMany(
     signal,
   );
   const batchId = crypto.randomUUID();
-  if (input.op === "notSpam") {
-    // Mail the rules (not Gmail) called spam would be put back by the next sync, so the user's
-    // decision is kept as an "important" mark on the sender, which the pile rules respect.
-    const senders = new Set<string>();
-    for (const id of result.done) {
-      const row = rows.get(id) as BulkRow;
-      if (!row.isSpam) senders.add(row.fromAddress.trim().toLowerCase());
-    }
-    for (const senderAddress of senders) {
-      if (!senderAddress) continue;
-      const key = { spaceId: actor.spaceId, userId: actor.userId, senderAddress };
-      await deps.prisma.inboxSenderFeedback.upsert({
-        where: { spaceId_userId_senderAddress: key },
-        create: { ...key, mark: "important" },
-        update: { mark: "important" },
-      });
-      // Best effort: the mail is already moved, and a filter that stays is listed in Cleanup.
-      await removeFiltersOfSender(deps, actor, senderAddress, "inbox.notSpam", signal);
-    }
-  }
   const byConnection = new Map<string, BulkRow[]>();
   for (const id of result.done) {
     const row = rows.get(id) as BulkRow;
@@ -403,5 +415,31 @@ export async function inboxMoveMany(
         threadIds: [...new Set(done.map((row) => row.threadId))],
       },
     );
+  if (input.op === "notSpam") {
+    // Mail the rules (not Gmail) called spam would be put back by the next sync, so the user's
+    // decision is kept as an "important" mark on the sender, which the pile rules respect.
+    const senders = new Set<string>();
+    for (const id of result.done) {
+      const row = rows.get(id) as BulkRow;
+      if (!row.isSpam) senders.add(row.fromAddress.trim().toLowerCase());
+    }
+    for (const senderAddress of senders) {
+      if (!senderAddress) continue;
+      const key = { spaceId: actor.spaceId, userId: actor.userId, senderAddress };
+      // Best effort: the mail is already moved and logged, and a filter that stays is listed in Cleanup.
+      try {
+        await deps.prisma.inboxSenderFeedback.upsert({
+          where: { spaceId_userId_senderAddress: key },
+          create: { ...key, mark: "important" },
+          update: { mark: "important" },
+        });
+        await removeFiltersOfSender(deps, actor, senderAddress, "inbox.notSpam", signal);
+      } catch (error) {
+        getLogger().warn("inbox.notSpam sender mark failed", {
+          reason: error instanceof Error ? error.name : "unknown",
+        });
+      }
+    }
+  }
   return { ...result, batchId };
 }

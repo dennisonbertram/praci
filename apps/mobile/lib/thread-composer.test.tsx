@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { resolveComposerSendPlan } from "@rakazo/core";
 import type { ComponentProps, ReactNode } from "react";
 import { act, createElement, createRef } from "react";
 import type { Root } from "react-dom/client";
@@ -12,6 +13,8 @@ import { settleComposer } from "./thread-feedback";
 const input = vi.hoisted(() => ({
   change: (_value: string) => {},
   key: (_event: { nativeEvent: { key: string } }) => {},
+  select: (_selection: { start: number; end: number }) => {},
+  setSelection: vi.fn((_start: number, _end: number) => {}),
 }));
 vi.mock("react-native", () => {
   const Surface = ({ children, testID }: { children?: ReactNode; testID?: string }) =>
@@ -40,13 +43,21 @@ vi.mock("react-native", () => {
       value,
       onChangeText,
       onKeyPress,
+      onSelectionChange,
+      ref,
     }: {
       value: string;
       onChangeText: typeof input.change;
       onKeyPress: typeof input.key;
+      onSelectionChange: (event: {
+        nativeEvent: { selection: { start: number; end: number } };
+      }) => void;
+      ref?: { current: { setSelection: typeof input.setSelection } | null };
     }) => {
       input.change = onChangeText;
       input.key = onKeyPress;
+      input.select = (selection) => onSelectionChange({ nativeEvent: { selection } });
+      if (ref) ref.current = { setSelection: input.setSelection };
       return createElement("input", { value, readOnly: true });
     },
   };
@@ -106,6 +117,9 @@ describe("thread composer isolation", () => {
   function type(value: string) {
     act(() => input.change(value));
   }
+  function select(start: number, end = start) {
+    act(() => input.select({ start, end }));
+  }
   function press(label: string) {
     const button = container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
     expect(button).not.toBeNull();
@@ -113,6 +127,11 @@ describe("thread composer isolation", () => {
   }
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    // The composer moves the caret on the next frame; run it now so a pick is observable.
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
     vi.clearAllMocks();
     threadRenders = 0;
     container = document.createElement("div");
@@ -174,6 +193,22 @@ describe("thread composer isolation", () => {
     expect(container.querySelector('[data-testid="mention-picker"]')).toBeNull();
   });
 
+  it("offers Goal in a bot chat and inserts the command instead of dispatching it", () => {
+    type("/");
+    press("Goal");
+    expect(props.onSlashAction).not.toHaveBeenCalled();
+    expect(composer.current!.snapshot().promptText).toBe("/goal");
+    expect(container.querySelector("input")!.value).toBe("/goal ");
+  });
+
+  it("hides Goal in a group chat and still dispatches the settings actions", () => {
+    render({ botId: undefined });
+    type("/");
+    expect(container.querySelector('button[aria-label="Goal"]')).toBeNull();
+    press("Settings");
+    expect(props.onSlashAction).toHaveBeenCalledWith("chat-settings");
+  });
+
   it("ranks prefix, word-start and substring mention matches ahead of kind order", () => {
     render({
       composerMentionTargets: [
@@ -206,22 +241,145 @@ describe("thread composer isolation", () => {
     );
   });
 
-  it("selects mention and skill popovers and removes chips with backspace", () => {
+  it("selects mention and skill popovers, keeping the mention inline", () => {
     type("Hello @He");
     press("@{name}");
     expect(composer.current!.snapshot().mentions).toEqual([bot]);
-    expect(container.querySelector("input")!.value).toBe("Hello ");
+    expect(container.querySelector("input")!.value).toBe("Hello @Helper ");
     expect(container.querySelector('[data-testid="mention-picker"]')).toBeNull();
     type("/Wri");
     press("Skill {name}");
     expect(composer.current!.snapshot().skill).toEqual(skill);
     expect(container.querySelector("input")!.value).toBe("");
     expect(container.querySelector('[data-testid="slash-picker"]')).toBeNull();
+    // Backspace on an empty draft removes only the skill chip; a mention lives in the text, not beside it.
     act(() => input.key({ nativeEvent: { key: "Backspace" } }));
     expect(composer.current!.snapshot().mentions).toEqual([]);
-    expect(composer.current!.snapshot().skill).toEqual(skill);
-    act(() => input.key({ nativeEvent: { key: "Backspace" } }));
     expect(composer.current!.snapshot().skill).toBeNull();
+  });
+
+  it("puts a picked mention where it was typed and sends it once", () => {
+    render({
+      composerMentionTargets: [
+        { kind: "bot", id: "bot-investors", name: "Investors" },
+        { kind: "bot", id: "bot-ops", name: "Ops" },
+      ],
+    });
+    type("share with @Inv");
+    press("@{name}");
+    expect(container.querySelector("input")!.value).toBe("share with @Investors ");
+    expect(composer.current!.snapshot().promptText).toBe("share with @Investors");
+    expect(composer.current!.snapshot().mentions).toEqual([
+      { kind: "bot", id: "bot-investors", name: "Investors" },
+    ]);
+    expect(input.setSelection).toHaveBeenLastCalledWith(22, 22);
+    type("share with @Investors and you");
+    expect(composer.current!.snapshot().promptText).toBe("share with @Investors and you");
+    expect(composer.current!.snapshot().mentions).toHaveLength(1);
+  });
+
+  it("replaces an @query in the middle of a draft", () => {
+    type("hi  there");
+    select(3);
+    type("hi @He there");
+    select(6);
+    press("@{name}");
+    expect(container.querySelector("input")!.value).toBe("hi @Helper there");
+    expect(composer.current!.snapshot().promptText).toBe("hi @Helper there");
+    expect(composer.current!.snapshot().mentions).toEqual([bot]);
+    expect(input.setSelection).toHaveBeenLastCalledWith(10, 10);
+  });
+
+  it("ignores a stale zero selection while the picker is open", () => {
+    type("hi @He");
+    select(0);
+    press("@{name}");
+    expect(container.querySelector("input")!.value).toBe("hi @Helper ");
+    expect(composer.current!.snapshot().promptText).toBe("hi @Helper");
+  });
+
+  it("un-mentions a token that is edited", () => {
+    type("hi @He");
+    press("@{name}");
+    expect(composer.current!.snapshot().mentions).toEqual([bot]);
+    type("hi @Helpe ");
+    expect(composer.current!.snapshot().mentions).toEqual([]);
+    expect(container.querySelector('[data-testid="mention-chip"]')).toBeNull();
+    expect(container.querySelector("input")!.value).toBe("hi @Helpe ");
+  });
+
+  it("removes one mention's token and spaces from the chip row", () => {
+    render({
+      composerMentionTargets: [bot, { kind: "bot", id: "bot-ops", name: "Ops" }],
+    });
+    type("@He");
+    press("@{name}");
+    type("@Helper ask @Ops");
+    press("@{name}");
+    type("@Helper ask @Ops now");
+    expect(composer.current!.snapshot().mentions).toHaveLength(2);
+    press("Remove mention {name}");
+    expect(container.querySelector("input")!.value).toBe("ask @Ops now");
+    expect(composer.current!.snapshot().mentions).toEqual([
+      { kind: "bot", id: "bot-ops", name: "Ops" },
+    ]);
+    expect(composer.current!.snapshot().promptText).toBe("ask @Ops now");
+  });
+
+  it("keeps a group mention inline so the send plan still reroutes", () => {
+    const group = { kind: "group", id: "g1", name: "Team Mail" } as const;
+    render({ composerMentionTargets: [group] });
+    type("@Tea");
+    press("@{name}");
+    const snapshot = composer.current!.snapshot();
+    expect(snapshot.promptText).toBe("@Team Mail");
+    const plan = resolveComposerSendPlan({
+      text: snapshot.promptText,
+      mentions: snapshot.mentions,
+      hasAttachments: false,
+    });
+    expect(plan.rerouteGroupId).toBe("g1");
+    expect(plan.isNoOp).toBe(false);
+  });
+
+  it("combines a picked skill with a mention typed after it", () => {
+    type("/Wri");
+    press("Skill {name}");
+    type("draft for @He");
+    press("@{name}");
+    // The picker's trailing space sits in the body, as it does on web.
+    expect(composer.current!.snapshot().promptText).toBe("/Writing\ndraft for @Helper ");
+  });
+
+  it("keeps the mention when text is added before it", () => {
+    type("hi @He");
+    press("@{name}");
+    expect(composer.current!.snapshot().mentions).toEqual([bot]);
+    type("xhi @Helper ");
+    expect(container.querySelector("input")!.value).toBe("xhi @Helper ");
+    expect(composer.current!.snapshot().mentions).toEqual([bot]);
+    expect(composer.current!.snapshot().promptText).toBe("xhi @Helper");
+  });
+
+  it("removes both chips when the text was picked out of order", () => {
+    type("end @He");
+    press("@{name}");
+    type("end @Helper with notes after");
+    type("@Heend @Helper with notes after");
+    select(3);
+    press("@{name}");
+    expect(container.querySelector("input")!.value).toBe("@Helper end @Helper with notes after");
+    expect(composer.current!.snapshot().mentions).toHaveLength(1);
+    press("Remove mention {name}");
+    expect(container.querySelector("input")!.value).toBe("end with notes after");
+    expect(composer.current!.snapshot().mentions).toEqual([]);
+  });
+
+  it("closes the picker when the caret is deliberately moved to the start", () => {
+    type("hi @He");
+    select(6);
+    select(0);
+    expect(container.querySelector('[data-testid="mention-picker"]')).toBeNull();
   });
 
   it("clears a slash query before routing and uses the call control for an empty draft", () => {

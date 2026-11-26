@@ -43,8 +43,25 @@ export const Ready: Story = {
   beforeEach: () => mockRpc({ "account.exportLatest": job({}) }),
 };
 
+/** The zip is ready, with one unavailable file noted. */
+export const ReadyWithMissingFiles: Story = {
+  render,
+  beforeEach: () => mockRpc({ "account.exportLatest": job({ missingFiles: 1 }) }),
+};
+
 /** The last export failed; the button offers another try. */
 export const Failed: Story = {
   render,
   beforeEach: () => mockRpc({ "account.exportLatest": job({ status: "failed", progress: 30 }) }),
+};
+
+/** The latest export lookup failed, so the section offers a retry. */
+export const LoadFailed: Story = {
+  render,
+  beforeEach: () =>
+    mockRpc({
+      "account.exportLatest": async () => {
+        throw new Error("offline");
+      },
+    }),
 };

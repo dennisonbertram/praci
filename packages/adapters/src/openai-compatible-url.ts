@@ -49,7 +49,9 @@ export function isPrivateOpenAiCompatibleHostname(hostname: string): boolean {
   if (CLOUD_METADATA_HOSTNAMES.has(normalized)) return false;
   const ipKind = isIP(normalized);
   if (ipKind === 4 || ipKind === 6) return isPrivateAddress(normalized);
-  return false;
+  return (process.env.RAKAZO_OPENAI_COMPAT_PRIVATE_HOSTS ?? "")
+    .split(",")
+    .some((entry) => entry.trim() !== "" && normalizeHostname(entry.trim()) === normalized);
 }
 
 function isBlockedHostname(hostname: string): boolean {

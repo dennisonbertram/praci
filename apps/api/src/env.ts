@@ -24,8 +24,15 @@ export interface AppEnv {
   authSecret: string;
   authUrl: string;
   webOrigin: string;
+  /** Extra browser origins trusted like `webOrigin` (RAKAZO_TRUSTED_ORIGINS). */
+  trustedOrigins: string[];
   privacyPolicyUrl?: string;
   apiUrl: string;
+  /**
+   * Public HTTPS address of the API when outside AI clients connect from the internet
+   * (for example a Tailscale Funnel host). Unset serves MCP at `apiUrl`, which is enough on localhost.
+   */
+  publicMcpUrl: string | undefined;
   apiHost: string;
   signupsEnabled: string | undefined;
   signupAllowlist: string | undefined;
@@ -174,8 +181,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     authSecret,
     authUrl: source.BETTER_AUTH_URL ?? source.WEB_ORIGIN ?? "http://127.0.0.1:5173",
     webOrigin: source.WEB_ORIGIN ?? "http://127.0.0.1:5173",
+    trustedOrigins: parseTrustedOrigins(source.RAKAZO_TRUSTED_ORIGINS),
     privacyPolicyUrl: optional(source.PRIVACY_POLICY_URL),
     apiUrl: source.API_URL ?? "http://127.0.0.1:3100",
+    publicMcpUrl: publicMcpUrl(source.PUBLIC_MCP_URL),
     apiHost: source.API_HOST ?? "127.0.0.1",
     signupsEnabled: source.SIGNUPS_ENABLED,
     signupAllowlist: source.SIGNUP_ALLOWLIST,
@@ -267,7 +276,84 @@ function required(source: NodeJS.ProcessEnv, key: string): string {
   return value;
 }
 
+/** Comma-separated http(s) origins. Anything else fails startup rather than widening trust silently. */
+function parseTrustedOrigins(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      try {
+        const url = new URL(entry);
+        // Exact origins only: no path, query, credentials or wildcard (Better Auth expands `*`).
+        const exact = entry.replace(/\/$/, "").toLowerCase() === url.origin;
+        if (
+          (url.protocol === "http:" || url.protocol === "https:") &&
+          exact &&
+          !entry.includes("*")
+        )
+          return url.origin;
+      } catch {}
+      throw new Error(`RAKAZO_TRUSTED_ORIGINS has an invalid origin: ${entry}`);
+    });
+}
+
+function publicMcpUrl(value: string | undefined): string | undefined {
+  const trimmed = optional(value)?.replace(/\/+$/, "");
+  if (trimmed && !URL.canParse(trimmed)) throw new Error("PUBLIC_MCP_URL must be an absolute URL");
+  return trimmed;
+}
+
 function optional(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed || undefined;
+}
+
+/**
+ * The web origin a provider should send the user back to after sign-in: the origin the client
+ * reached this server through, but only when it is `webOrigin` or a listed trusted origin.
+ * The Origin header must match one exactly. A forwarded host (set by the web dev server's proxy
+ * from the Host header the client used) picks a trusted origin by host only, so the scheme always
+ * comes from the trusted entry and never from a header. Anything else falls back to `webOrigin`.
+ */
+export function pickReturnOrigin(
+  env: Pick<AppEnv, "webOrigin" | "trustedOrigins">,
+  headers: Headers | undefined,
+): string {
+  const trusted = [env.webOrigin, ...env.trustedOrigins].flatMap((entry) => {
+    try {
+      return [new URL(entry)];
+    } catch {
+      return [];
+    }
+  });
+  const origin = headers?.get("origin")?.trim().toLowerCase();
+  const byOrigin = trusted.find((t) => t.origin === origin);
+  if (byOrigin) return byOrigin.origin;
+  const host = headers?.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase();
+  if (host && !/[/@?#\\\s]/.test(host)) {
+    for (const t of trusted) {
+      try {
+        if (new URL(`${t.protocol}//${host}`).host === t.host) return t.origin;
+      } catch {}
+    }
+  }
+  return env.webOrigin;
+}
+
+export const NATIVE_MCP_OAUTH_REDIRECT = "rakazo://mcp/oauth/callback";
+
+/**
+ * Whether `redirectUri` may be used to sign in to an MCP server: the exact native callback, or the
+ * web callback on the origin this request is trusted to come from. Everything else is rejected.
+ */
+export function isAllowedMcpOAuthRedirect(
+  env: Pick<AppEnv, "webOrigin" | "trustedOrigins">,
+  headers: Headers | undefined,
+  redirectUri: string,
+): boolean {
+  if (redirectUri === NATIVE_MCP_OAUTH_REDIRECT) return true;
+  if (!URL.canParse(redirectUri)) return false;
+  const web = new URL("/mcp/oauth/callback", pickReturnOrigin(env, headers)).toString();
+  return new URL(redirectUri).toString() === web;
 }

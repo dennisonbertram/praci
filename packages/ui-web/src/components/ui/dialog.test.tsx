@@ -25,6 +25,7 @@ it("caps its height to the viewport and scrolls only the body", async () => {
   );
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
   expect(popup).toContain("max-h-[calc(100dvh-2rem)]");
+  expect(popup).toContain("overscroll-contain");
   const body = document.querySelector('[data-slot="dialog-body"]')?.className ?? "";
   expect(body).toContain("overflow-y-auto");
   expect(body).toContain("min-h-0");

@@ -545,6 +545,55 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
     });
   });
 
+  describe("no reply corrections", () => {
+    it("lists a sender Needs reply stopped for, with its count, and Forget clears it", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, NEWS);
+      await f.prisma.mailSenderStat.updateMany({
+        where: { connectionId: f.connA, senderAddress: NEWS },
+        data: { noReplyCount: 3, noReplyAt: new Date() },
+      });
+
+      const listed = await inboxCleanupList(f.deps, f.a, {});
+      expect(listed.senders.find((s) => s.address === NEWS)).toMatchObject({ noReplyCount: 3 });
+
+      await inboxCleanupForget(f.deps, f.a, {
+        connectionId: f.connA,
+        address: NEWS,
+        learned: true,
+      });
+
+      const row = await f.prisma.mailSenderStat.findFirstOrThrow({
+        where: { connectionId: f.connA, senderAddress: NEWS },
+      });
+      expect(row).toMatchObject({ noReplyCount: 0, noReplyAt: null });
+    });
+  });
+
+  describe("stopped senders without cached mail", () => {
+    it("lists a sender Needs reply stopped for even when none of its mail is cached any more", async () => {
+      await f.wipe();
+      await f.prisma.mailSenderStat.create({
+        data: {
+          spaceId: f.a.spaceId,
+          userId: f.a.userId,
+          connectionId: f.connA,
+          senderAddress: "gone@lists.example.test",
+          messageCount: 0,
+          noReplyCount: 3,
+          noReplyAt: new Date(),
+        },
+      });
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      expect(out.senders.find((s) => s.address === "gone@lists.example.test")).toMatchObject({
+        noReplyCount: 3,
+        inboxThreads: 0,
+      });
+    });
+  });
+
   describe("forget", () => {
     it("deletes only the caller's decision, and twice is harmless", async () => {
       await f.wipe();

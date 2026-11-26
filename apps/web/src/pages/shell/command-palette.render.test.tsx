@@ -16,6 +16,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+import type { PaletteLinkGroup } from "./command-palette";
 import { CommandPalette, paletteMatchScore, plainSnippet } from "./command-palette";
 
 const bot = (id: string, name: string) =>
@@ -30,6 +31,12 @@ async function mount(
   searchLinks?: ComponentProps<typeof CommandPalette>["searchLinks"],
   actions?: ComponentProps<typeof CommandPalette>["actions"],
   searchOnlyBots?: Bot[],
+  bots: Bot[] = [
+    { ...bot("b1", "Chief"), description: "I find investor updates" },
+    bot("b2", "Inbox agent"),
+    bot("b3", "Finance agent"),
+  ],
+  overrides: Partial<ComponentProps<typeof CommandPalette>> = {},
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
@@ -53,11 +60,7 @@ async function mount(
       <CommandPalette
         open
         onOpenChange={() => undefined}
-        bots={[
-          { ...bot("b1", "Chief"), description: "I find investor updates" },
-          bot("b2", "Inbox agent"),
-          bot("b3", "Finance agent"),
-        ]}
+        bots={bots}
         searchOnlyBots={searchOnlyBots}
         onSelectBot={() => undefined}
         pages={[
@@ -68,6 +71,7 @@ async function mount(
         onSelectPage={onSelectPage}
         searchLinks={searchLinks}
         actions={actions}
+        {...overrides}
       />,
     );
   });
@@ -201,6 +205,32 @@ it("says No results once the search has answered with nothing", async () => {
   await search("zzzz");
   await wait(300);
   expect(listText()).toContain("No results");
+});
+
+it("shows a search failure instead of No results", async () => {
+  await mount(undefined, async () => {
+    throw new Error("search failed");
+  });
+  await search("report");
+  await wait(300);
+  expect(listText()).toContain("Could not search");
+  expect(listText()).not.toContain("No results");
+});
+
+it("keeps the other results and mail search when one search fails", async () => {
+  await mount(undefined, async () => [
+    { heading: "Chats", entries: [], failed: true },
+    {
+      heading: "Mail",
+      fallback: true,
+      entries: [{ id: "/app/inbox?q=report", label: "Search mail" }],
+    },
+  ]);
+  await search("report");
+  await wait(300);
+  expect(listText()).toContain("Could not search");
+  expect(listText()).toContain("Search mail");
+  expect(listText()).not.toContain("No results");
 });
 
 it("lists direct matches before the mail search, marks rows with the group icon, and Enter opens the best match", async () => {
@@ -363,6 +393,21 @@ it("offers New folder as an action too", async () => {
   expect(run).toHaveBeenCalledOnce();
 });
 
+it("offers New bot beside a bot already named New Bot", async () => {
+  const run = vi.fn();
+  await mount(vi.fn(), undefined, [{ label: "New bot", run }], undefined, [bot("b1", "New Bot")]);
+  await search("new bot");
+  const item = (label: string) =>
+    [...document.querySelectorAll("[cmdk-item]")].find((node) => node.textContent?.includes(label));
+  expect(item("New Bot")).toBeDefined();
+  const action = item("New bot");
+  expect(action).toBeDefined();
+  await act(async () => {
+    action?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  expect(run).toHaveBeenCalledOnce();
+});
+
 it("shows only the link text of a markdown link in a snippet", () => {
   expect(plainSnippet("a reply. [Open Settings](/app?settings=privacy) **now**")).toBe(
     "a reply. Open Settings now",
@@ -472,4 +517,153 @@ it("lists a search-only agent only once something is typed", async () => {
   expect(document.querySelector("[data-testid=command-palette-bot-b9]")).not.toBeNull();
   // It has no number: the shortcuts follow the listed bots.
   expect(document.querySelector("[data-testid=command-palette-bot-b9] kbd")).toBeNull();
+});
+
+const wait300 = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+const pressEnter = () =>
+  act(async () => {
+    document
+      .querySelector("[data-testid=command-palette-search]")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+
+it("ranks an action matched by keyword above body-only chat hits, and Enter runs it", async () => {
+  const run = vi.fn();
+  await mount(
+    vi.fn(),
+    async () => [
+      {
+        heading: "Chats",
+        entries: [{ id: "/app/b1?m=x", label: "Data room agent", detail: "models we tried" }],
+      },
+    ],
+    [{ label: "Model settings", keywords: "models", run }],
+  );
+  await search("models");
+  await wait300();
+  const rows = [...document.querySelectorAll("[cmdk-item]")].map((n) => n.textContent ?? "");
+  expect(rows.findIndex((r) => r.includes("Model settings"))).toBeLessThan(
+    rows.findIndex((r) => r.includes("Data room agent")),
+  );
+  await pressEnter();
+  expect(run).toHaveBeenCalledOnce();
+});
+
+it("keeps a title-matching contact above an action and opens it on Enter", async () => {
+  const run = vi.fn();
+  await mount(
+    vi.fn(),
+    async () => [{ heading: "Contacts", entries: [{ id: "/c/1", label: "Models Inc" }] }],
+    [{ label: "Model settings", keywords: "models", run }],
+  );
+  await search("models");
+  await wait300();
+  const rows = [...document.querySelectorAll("[cmdk-item]")].map((n) => n.textContent ?? "");
+  const contactAt = rows.findIndex((r) => r.includes("Models Inc"));
+  expect(contactAt).toBeGreaterThanOrEqual(0);
+  expect(rows.findIndex((r) => r.includes("Model settings"))).toBeGreaterThan(contactAt);
+  await pressEnter();
+  expect(run).not.toHaveBeenCalled();
+});
+
+const selectedRow = () =>
+  document.querySelector("[cmdk-item][data-selected=true]")?.textContent ?? "";
+const pressArrowDown = () =>
+  act(async () => {
+    document
+      .querySelector("[data-testid=command-palette-search]")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+  });
+
+it("Enter while a newer search is pending does not open the previous query's result", async () => {
+  const onOpenPath = vi.fn();
+  const searchLinks = (q: string): Promise<PaletteLinkGroup[]> =>
+    q === "fi"
+      ? Promise.resolve([{ heading: "Contacts", entries: [{ id: "/c/fin", label: "Fin" }] }])
+      : new Promise(() => undefined);
+  await mount(vi.fn(), searchLinks, undefined, undefined, [], {
+    pages: [],
+    onOpenPath,
+  });
+  await search("fi");
+  await wait300();
+  expect(listText()).toContain("Fin");
+  // The newer search is still running: the old rows stay but nothing is highlighted.
+  await search("fin");
+  await wait300();
+  expect(listText()).toContain("Fin");
+  expect(selectedRow()).toBe("");
+  await pressEnter();
+  expect(onOpenPath).not.toHaveBeenCalled();
+});
+
+it("never lets the arrow keys land on the hidden pending row", async () => {
+  const searchLinks = (q: string): Promise<PaletteLinkGroup[]> =>
+    q === "fi"
+      ? Promise.resolve([{ heading: "Contacts", entries: [{ id: "/c/fin", label: "Fin" }] }])
+      : new Promise(() => undefined);
+  await mount(vi.fn(), searchLinks, undefined, undefined, [], { pages: [] });
+  await search("fi");
+  await wait300();
+  await search("fin");
+  await wait300();
+  await pressArrowDown();
+  expect(selectedRow()).toContain("Fin");
+  await act(async () => {
+    document
+      .querySelector("[data-testid=command-palette-search]")
+      ?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }),
+      );
+  });
+  expect(selectedRow()).toContain("Fin");
+});
+
+it("keeps an arrowed-to row selected when late results for the same query arrive", async () => {
+  let answer: (groups: PaletteLinkGroup[]) => void = () => undefined;
+  const searchLinks = (q: string) =>
+    q === "fi"
+      ? Promise.resolve([
+          { heading: "Contacts", entries: [{ id: "/c/fin-person", label: "Fin Person" }] },
+        ])
+      : new Promise<PaletteLinkGroup[]>((resolve) => {
+          answer = resolve;
+        });
+  await mount(vi.fn(), searchLinks);
+  await search("fi");
+  await wait300();
+  // Type on to a query whose results are still running, and arrow down to the old last row.
+  await search("fin");
+  await wait300();
+  await pressArrowDown();
+  await pressArrowDown();
+  expect(selectedRow()).toContain("Fin Person");
+  await act(async () => {
+    answer([
+      {
+        heading: "Contacts",
+        entries: [
+          { id: "/c/fin", label: "Fin" },
+          { id: "/c/fin-person", label: "Fin Person" },
+        ],
+      },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  await wait(50);
+  expect(selectedRow()).toContain("Fin Person");
+});
+
+it("does not search links for a single character", async () => {
+  const searchLinks = vi.fn(async () => []);
+  await mount(undefined, searchLinks);
+  await search("f");
+  await wait300();
+  expect(searchLinks).not.toHaveBeenCalled();
+  const list = document.querySelector("[data-testid=command-palette-list]");
+  expect(list?.getAttribute("aria-busy")).toBe("false");
+  expect(listText()).not.toContain("Searching");
 });

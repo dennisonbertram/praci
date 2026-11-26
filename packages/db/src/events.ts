@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
 import type {
   BotSecretDestination,
@@ -7,38 +8,64 @@ import type {
 } from "@rakazo/contracts";
 import { MessageBlock as MessageBlockSchema } from "@rakazo/contracts";
 import {
+  blocksToAgentHistoryText,
   callIdFromClientNonce,
   isApprovalAskBlock,
   isConversationalRun,
+  mcpConnectionIdFromNonce,
+  newRunExternalTaint,
+  newRunUnattended,
   sanitizeJsonValue,
 } from "@rakazo/core";
 import { getLogger } from "@rakazo/logging";
 import { cancelRunsInTransaction } from "./cancel-runs.js";
-import type { Prisma, PrismaClient } from "./client.js";
+import type { PrismaClient } from "./client.js";
+import { Prisma } from "./client.js";
 import { expireComputerExecutionLeases } from "./computers.js";
+import {
+  CrossSpaceCommunicationBlockedError,
+  crossSpaceCommunicationAllowed,
+} from "./cross-space-communication.js";
+import type { AcceptMailReplyBatchInput, AcceptMailReplyBatchResult } from "./mail-reply-batch.js";
+import {
+  acceptMailReplyBatch,
+  setMailBatchCounts,
+  settleMailReplyBatch,
+} from "./mail-reply-batch.js";
 import {
   assertRunCanWriteHistory,
   assertRunIsCancelled,
   createThreadMessageInTransaction,
+  RunHistoryWriteError,
 } from "./messages.js";
+import type { AcceptPipelineImportResult } from "./pipeline-import.js";
+import {
+  acceptPipelineImport,
+  preparePipelineImportCard,
+  settlePipelineImport,
+  stagePipelineImportRows,
+} from "./pipeline-import.js";
 import { finalizeRun } from "./run-finalize.js";
 import {
   answerRunInput,
   answerWaitingRunWithTextInTransaction,
   pauseRunForInput,
   pauseRunForTakeover,
+  skipWaitingApprovalsInTransaction,
 } from "./run-pauses.js";
 import { claimSteering } from "./steering.js";
-import { withTransactionRetry } from "./transaction-retry.js";
+import { clearOpenGoal } from "./thread-goals.js";
+import { THREAD_LOCK_TRANSACTION_OPTIONS } from "./thread-lock.js";
 
 export { completedRunBlocks, finalizeRun } from "./run-finalize.js";
-export { createPendingSteeringRun } from "./steering.js";
+export { createPendingSteeringRun, discardAnsweredSteering } from "./steering.js";
 export {
   answerRunInput,
   answerWaitingRunWithTextInTransaction,
   claimSteering,
   pauseRunForInput,
   pauseRunForTakeover,
+  skipWaitingApprovalsInTransaction,
 };
 
 const EVENT_BATCH_SIZE = 200;
@@ -60,6 +87,27 @@ export interface ThreadEvents {
   answerRunInput(input: AnswerRunInput): Promise<boolean>;
   findMailApprovalForEdit(input: FindMailApprovalInput): Promise<PendingMailApproval | null>;
   setMailApprovalOutcome(input: SetMailApprovalOutcomeInput): Promise<void>;
+  acceptMailReplyBatch(input: AcceptMailReplyBatchInput): Promise<AcceptMailReplyBatchResult>;
+  acceptPipelineImport(
+    input: Parameters<typeof acceptPipelineImport>[1],
+  ): Promise<AcceptPipelineImportResult>;
+  settlePipelineImport(
+    input: Parameters<typeof settlePipelineImport>[1],
+  ): ReturnType<typeof settlePipelineImport>;
+  stagePipelineImportRows(
+    scope: Parameters<typeof stagePipelineImportRows>[1],
+    input: Parameters<typeof stagePipelineImportRows>[2],
+  ): ReturnType<typeof stagePipelineImportRows>;
+  preparePipelineImportCard(
+    scope: Parameters<typeof preparePipelineImportCard>[1],
+    effectId: string,
+  ): ReturnType<typeof preparePipelineImportCard>;
+  setMailBatchCounts(input: { spaceId: string; userId: string; effectId: string }): Promise<void>;
+  settleMailReplyBatch(input: {
+    spaceId: string;
+    userId: string;
+    effectId: string;
+  }): Promise<{ settled: boolean; resumeRunId?: string }>;
   setApprovalWaitsFor(input: SetApprovalWaitsForInput): Promise<void>;
   append(input: AppendEventInput): Promise<ProductEvent>;
   claimSteering(input: ClaimSteeringInput): Promise<ClaimedSteeringMessage[]>;
@@ -187,17 +235,24 @@ export interface AnswerRunInput {
   /** Only for a login card; `answer` carries its password. */
   username?: string;
   /**
-   * The person edited a mail approval and sends it themselves, through the compose path, after
-   * this denial. Only a "deny" by the run's own user on a pending mail approval takes it: `note`
-   * becomes the denied tool's result, and `mail` is what the card then shows.
+   * The person edited a mail approval and sends it themselves, through the compose path. Only a
+   * "deny" by the run's own user on a pending mail approval takes it. It stops the agent's own call
+   * from running: the effect is denied only until setMailApprovalOutcome settles it, and the card
+   * records "allow". `note` is the agent's result meanwhile, and `mail` is what the card then shows.
    */
   mailDenial?: { note: string; mail: Partial<MailApproval> };
 }
 
-export const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send"]);
+export const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send", "mail_reply_batch"]);
 
 /** The compose record key of an edited mail approval: one record per approval effect. */
 export const mailApprovalComposeClientId = (effectId: string) => `approval_${effectId}`;
+
+/** The compose record of one batch reply: one per row, so only one worker can move it to pending. */
+/** A row held because its thread was cleared before a worker took it. */
+export const MAIL_REPLY_CLEARED_HOLD = "thread_cleared";
+export const MAIL_REPLY_CLIENT_PREFIX = "agent:batch_";
+export const mailReplyClientId = (itemId: string) => `${MAIL_REPLY_CLIENT_PREFIX}${itemId}`;
 
 export interface SendUserMessageInput {
   spaceId: string;
@@ -206,17 +261,32 @@ export interface SendUserMessageInput {
   userId: string;
   blocks: MessageBlock[];
   prompt: string;
-  trigger: "user" | "follow_up" | "webhook" | "messaging";
+  trigger: "user" | "follow_up" | "webhook" | "messaging" | "mcp";
   clientNonce?: string;
   linkMessageToRun?: boolean;
+  /**
+   * The run that caused this message, when there is one (for example a run forwarding to another
+   * bot). Its mode is copied. Without it the mode comes from the trigger: user and follow_up are
+   * the owner typing, webhook and messaging are unattended and carry outside content.
+   */
+  sourceRun?: { unattended: boolean; externalTaint: boolean } | null;
+
+  /** Internal bot sender: enforce both bots' cross-space policy in the write transaction. */
+  crossSpaceSenderBotId?: string;
   /** When false, persist the user message without starting a run (team-chat transcript). */
   createRun?: boolean;
   /** When true, start a new run even if the bot is already busy (team-chat delivery). */
   allowParallelRun?: boolean;
+  /**
+   * The routine this message belongs to, when an inbound delivery matched exactly one. Checked
+   * against the bot and space below before it reaches the run.
+   */
+  routineId?: string;
   /** Model every routine in an inbound delivery agreed on. */
   modelPin?: {
     modelProvider: string;
     modelId: string;
+    modelCredentialId?: string | null;
     thinkingLevel: string | null;
   };
 }
@@ -254,6 +324,15 @@ export function createThreadEvents(
     answerRunInput: (input) => answerRunInput(prisma, input, realtime, options.runSecretWriter),
     findMailApprovalForEdit: (input) => findMailApprovalForEdit(prisma, input),
     setMailApprovalOutcome: (input) => setMailApprovalOutcome(prisma, input, realtime),
+    acceptMailReplyBatch: (input) => acceptMailReplyBatch(prisma, input, realtime),
+    acceptPipelineImport: (input) => acceptPipelineImport(prisma, input, realtime),
+    settlePipelineImport: (input) => settlePipelineImport(prisma, input, realtime),
+    stagePipelineImportRows: (scope, input) =>
+      stagePipelineImportRows(prisma, scope, input, realtime),
+    preparePipelineImportCard: (scope, effectId) =>
+      preparePipelineImportCard(prisma, scope, effectId, realtime),
+    setMailBatchCounts: (input) => setMailBatchCounts(prisma, input, realtime),
+    settleMailReplyBatch: (input) => settleMailReplyBatch(prisma, input, realtime),
     setApprovalWaitsFor: (input) => setApprovalWaitsFor(prisma, input, realtime),
     append: (input) => appendEvent(prisma, input, realtime),
     claimSteering: (input) => claimSteering(prisma, input),
@@ -276,14 +355,21 @@ export async function clearThread(
   realtime?: RealtimeFanout,
 ): Promise<ClearThreadResult> {
   const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Group before thread, the order every group writer uses (see lockOwnedGroup).
+    if (input.groupId) {
+      await tx.$queryRaw`
+        SELECT id FROM chat_groups
+        WHERE id = ${input.groupId} AND "spaceId" = ${input.spaceId}
+        FOR NO KEY UPDATE`;
+    }
     const thread = await tx.thread.update({
       where: {
         id: input.threadId,
         spaceId: input.spaceId,
         ...(input.groupId ? { groupId: input.groupId } : { botId: input.botId }),
       },
-      data: { unread: false },
-      select: { nextMessageSeq: true, historyCompactionGeneration: true },
+      data: { unread: false, meetingTaintedAt: null },
+      select: { nextMessageSeq: true, historyCompactionGeneration: true, userId: true },
     });
     const activeRuns = await tx.run.findMany({
       where: {
@@ -297,6 +383,15 @@ export async function clearThread(
     const now = new Date();
     const runIds = activeRuns.map((run) => run.id);
     await cancelRunsInTransaction(tx, activeRuns, now);
+    // Clearing is a strong signal, and the card with its Retry is gone: replies not yet claimed stop.
+    await tx.mailReplyItem.updateMany({
+      where: {
+        spaceId: input.spaceId,
+        dispatch: "queued",
+        effect: { run: { threadId: input.threadId } },
+      },
+      data: { dispatch: "held", error: MAIL_REPLY_CLEARED_HOLD },
+    });
     // Expire as tombstones so a still-open provider screen claim cannot reset fencing to 1.
     await expireComputerExecutionLeases(tx, { runId: { in: runIds } });
     await tx.computer.updateMany({
@@ -343,13 +438,23 @@ export async function clearThread(
       type: "thread.cleared",
       payload: {},
     });
+    // The log survives with the cleared event, so clients learn the goal ended after it.
+    const goalSeq = input.groupId
+      ? null
+      : await clearOpenGoal(tx, {
+          spaceId: input.spaceId,
+          userId: thread.userId,
+          threadId: input.threadId,
+          botId: input.botId,
+        });
     return {
       event,
+      notifySeq: goalSeq ?? event.seq,
       cancelledRunIds: runIds,
       historyCompactionGeneration: thread.historyCompactionGeneration,
     };
-  });
-  await notifyRealtime(realtime, committed.event.threadId, committed.event.seq);
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
+  await notifyRealtime(realtime, committed.event.threadId, committed.notifySeq);
   return {
     event: mapProductEvent(committed.event),
     cancelledRunIds: committed.cancelledRunIds,
@@ -371,10 +476,12 @@ export async function sendUserMessage(
           clientNonce: input.clientNonce,
         },
       },
-      include: { sourceRuns: { orderBy: { createdAt: "asc" }, take: 1 } },
     });
     if (!message) return null;
-    const created = message.sourceRuns[0];
+    const created = await prisma.run.findFirst({
+      where: { sourceMessageId: message.id },
+      orderBy: { createdAt: "asc" },
+    });
     const run =
       created ??
       (message.runId ? await prisma.run.findUnique({ where: { id: message.runId } }) : null);
@@ -401,6 +508,22 @@ export async function sendUserMessage(
         blocks: input.blocks,
         clientNonce: input.clientNonce,
       });
+      if (
+        input.crossSpaceSenderBotId &&
+        !(await crossSpaceCommunicationAllowed(tx, input.crossSpaceSenderBotId, input.botId))
+      ) {
+        throw new CrossSpaceCommunicationBlockedError();
+      }
+      // Only a routine the run's own bot and space own may label it; a stray id is dropped
+      // rather than failing the delivery. A queued delivery remembers it for its continuation.
+      const routineId = input.routineId
+        ? (
+            await tx.routine.findFirst({
+              where: { id: input.routineId, botId: input.botId, spaceId: input.spaceId },
+              select: { id: true },
+            })
+          )?.id
+        : undefined;
       const createRun = input.createRun !== false;
       // Include the creation intro. It has no tools, so it must not absorb the message, and a
       // second run would overlap it on a dedicated computer. Pending steering waits for the
@@ -415,7 +538,13 @@ export async function sendUserMessage(
                   in: ["running", "queued", "leased", "waiting_input", "waiting_takeover"],
                 },
               },
-              select: { id: true, taskId: true, trigger: true },
+              select: {
+                id: true,
+                taskId: true,
+                trigger: true,
+                modelPinned: true,
+                modelCredentialId: true,
+              },
             })
           : [];
       // Steer a conversational run when there is one; a routine, webhook, or intro turn only holds the queue.
@@ -443,12 +572,18 @@ export async function sendUserMessage(
             userId: input.userId,
             status: "queued",
             trigger: input.trigger,
+            ...(routineId ? { routineId } : {}),
+            unattended: newRunUnattended({ trigger: input.trigger, source: input.sourceRun }),
+            externalTaint: newRunExternalTaint({ trigger: input.trigger, source: input.sourceRun }),
             clientNonce: input.clientNonce ? `send:${message.id}` : undefined,
             sourceMessageId: message.id,
             ...(input.modelPin
               ? {
                   modelProvider: input.modelPin.modelProvider,
                   modelId: input.modelPin.modelId,
+                  ...(input.modelPin.modelCredentialId
+                    ? { modelCredentialId: input.modelPin.modelCredentialId }
+                    : {}),
                   thinkingLevel: input.modelPin.thinkingLevel,
                   modelPinned: true,
                 }
@@ -459,12 +594,42 @@ export async function sendUserMessage(
           await tx.message.update({ where: { id: message.id }, data: { runId: run.id } });
         }
       } else if (createRun && busy) {
-        const held = !isConversationalRun(busy.trigger);
+        // A message on a different connection than the live run's cannot ride along: the run
+        // would answer it on the wrong connection, so it waits and runs on its own pin.
+        const botPin =
+          input.modelPin || busy.modelPinned
+            ? ((
+                await tx.bot.findUnique({
+                  where: { id: input.botId },
+                  select: { modelCredentialId: true },
+                })
+              )?.modelCredentialId ?? null)
+            : null;
+        const messagePin = input.modelPin ? (input.modelPin.modelCredentialId ?? null) : botPin;
+        const runPin = busy.modelPinned ? (busy.modelCredentialId ?? null) : botPin;
+        // Outside content waits for its own continuation even on the same connection: the busy
+        // run was built clean and its executor holds that mode, so steering it could not taint it.
+        const outsideDelivery =
+          newRunExternalTaint({ trigger: input.trigger, source: input.sourceRun }) ||
+          Boolean(input.prompt && input.prompt !== blocksToAgentHistoryText(input.blocks));
+        const held = outsideDelivery || !isConversationalRun(busy.trigger) || messagePin !== runPin;
         await tx.steeringMessage.create({
           data: {
             messageId: message.id,
             botId: input.botId,
             userId: input.userId,
+            // The bubble may be only a label; model-only text rides here so claiming it still
+            // works. A plain message reads the same from its bubble, which keeps this a delivery
+            // marker for the claim path.
+            prompt:
+              input.prompt && input.prompt !== blocksToAgentHistoryText(input.blocks)
+                ? input.prompt
+                : undefined,
+            ...(routineId ? { routineId } : {}),
+            // A held delivery keeps the mode its own trigger implies. The continuation it starts
+            // is a follow_up, which alone would read the outside payload as attended.
+            unattended: newRunUnattended({ trigger: input.trigger, source: input.sourceRun }),
+            externalTaint: newRunExternalTaint({ trigger: input.trigger, source: input.sourceRun }),
             // Keep messaging on the hold so the later run is mirrored back to that app.
             runId: held ? null : busy.id,
             ...(held && input.trigger === "messaging" ? { originTrigger: "messaging" } : {}),
@@ -472,6 +637,9 @@ export async function sendUserMessage(
               ? {
                   modelProvider: input.modelPin.modelProvider,
                   modelId: input.modelPin.modelId,
+                  ...(input.modelPin.modelCredentialId
+                    ? { modelCredentialId: input.modelPin.modelCredentialId }
+                    : {}),
                   thinkingLevel: input.modelPin.thinkingLevel,
                 }
               : {}),
@@ -479,6 +647,16 @@ export async function sendUserMessage(
         });
         await tx.message.update({ where: { id: message.id }, data: { runId: busy.id } });
       }
+      // An outside MCP client's label rides on the live event, as it does on a loaded thread.
+      const connectionId = mcpConnectionIdFromNonce(message.clientNonce);
+      const via = connectionId
+        ? (
+            await tx.mcpConnection.findFirst({
+              where: { id: connectionId, spaceId: input.spaceId },
+              select: { label: true },
+            })
+          )?.label
+        : undefined;
       const event = await appendEventInTransaction(tx, {
         spaceId: input.spaceId,
         threadId: input.threadId,
@@ -489,13 +667,14 @@ export async function sendUserMessage(
           messageId: message.id,
           role: "user",
           blocks: input.blocks,
+          ...(via ? { via } : {}),
           // Carries the call id on the live event so a spoken turn groups into the
           // call card immediately, instead of after a refetch reads the nonce.
           callId: callIdFromClientNonce(message.clientNonce),
         },
       });
       return { message, task, run, busy, event };
-    });
+    }, THREAD_LOCK_TRANSACTION_OPTIONS);
   const committed = await commit().catch(async (error) => {
     const winner = await replay();
     if (winner) return { replay: winner } as const;
@@ -579,6 +758,8 @@ export interface SetMailApprovalOutcomeInput {
   messageId?: string;
   effectId: string;
   outcome: NonNullable<MailApproval["outcome"]>;
+  /** Changes what the card describes, e.g. a saved draft that was then sent. */
+  tool?: MailApproval["tool"];
   /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
   note?: string;
   /** With a failed outcome: the reason the card shows. */
@@ -586,6 +767,8 @@ export interface SetMailApprovalOutcomeInput {
   /** With a failed outcome: the account the send used, so the card can reopen the draft in the composer. */
   connectionId?: string;
   account?: string;
+  /** Provider ids of the sent or saved mail, for the card's link into the mail app. */
+  providerIds?: { threadId?: string; messageId?: string; draftId?: string };
   /**
    * For a recovery write: apply only while the approval is still unsettled (the effect still has
    * this note) and the compose record is in this state (null: there is none). Checked under the
@@ -635,8 +818,18 @@ export async function setApprovalWaitsFor(
       payload: { messageId: message.id, role: "bot", blocks },
     });
     return { threadId: event.threadId, seq: event.seq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (committed) await notifyRealtime(realtime, committed.threadId, committed.seq);
+}
+
+function cardSendSettled(outcome: SetMailApprovalOutcomeInput["outcome"], note: string) {
+  if (outcome === "sent" || outcome === "saved") {
+    return { status: "completed", result: { ok: true, note, outcome } };
+  }
+  if (outcome === "unknown") {
+    return { status: "uncertain", result: { error: note, note, outcome, uncertain: true } };
+  }
+  return { status: "completed", result: { error: note, note, outcome } };
 }
 
 /** Records how the person's own send of an edited mail approval ended, for the card to show. */
@@ -664,7 +857,9 @@ export async function setMailApprovalOutcome(
     if (input.note) {
       await tx.externalEffect.updateMany({
         where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
-        data: { result: { note: input.note, outcome: input.outcome } },
+        // The card send has ended, so the effect stops being a denial and says what happened: this
+        // status and result are what the agent reads, here and when it resumes from a checkpoint.
+        data: cardSendSettled(input.outcome, input.note),
       });
     }
     if (!input.messageId) return null;
@@ -686,8 +881,10 @@ export async function setMailApprovalOutcome(
         mail: {
           ...block.mail,
           outcome: input.outcome,
+          ...(input.tool ? { tool: input.tool } : {}),
           ...(input.error ? { error: input.error.slice(0, 300) } : {}),
           ...(input.connectionId ? { connectionId: input.connectionId } : {}),
+          ...(input.outcome === "sent" || input.outcome === "saved" ? input.providerIds : {}),
           ...(input.account && !block.mail.account ? { account: input.account } : {}),
         },
       };
@@ -703,7 +900,7 @@ export async function setMailApprovalOutcome(
       payload: { messageId: message.id, role: "bot", blocks },
     });
     return { threadId: event.threadId, seq: event.seq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (committed) await notifyRealtime(realtime, committed.threadId, committed.seq);
 }
 
@@ -781,7 +978,7 @@ export async function finalizeComputerControlRelease(
       },
     });
     return { threadId: event.threadId, seq: event.seq, runId };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
 
   if (!committed) return false;
   if (committed.threadId && committed.seq !== null) {
@@ -795,24 +992,85 @@ export async function appendEvent(
   input: AppendEventInput,
   realtime?: RealtimeFanout,
 ): Promise<ProductEvent> {
-  // Concurrent writers in one thread (group members, bot messages) can deadlock on the thread row.
-  const event = await withTransactionRetry(() =>
-    prisma.$transaction((tx: Prisma.TransactionClient) => appendEventInTransaction(tx, input)),
-  );
-  const productEvent = mapProductEvent(event);
+  const event = await insertEventAlone(prisma, input);
   await notifyRealtime(realtime, event.threadId, event.seq);
-  return productEvent;
+  return mapProductEvent(event);
+}
+
+/**
+ * appendEventInTransaction as one autocommit statement. Readers trust that events commit in seq
+ * order, which the thread row lock taken with the seq guarantees, so that lock is held only while
+ * Postgres runs this statement instead of across an interactive transaction's round trips.
+ * The run is locked after the thread, as everywhere else, and FOR SHARE checks its newest
+ * version, so a run cancelled while this waited for the thread writes nothing. A rejected write
+ * still uses its seq; readers already skip gaps left by deleted events.
+ */
+async function insertEventAlone(prisma: PrismaClient, input: AppendEventInput) {
+  const { runId } = input;
+  if (input.type === "run.cancelled" && !runId) throw new RunHistoryWriteError();
+  // Unpaired UTF-16 surrogates (e.g. a split emoji high half) are invalid JSON for Postgres.
+  const payload = sanitizeJsonValue(input.payload) as Record<string, unknown>;
+  const id = randomUUID();
+  // run.cancelled is appended after the run row already reads cancelled, so it asserts the
+  // terminal status where every other event needs a writable run.
+  const runWritable =
+    input.type === "run.cancelled"
+      ? Prisma.sql`r.status = 'cancelled'`
+      : input.allowCancelledRun
+        ? Prisma.sql`TRUE`
+        : Prisma.sql`r.status <> 'cancelled'`;
+  const [event] = await prisma.$queryRaw<
+    Array<{ seq: number; createdAt: Date; runId: string | null }>
+  >`
+    WITH next AS (
+      UPDATE threads SET "nextEventSeq" = "nextEventSeq" + 1
+      WHERE id = ${input.threadId}
+      RETURNING "nextEventSeq" - 1 AS seq
+    ),
+    run AS (
+      SELECT r.id FROM runs r CROSS JOIN next
+      WHERE r.id = ${runId ?? null} AND ${runWritable}
+      FOR SHARE OF r
+    )
+    INSERT INTO events (id, "spaceId", "threadId", "botId", seq, type, payload, "runId")
+    SELECT ${id}, ${input.spaceId}, ${input.threadId}, ${input.botId}, next.seq,
+      ${input.type}, ${JSON.stringify(payload)}::jsonb, ${runId ?? null}
+    FROM next
+    WHERE ${runId ? Prisma.sql`EXISTS (SELECT 1 FROM run)` : Prisma.sql`TRUE`}
+    RETURNING seq, "createdAt", "runId"`;
+  if (!event) {
+    // Deleting the bot or space cascades the thread and its runs away under in-flight work;
+    // that run has no history left to write to.
+    if (runId) throw new RunHistoryWriteError();
+    throw new Error("Thread not found");
+  }
+  return {
+    id,
+    spaceId: input.spaceId,
+    threadId: input.threadId,
+    botId: input.botId,
+    type: input.type,
+    payload,
+    ...event,
+  };
 }
 
 export async function appendEventInTransaction(
   tx: Prisma.TransactionClient,
   input: AppendEventInput,
 ) {
-  const thread = await tx.thread.update({
-    where: { id: input.threadId },
-    data: { nextEventSeq: { increment: 1 } },
-    select: { nextEventSeq: true },
-  });
+  const thread = await tx.thread
+    .update({
+      where: { id: input.threadId },
+      data: { nextEventSeq: { increment: 1 } },
+      select: { nextEventSeq: true },
+    })
+    .catch((error: unknown) => {
+      // Deleting the bot or space cascades the thread and its runs away under
+      // in-flight work; that run has no history left to write to.
+      if (input.runId && isRecordNotFound(error)) throw new RunHistoryWriteError();
+      throw error;
+    });
   // run.cancelled is appended after the run row already reads cancelled, so it
   // asserts the terminal status where every other event needs a writable run.
   if (input.type === "run.cancelled") {
@@ -833,6 +1091,10 @@ export async function appendEventInTransaction(
       runId: input.runId,
     },
   });
+}
+
+function isRecordNotFound(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
 }
 
 export async function notifyRealtime(

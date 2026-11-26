@@ -72,6 +72,12 @@ export function FirstRunTour({
         text: t`Ask Chief anything.`,
       },
       {
+        id: "routines",
+        name: t`Routines`,
+        anchor: '[data-tour="routines"]',
+        text: t`Have a bot run on a schedule, or watch a page and tell you only when it changes. Background runs only read; they ask before they send or change anything.`,
+      },
+      {
         id: "apps",
         name: t`Integrations`,
         anchor: '[data-tour="sidebar-integrations"]',
@@ -81,7 +87,7 @@ export function FirstRunTour({
         id: "account",
         name: t`Account`,
         anchor: '[data-tour="user-menu"]',
-        text: t`Change settings, export your data or retake this tour from here.`,
+        text: t`Settings has Approvals, where you choose what bots may do on their own: Allow, Ask or Block. Export your data or retake this tour here.`,
       },
     ],
     [t],

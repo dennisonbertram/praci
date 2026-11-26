@@ -1,0 +1,40 @@
+{
+  "json": {
+    "current": {
+      "id": "space-placeholder",
+      "name": "Placeholder Space",
+      "bots": [],
+      "groups": [],
+      "botSections": [],
+      "externalConversations": []
+    },
+    "spaces": [
+      {
+        "id": "space-placeholder",
+        "name": "Placeholder Space",
+        "isDefault": true,
+        "hasContent": true,
+        "canRename": true,
+        "canDelete": false,
+        "memberCount": 2,
+        "bots": [],
+        "groups": [],
+        "botSections": [],
+        "externalConversations": []
+      },
+      {
+        "id": "space-2",
+        "name": "Second space",
+        "isDefault": false,
+        "hasContent": false,
+        "canRename": true,
+        "canDelete": true,
+        "memberCount": 1,
+        "bots": [],
+        "groups": [],
+        "botSections": [],
+        "externalConversations": []
+      }
+    ]
+  }
+}

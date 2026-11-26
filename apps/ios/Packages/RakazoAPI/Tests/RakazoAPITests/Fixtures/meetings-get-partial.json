@@ -1,0 +1,17 @@
+{
+  "json": {
+    "id": "meeting-3",
+    "title": "Standup",
+    "startedAt": "2026-10-30T09:00:00.000Z",
+    "endedAt": "2026-10-30T09:05:00.000Z",
+    "provider": "praci",
+    "summary": "",
+    "decisions": [],
+    "followUps": [],
+    "todos": [],
+    "transcript": null,
+    "partial": true,
+    "summarizing": false,
+    "actionItems": []
+  }
+}

@@ -1,6 +1,12 @@
 import { MenuView } from "@expo/ui/community/menu";
-import type { RunActivityRow, SearchHit, SpaceBot, SpaceGroup } from "@rakazo/contracts";
-import { normalizeCreateBotProfile } from "@rakazo/contracts";
+import type {
+  RunActivityRow,
+  SearchHit,
+  SidebarPagesState,
+  SpaceBot,
+  SpaceGroup,
+} from "@rakazo/contracts";
+import { GROUP_MEMBER_MIN, normalizeCreateBotProfile } from "@rakazo/contracts";
 import { Redirect, useFocusEffect, useNavigation, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import {
@@ -34,6 +40,7 @@ import type { InboxItem } from "../components/inbox-render-item";
 import { useInboxRenderItem } from "../components/inbox-render-item";
 import { BotRow, FALLBACK_COLOR, GroupRow } from "../components/inbox-rows";
 import { createHomeStyles } from "../components/inbox-styles";
+import { NativeActionButton } from "../components/native-action-button";
 import { NativeSymbol } from "../components/native-symbol";
 import { SettingsRow } from "../components/settings-group";
 import {
@@ -42,6 +49,7 @@ import {
   formatActivityRelativeTime,
 } from "../lib/activity";
 import { loadActivityMode, saveActivityMode } from "../lib/activity-mode";
+import { sidebarBotPages } from "../lib/agent-page";
 import type {
   MobileBot,
   MobileBotSection,
@@ -52,6 +60,7 @@ import type {
 } from "../lib/api";
 import {
   currentApiBase,
+  currentSpaceSelectionGeneration,
   loadSessionToken,
   rpc,
   selectedSpaceId,
@@ -112,6 +121,7 @@ function Home() {
   const { t, locale } = useI18n();
   const day = useInboxDay();
   const [bots, setBots] = useState<MobileBot[]>([]);
+  const [botsKnown, setBotsKnown] = useState(false);
   const [groups, setGroups] = useState<MobileGroup[]>([]);
   const [botSections, setBotSections] = useState<MobileBotSection[]>([]);
   const [spaces, setSpaces] = useState<MobileSpace[]>([]);
@@ -124,6 +134,8 @@ function Home() {
   const [searching, setSearching] = useState(false);
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchRetry, setSearchRetry] = useState(0);
   const [organizeTarget, setOrganizeTarget] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -188,10 +200,12 @@ function Home() {
       if (
         requestId !== inboxRequestId.current ||
         generation !== currentSessionGeneration() ||
-        apiBase !== currentApiBase()
+        apiBase !== currentApiBase() ||
+        navigation.current.id !== selectedSpaceId()
       )
         return;
       setBots((current) => retainInboxValue(current, navigation.current.bots));
+      setBotsKnown(true);
       setBotSections((current) => retainInboxValue(current, navigation.current.botSections));
       setGroups((current) => retainInboxValue(current, navigation.current.groups));
       setSpaces((current) => retainInboxValue(current, navigation.spaces));
@@ -248,6 +262,7 @@ function Home() {
     void loadSavedInbox().then((saved) => {
       if (cancelled || !saved || inboxLoaded.current) return;
       setBots(saved.bots);
+      setBotsKnown(true);
       setBotSections(saved.botSections);
       setGroups(saved.groups);
       setSpaces(saved.spaces);
@@ -257,6 +272,30 @@ function Home() {
       cancelled = true;
     };
   }, [hasSession]);
+
+  const [sidebarPages, setSidebarPages] = useState<ReturnType<typeof sidebarBotPages>>([]);
+  const [sidebarPagesSpaceId, setSidebarPagesSpaceId] = useState<string | null>(null);
+  useEffect(() => {
+    setSidebarPages([]);
+    setSidebarPagesSpaceId(null);
+  }, [me?.spaceId]);
+  useFocusEffect(
+    useCallback(() => {
+      const spaceId = me?.spaceId;
+      if (!hasSession || !spaceId) return;
+      let cancelled = false;
+      rpc<SidebarPagesState>("sidebarPages/list")
+        .then((state) => {
+          if (cancelled) return;
+          setSidebarPages(sidebarBotPages(state));
+          setSidebarPagesSpaceId(spaceId);
+        })
+        .catch(() => undefined);
+      return () => {
+        cancelled = true;
+      };
+    }, [hasSession, me?.spaceId]),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -286,13 +325,22 @@ function Home() {
       return;
     }
     const requestId = ++activityRequestId.current;
+    const selectionGeneration = currentSpaceSelectionGeneration();
     try {
       const next = await fetchSpaceActivity();
-      if (requestId !== activityRequestId.current) return;
+      if (
+        requestId !== activityRequestId.current ||
+        selectionGeneration !== currentSpaceSelectionGeneration()
+      )
+        return;
       setActivity(next);
     } catch {
       // Keep the last good snapshot on transient RPC failures; only drop stale responses.
-      if (requestId !== activityRequestId.current) return;
+      if (
+        requestId !== activityRequestId.current ||
+        selectionGeneration !== currentSpaceSelectionGeneration()
+      )
+        return;
     }
   }, [activityMode, hasSession, query, searching]);
 
@@ -303,7 +351,7 @@ function Home() {
       let timer: ReturnType<typeof setTimeout> | undefined;
 
       const tick = async () => {
-        await loadActivity();
+        if (AppState.currentState === "active") await loadActivity();
         if (!cancelled) {
           timer = setTimeout(() => void tick(), 15_000);
         }
@@ -323,6 +371,7 @@ function Home() {
     if (!searching || !trimmed) {
       setSearchHits([]);
       setSearchLoading(false);
+      setSearchError(null);
       return;
     }
     const abort = new AbortController();
@@ -330,10 +379,16 @@ function Home() {
       setSearchLoading(true);
       void querySpaceSearch(trimmed)
         .then((hits) => {
-          if (!abort.signal.aborted) setSearchHits(hits);
+          if (!abort.signal.aborted) {
+            setSearchHits(hits);
+            setSearchError(null);
+          }
         })
         .catch(() => {
-          if (!abort.signal.aborted) setSearchHits([]);
+          if (!abort.signal.aborted) {
+            setSearchHits([]);
+            setSearchError(t("Could not search"));
+          }
         })
         .finally(() => {
           if (!abort.signal.aborted) setSearchLoading(false);
@@ -343,7 +398,15 @@ function Home() {
       abort.abort();
       clearTimeout(timer);
     };
-  }, [query, searching]);
+  }, [query, searching, searchRetry, t]);
+
+  const changeQuery = useCallback((next: string) => {
+    setQuery(next);
+    setSearchHits([]);
+    setSearchError(null);
+    // A new query is pending until its debounced search answers; never flash "No results".
+    setSearchLoading(Boolean(next.trim()));
+  }, []);
 
   const visible = useMemo(() => filterBots(bots, query), [bots, query]);
   const visibleGroups = useMemo(() => {
@@ -557,6 +620,7 @@ function Home() {
     },
     [createQuickBot, router],
   );
+  const canCreateGroup = !botsKnown || bots.length >= GROUP_MEMBER_MIN;
 
   useLayoutEffect(() => {
     if (!nativeHeader) return;
@@ -596,6 +660,12 @@ function Home() {
           onPress: () => router.push("/data-room"),
         },
         {
+          type: "button" as const,
+          accessibilityLabel: t("Scanner"),
+          icon: { type: "sfSymbol" as const, name: "scanner" },
+          onPress: () => router.push("/scanner"),
+        },
+        {
           type: "menu" as const,
           accessibilityLabel: t("Create"),
           icon: { type: "sfSymbol" as const, name: "plus" },
@@ -607,12 +677,16 @@ function Home() {
                 icon: { type: "sfSymbol" as const, name: "person.crop.circle.badge.plus" },
                 onPress: () => runCreateAction("bot"),
               },
-              {
-                type: "action" as const,
-                label: t("New group"),
-                icon: { type: "sfSymbol" as const, name: "person.2" },
-                onPress: () => runCreateAction("group"),
-              },
+              ...(canCreateGroup
+                ? [
+                    {
+                      type: "action" as const,
+                      label: t("New group"),
+                      icon: { type: "sfSymbol" as const, name: "person.2" },
+                      onPress: () => runCreateAction("group"),
+                    },
+                  ]
+                : []),
               {
                 type: "action" as const,
                 label: t("New space"),
@@ -629,10 +703,10 @@ function Home() {
         autoCapitalize: "none",
         onFocus: () => setSearching(true),
         onChangeText: (event: { nativeEvent: { text: string } }) =>
-          setQuery(event.nativeEvent.text),
+          changeQuery(event.nativeEvent.text),
         onCancelButtonPress: () => {
           setSearching(false);
-          setQuery("");
+          changeQuery("");
         },
       },
     });
@@ -645,19 +719,21 @@ function Home() {
     activityMode,
     toggleActivityMode,
     runCreateAction,
+    canCreateGroup,
     router,
     t,
     locale,
+    changeQuery,
   ]);
 
   const openSearchHit = useCallback(
     (hit: SearchHit) => {
-      setQuery("");
+      changeQuery("");
       setSearchHits([]);
       // Wait for the search keyboard to close before sizing the destination composer.
       void KeyboardController.dismiss().then(() => router.push(mobileSearchDestination(hit)));
     },
-    [router],
+    [changeQuery, router],
   );
   const openBot = useCallback(
     (bot: MobileBot | SpaceBot) => {
@@ -703,6 +779,7 @@ function Home() {
     t,
     toggleRosterParent,
   });
+  const visibleSidebarPages = sidebarPagesSpaceId === me?.spaceId ? sidebarPages : [];
 
   if (!ready) {
     return (
@@ -741,7 +818,7 @@ function Home() {
               active={searching}
               onPress={() =>
                 setSearching((open) => {
-                  if (open) setQuery("");
+                  if (open) changeQuery("");
                   return !open;
                 })
               }
@@ -760,10 +837,15 @@ function Home() {
             >
               <NativeSymbol ios="folder" android="folder-outline" size={17} />
             </HeaderButton>
+            <HeaderButton accessibilityLabel={t("Scanner")} onPress={() => router.push("/scanner")}>
+              <NativeSymbol ios="scanner" android="scan-outline" size={17} />
+            </HeaderButton>
             <MenuView
               actions={[
                 { id: "bot", title: t("New bot"), image: "person.crop.circle.badge.plus" },
-                { id: "group", title: t("New group"), image: "person.2" },
+                ...(canCreateGroup
+                  ? [{ id: "group" as const, title: t("New group"), image: "person.2" as const }]
+                  : []),
                 { id: "space", title: t("New space"), image: "square.grid.2x2" },
               ]}
               colorScheme={appearance}
@@ -822,7 +904,7 @@ function Home() {
               <TextInput
                 autoFocus
                 value={query}
-                onChangeText={setQuery}
+                onChangeText={changeQuery}
                 placeholder={t("Search")}
                 placeholderTextColor={tokens.mutedForeground}
                 autoCorrect={false}
@@ -844,6 +926,21 @@ function Home() {
                 chevron="right"
               />
             ) : null}
+            {!searching && !query.trim()
+              ? visibleSidebarPages.map((page) => (
+                  <SettingsRow
+                    key={page.pageId}
+                    title={page.title}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/agent-page",
+                        params: { botId: page.botId, pageId: page.pageId },
+                      })
+                    }
+                    chevron="right"
+                  />
+                ))
+              : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {spaceRecoveryId ? (
               <Pressable
@@ -864,20 +961,31 @@ function Home() {
           </>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {query.trim() && searching
-              ? searchLoading
-                ? t("Searching…")
-                : t("No results")
-              : query.trim()
-                ? t("No matching bots")
-                : searching
-                  ? t("Search conversations, files, and routines")
-                  : // Before any load (an offline launch with nothing saved) the bots are unknown.
-                    me
-                    ? t("Tap + to create a bot")
-                    : null}
-          </Text>
+          query.trim() && searching && searchError ? (
+            <View>
+              <Text style={styles.empty}>{searchError}</Text>
+              <NativeActionButton
+                label={t("Try again")}
+                onPress={() => setSearchRetry((retry) => retry + 1)}
+                prominence="secondary"
+              />
+            </View>
+          ) : (
+            <Text style={styles.empty}>
+              {query.trim() && searching
+                ? searchLoading
+                  ? t("Searching…")
+                  : t("No results")
+                : query.trim()
+                  ? t("No matching bots")
+                  : searching
+                    ? t("Search conversations, files, and routines")
+                    : // Before any load (an offline launch with nothing saved) the bots are unknown.
+                      me
+                      ? t("Tap + to create a bot")
+                      : null}
+            </Text>
+          )
         }
         ListFooterComponent={
           inboxNeedsCreateHint(listData) ? (

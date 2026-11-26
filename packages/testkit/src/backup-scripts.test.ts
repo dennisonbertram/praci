@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -74,6 +75,8 @@ if (args[0] === "inspect") {
   if (!args.at(-1).startsWith("pg_dump ")) process.exit(91);
   if (process.env.FAIL_DUMP === "1") process.exit(2);
   console.log("fake custom-format dump");
+} else if (args.includes("psql") && args.includes("-c")) {
+  // restore.sh pre-creates the runtime role the dump's grants name.
 } else if (args.includes("psql")) {
   fs.writeFileSync(process.env.SQL_INPUT, fs.readFileSync(0));
   if (process.env.FAIL_SQL === "1") {
@@ -213,6 +216,52 @@ describe("development backup failures", () => {
   });
 });
 
+describe("symlinked data directory", () => {
+  it("archives the target's contents under data/, leaving interior links unfollowed", () => {
+    const f = fixture();
+    const volume = path.join(f.checkout, "appdata-real");
+    write(path.join(volume, "bots/home.txt"), "example home");
+    symlinkSync("appdata-real", path.join(f.checkout, "data"));
+    // Interior links are stored as links; their targets are never read. The
+    // appdata fixture holds a home.txt, so following it would leak it in.
+    symlinkSync(f.env.FAKE_APPDATA, path.join(volume, "escape"));
+    const result = f.run("scripts/backup.sh", ["example"]);
+    expect(result.status, result.stderr).toBe(0);
+    const archive = path.join(f.checkout, "backups/example/homes.tgz");
+    const names = contents(archive);
+    expect(names).toContain("data/bots/home.txt");
+    expect(names).toContain("data/escape");
+    expect(names).not.toContain("data/escape/home.txt");
+    // `data` is stored as a directory member, not a link that bsdtar refuses to
+    // extract children through.
+    const listing = execFileSync("/usr/bin/tar", ["-tvzf", archive], { encoding: "utf8" });
+    expect(listing).toMatch(/^d.*\bdata(\/(\.\/)?)?$/m);
+    expect(listing).not.toMatch(/^l.*\bdata ->/m);
+  });
+
+  it("keeps a data directory member when the linked target is empty", () => {
+    const f = fixture();
+    mkdirSync(path.join(f.checkout, "appdata-real"));
+    symlinkSync("appdata-real", path.join(f.checkout, "data"));
+    const result = f.run("scripts/backup.sh", ["example"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(contents(path.join(f.checkout, "backups/example/homes.tgz"))).toMatch(/data/);
+  });
+
+  it("restores linked data contents in place without replacing the link", () => {
+    const f = fixture();
+    const volume = path.join(f.root, "mounted-volume");
+    write(path.join(volume, "bots/home.txt"), "backed-up home");
+    symlinkSync("../mounted-volume", path.join(f.checkout, "data"));
+    expect(f.run("scripts/backup.sh", ["example"]).status).toBe(0);
+    write(path.join(volume, "bots/home.txt"), "current home");
+    const result = f.run("scripts/restore.sh", [path.join(f.checkout, "backups/example")]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(readlinkSync(path.join(f.checkout, "data"))).toBe("../mounted-volume");
+    expect(readFileSync(path.join(volume, "bots/home.txt"), "utf8")).toBe("backed-up home");
+  });
+});
+
 describe("development restore failures", () => {
   function restoreFixture() {
     const f = fixture();
@@ -230,7 +279,9 @@ describe("development restore failures", () => {
         FAIL_SQL: fail ? "1" : "0",
       });
       expect(result.status).toBe(fail ? 3 : 0);
-      const command = f.commands().find((args) => args.includes("psql"));
+      const psql = f.commands().filter((args) => args.includes("psql"));
+      expect(psql[0]?.at(-1)).toContain("CREATE ROLE rakazo_app NOLOGIN");
+      const command = psql.find((args) => args.includes("--single-transaction"));
       expect(command).toEqual(
         expect.arrayContaining([
           "-X",

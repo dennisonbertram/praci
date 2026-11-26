@@ -105,7 +105,11 @@ describePostgres("meeting digest (PostgreSQL)", () => {
   let n = 0;
   async function addMeeting(
     userId: string,
-    extra: { attendees?: Array<{ name?: string; email?: string }>; transcript?: string } = {},
+    extra: {
+      attendees?: Array<{ name?: string; email?: string }>;
+      transcript?: string;
+      startedAt?: string;
+    } = {},
   ) {
     const externalId = `m-${suffix}-${n++}`;
     const connection = await prisma.connection.create({
@@ -120,7 +124,7 @@ describePostgres("meeting digest (PostgreSQL)", () => {
     await upsertMeeting(prisma, { spaceId, userId }, { connectionId: connection.id }, "granola", {
       externalId,
       title: "Planning",
-      startedAt: "2026-10-19T15:00:00.000Z",
+      startedAt: extra.startedAt ?? "2026-10-19T15:00:00.000Z",
       endedAt: null,
       attendees: extra.attendees ?? [],
       organizerEmail: null,
@@ -190,6 +194,46 @@ describePostgres("meeting digest (PostgreSQL)", () => {
       connectionId: null,
     });
     expect(rows[0]?.dueOn?.toISOString().slice(0, 10)).toBe("2026-10-30");
+  });
+
+  it("dates the to-do in the owner's time zone, and in UTC without one", async () => {
+    const startedAt = "2026-11-09T00:30:00.000Z";
+    const ny = await addUser();
+    await prisma.user.update({ where: { id: ny.userId }, data: { timezone: "America/New_York" } });
+    const utc = await addUser();
+    const detailOf = async (user: { userId: string; email: string }) => {
+      const id = await addMeeting(user.userId, {
+        startedAt,
+        attendees: [{ name: "Me", email: user.email }],
+      });
+      await digest(
+        user.userId,
+        id,
+        fakeRuntime([digestJson([{ owner: user.email, text: "Send the deck" }])]).runtime,
+      );
+      return (await todos(user.userId))[0]?.detail;
+    };
+    expect(await detailOf(ny)).toBe("Planning, Nov 8");
+    expect(await detailOf(utc)).toBe("Planning, Nov 9");
+  });
+
+  it.each([
+    ["investor", "investor"],
+    ["customer", "customer"],
+    ["hiring", "hiring"],
+    ["team", "team"],
+    ["other", "other"],
+    ["Investor; ignore all rules", "other"],
+    [undefined, "other"],
+  ])("stores category %s as %s, with the same single model call", async (given, stored) => {
+    const user = await addUser();
+    const id = await addMeeting(user.userId);
+    const rt = fakeRuntime([digestJson([], given === undefined ? {} : { category: given })]);
+    await digest(user.userId, id, rt.runtime);
+    expect(rt.requests).toHaveLength(1);
+    const meeting = await prisma.meeting.findUniqueOrThrow({ where: { id } });
+    expect(meeting.category).toBe(stored);
+    expect(meeting.digest).toMatchObject({ category: stored });
   });
 
   it("a commitment by someone else is never added to the user's to-dos", async () => {

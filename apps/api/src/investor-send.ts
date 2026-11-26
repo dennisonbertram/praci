@@ -15,9 +15,11 @@ import {
   claimInvestorUpdateSend,
   finishInvestorUpdateSend,
   getInvestorUpdate,
+  IsolationError,
   PortalBlockedError,
   portalNoticeRecipients,
   recordInvestorAttempt,
+  releaseInvestorUpdateSend,
   setInvestorUpdateRecipients,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -38,7 +40,12 @@ export interface InvestorSendDeps {
 }
 
 const escapeHtml = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 /** Bold, italic and links inside one line of already escaped text. */
 function inline(escaped: string): string {
@@ -192,36 +199,34 @@ export async function startInvestorUpdateSend(
   const scope = { spaceId: actor.spaceId, userId: actor.userId };
   const current = await getInvestorUpdate(deps.prisma, scope, id);
   if (current.status !== "draft") return { update: current, done: Promise.resolve() };
-  const contacts = await deps.prisma.contact.findMany({
-    where: {
-      ...scope,
-      id: { in: current.recipientContactIds },
-      email: { not: null },
-      // A revoked investor is never emailed an investor update; the block means nothing for the board.
-      ...(current.audience === "investors" ? { portalBlockedAt: null } : {}),
-    },
-    select: { id: true },
-  });
-  const emailed = new Set(contacts.map((c) => c.id));
-  const recipients = current.recipientContactIds.filter((contactId) => emailed.has(contactId));
-  if (recipients.length === 0)
-    throw new ORPCError("BAD_REQUEST", { message: "Pick at least one recipient" });
+  const emailable = async (audience: string, ids: readonly string[]) => {
+    const found = await deps.prisma.contact.findMany({
+      where: {
+        ...scope,
+        id: { in: [...ids] },
+        email: { not: null },
+        // A revoked investor is never emailed an investor update; the block means nothing for the board.
+        ...(audience === "investors" ? { portalBlockedAt: null } : {}),
+      },
+      select: { id: true },
+    });
+    const ok = new Set(found.map((c) => c.id));
+    return ids.filter((contactId) => ok.has(contactId));
+  };
+  const noRecipient = () =>
+    new ORPCError("BAD_REQUEST", { message: "Pick at least one recipient" });
+  if ((await emailable(current.audience, current.recipientContactIds)).length === 0)
+    throw noRecipient();
   const connectionId = await senderFor(deps, actor, current.fromConnectionId);
   const claimed = await claimInvestorUpdateSend(deps.prisma, scope, id);
   if (!claimed)
     return { update: await getInvestorUpdate(deps.prisma, scope, id), done: Promise.resolve() };
   // The recipients are read from the claimed row, so an edit made since the check above holds.
-  const claimedEmailed = await deps.prisma.contact.findMany({
-    where: {
-      ...scope,
-      id: { in: claimed.recipientContactIds },
-      email: { not: null },
-      ...(claimed.audience === "investors" ? { portalBlockedAt: null } : {}),
-    },
-    select: { id: true },
-  });
-  const ok = new Set(claimedEmailed.map((c) => c.id));
-  const final = claimed.recipientContactIds.filter((contactId) => ok.has(contactId));
+  const final = await emailable(claimed.audience, claimed.recipientContactIds);
+  if (final.length === 0) {
+    await releaseInvestorUpdateSend(deps.prisma, scope, id);
+    throw noRecipient();
+  }
   await setInvestorUpdateRecipients(deps.prisma, scope, id, final);
   const done = sendLoop(deps, actor, claimed, connectionId, final);
   return { update: await getInvestorUpdate(deps.prisma, scope, id), done };
@@ -300,7 +305,7 @@ export async function deliverPortalLinks(
   deps: InvestorSendDeps,
   actor: Actor,
   contactIds: readonly string[],
-  options: { copy: boolean; strict?: boolean },
+  options: { copy: boolean; strict?: boolean; files?: ReadonlyMap<string, readonly string[]> },
 ): Promise<{ links: PortalLink[] }> {
   const scope = { spaceId: actor.spaceId, userId: actor.userId };
   const mint = deps.portalLink;
@@ -312,7 +317,10 @@ export async function deliverPortalLinks(
       where: { id: contactId, ...scope },
       select: { name: true, email: true },
     });
-    if (!contact) continue;
+    if (!contact) {
+      if (options.strict) throw new IsolationError("Contact not found");
+      continue;
+    }
     let minted: { link: string; email: string | null };
     try {
       minted = await mint(actor, contactId);
@@ -325,10 +333,14 @@ export async function deliverPortalLinks(
       continue;
     }
     try {
+      // A batch share names the files it granted, so one mail carries the whole set.
+      const names = options.files?.get(contactId);
       await deps.email.send({
         to: minted.email,
         subject: `${company} · your link`,
-        text: `Your link to ${company}'s investor portal:\n\n${minted.link}`,
+        text: names?.length
+          ? `${company} shared these files with you:\n\n${names.map((name) => `- ${name}`).join("\n")}\n\nYour link to ${company}'s investor portal:\n\n${minted.link}`
+          : `Your link to ${company}'s investor portal:\n\n${minted.link}`,
       });
     } catch (error) {
       if (options.strict) throw error;

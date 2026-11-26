@@ -1,0 +1,81 @@
+{
+  "json": {
+    "snapshot": {
+      "companyName": "Northwind Robotics",
+      "asOf": "2026-10-01",
+      "fullyDilutedShares": 10000000,
+      "source": "carta",
+      "sourceRef": null,
+      "amountRaisedUsd": 350000,
+      "optionPoolAvailable": 600000,
+      "latest409a": {
+        "pricePerShareUsd": 0.42,
+        "date": "2026-07-01"
+      },
+      "shareClasses": [
+        {
+          "name": "Common (Mock)",
+          "shares": 8400000,
+          "percent": 84
+        },
+        {
+          "name": "Option pool (Mock)",
+          "shares": 1600000,
+          "percent": 16
+        }
+      ],
+      "holders": [
+        {
+          "name": "Maya Chen (Mock)",
+          "email": null,
+          "organization": null,
+          "security": "Common",
+          "shares": 4000000,
+          "amountUsd": 2500,
+          "percent": 40
+        },
+        {
+          "name": "River Cofounder (Mock)",
+          "email": null,
+          "organization": null,
+          "security": "Common",
+          "shares": 3000000,
+          "amountUsd": 12500,
+          "percent": 30
+        },
+        {
+          "name": "Early employees (Mock)",
+          "email": null,
+          "organization": null,
+          "security": "Common",
+          "shares": 1150000,
+          "amountUsd": null,
+          "percent": 11.5
+        },
+        {
+          "name": "Priya Placeholder",
+          "email": "priya@quill-capital.example.test",
+          "organization": "Quill Capital (Mock)",
+          "security": "SAFE",
+          "shares": null,
+          "amountUsd": 250000,
+          "percent": null
+        },
+        {
+          "name": "Lee Notarealperson",
+          "email": "lee@angel.example.test",
+          "organization": "Independent angel (Mock)",
+          "security": "SAFE",
+          "shares": null,
+          "amountUsd": 50000,
+          "percent": null
+        }
+      ],
+      "updatedAt": "2026-10-29T03:26:43.873Z",
+      "canUndo": false
+    },
+    "syncing": false,
+    "reading": false,
+    "lastReadFailed": false
+  }
+}

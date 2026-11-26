@@ -17,5 +17,14 @@ export const Uncertain: Story = {
   beforeEach: () => mockRpc({ "gtm.queue": { status: "ready", complete: true, posts: [] } }),
 };
 export const Conflict: Story = {
+  render: (args) => (
+    <GtmPlan
+      {...args}
+      items={args.items.map((post) => ({
+        ...post,
+        scheduledFor: new Date(Date.now() + 60 * 60_000).toISOString(),
+      }))}
+    />
+  ),
   beforeEach: () => mockRpc({ "scratchpad.update": () => Promise.reject({ code: "CONFLICT" }) }),
 };

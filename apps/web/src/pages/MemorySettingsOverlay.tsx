@@ -63,17 +63,21 @@ export function MemorySettingsOverlay({
   onClose,
   config,
   onConfigChange,
+  loadFailed = false,
+  onRetryLoad,
   embedded = false,
   onBusyChange,
 }: {
   onClose: () => void;
   config: SpaceMemoryConfig | null | undefined;
   onConfigChange: (config: SpaceMemoryConfig | null) => void;
+  loadFailed?: boolean;
+  onRetryLoad?: () => Promise<void>;
   /** Render panel body only for the shared Settings shell. */
   embedded?: boolean;
   onBusyChange?: (busy: boolean) => void;
 }) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const providerSelectId = useId();
   const defaultRegistration = defaultMemoryProviderSettings();
   const [selectedProvider, setSelectedProvider] = useState(
@@ -83,6 +87,7 @@ export function MemorySettingsOverlay({
     config?.defaultMemoryScope ?? "isolated",
   );
   const [pending, setPending] = useState<"connect" | "disconnect" | "scope" | null>(null);
+  const [retryingLoad, setRetryingLoad] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +113,16 @@ export function MemorySettingsOverlay({
     onBusyChange?.(next !== null);
   }
 
+  async function retryLoad() {
+    if (!onRetryLoad) return;
+    setRetryingLoad(true);
+    try {
+      await onRetryLoad();
+    } finally {
+      setRetryingLoad(false);
+    }
+  }
+
   async function connect(draft: MemoryProviderConnectionDraft) {
     if (!registration) return false;
     setError(null);
@@ -121,6 +136,11 @@ export function MemorySettingsOverlay({
       onConfigChange(next);
       return true;
     } catch (err) {
+      if (typeof err === "object" && err !== null && "code" in err && err.code === "CONFLICT") {
+        setError(null);
+        await onRetryLoad?.();
+        return false;
+      }
       setError(errorText(err, t`Could not connect ${registration.name}`));
       return false;
     } finally {
@@ -184,7 +204,22 @@ export function MemorySettingsOverlay({
 
         <SpaceMemorySection />
         <div className="mt-5">
-          {config === undefined ? (
+          {loadFailed ? (
+            <div className="flex items-center gap-2 px-2.5 pb-2 text-[13px]">
+              <span className="text-destructive">
+                <Trans>Could not load</Trans>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                disabled={retryingLoad}
+                onClick={() => void retryLoad()}
+              >
+                <Trans>Try again</Trans>
+              </Button>
+            </div>
+          ) : config === undefined ? (
             <p className="text-sm text-muted-foreground">
               <Trans>Loading memory settings…</Trans>
             </p>
@@ -232,7 +267,7 @@ export function MemorySettingsOverlay({
                 <Trans>Memory provider</Trans>
               </summary>
               <p className="mt-2 mb-4 text-[13px] text-muted-foreground/80">
-                {registration.description}
+                {i18n._(registration.description)}
               </p>
               {MEMORY_PROVIDER_SETTINGS.length > 1 ? (
                 <Field className="mb-4">

@@ -153,3 +153,41 @@ describe("isThreadSnapshotEvent", () => {
     expect(reduceThreadSnapshot(waiting, reply("other"))?.delegatePending).toEqual(["m1", "m2"]);
   });
 });
+
+describe("stale helper projection", () => {
+  it.each([
+    "run.waiting_input",
+    "computer.takeover.requested",
+    "run.completed",
+    "run.failed",
+    "run.cancelled",
+  ] as const)("settles helpers on %s without reviving them on resume", (type) => {
+    const base = { runId: "run-1", seq: 1 };
+    const helper = { agentId: "helper", name: "Helper", task: "Check", status: "running" };
+    let next = reduceThreadSnapshot(
+      snapshot(),
+      event({ ...base, type: "thread.subagent", payload: helper }),
+    );
+    next = reduceThreadSnapshot(next, event({ ...base, seq: 2, type }));
+    expect(next?.messages.find((m) => m.id === "subagent:helper")?.blocks[0]).toMatchObject({
+      status: "failed",
+      result: "stopped",
+    });
+    next = reduceThreadSnapshot(next, event({ ...base, seq: 3, type: "run.started" }));
+    next = reduceThreadSnapshot(
+      next,
+      event({
+        ...base,
+        seq: 4,
+        type: "thread.subagent",
+        payload: { ...helper, agentId: "resumed" },
+      }),
+    );
+    expect(next?.messages.find((m) => m.id === "subagent:helper")?.blocks[0]).toMatchObject({
+      status: "failed",
+    });
+    expect(next?.messages.find((m) => m.id === "subagent:resumed")?.blocks[0]).toMatchObject({
+      status: "running",
+    });
+  });
+});

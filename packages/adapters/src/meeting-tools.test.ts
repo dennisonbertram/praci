@@ -6,6 +6,7 @@ import {
   MEETING_AGENT_BUILTIN_TOOLS,
   MEETING_CONSENT_OFF,
   meetingToolFromTool,
+  OMI_AGENT_BUILTIN_TOOLS,
   wrapMeetingNotes,
 } from "./meeting-tools.js";
 
@@ -194,7 +195,12 @@ describe("meeting tools", () => {
         prisma: prismaWith([server("https://mcp.granola.ai/mcp")]),
       }),
     ).toBe(true);
-    // Wispr Flow's MCP agent is not a meeting-source agent until its MeetingSource is registered.
+    expect(
+      await isMeetingSourceAgent(bot, {
+        prisma: prismaWith([server("https://api.wisprflow.ai/connect/mcp")]),
+      }),
+    ).toBe(true);
+    // Only Wispr Flow's own endpoint counts.
     expect(
       await isMeetingSourceAgent(bot, {
         prisma: prismaWith([server("https://api.wisprflow.ai/mcp")]),
@@ -213,6 +219,65 @@ describe("meeting tools", () => {
       "meetings_list",
       "meetings_search",
       "recall_memory",
+      "schedule_create",
+      "schedule_list",
+      "share_meeting",
+    ]);
+  });
+
+  it("registers the agent of an Omi Developer key connection, so it gets the meeting tools", async () => {
+    const bot = {
+      id: "bot-cloud",
+      ...scope,
+      spawnKey: "integration-agent:conn-cloud",
+      archivedAt: null,
+    };
+    const prismaWith = (connectorId: string | null) =>
+      ({
+        mcpServer: { findMany: async () => [] },
+        connection: {
+          findFirst: async ({ where }: { where: { connectorId: string; agentBotId: string } }) =>
+            where.connectorId === connectorId && where.agentBotId === "bot-cloud"
+              ? { id: "conn-cloud" }
+              : null,
+        },
+      }) as never;
+    expect(await isMeetingSourceAgent(bot, { prisma: prismaWith("omi-cloud") })).toBe(true);
+    expect(await isMeetingSourceAgent(bot, { prisma: prismaWith(null) })).toBe(false);
+  });
+
+  it("registers the Omi agent, with exactly the meeting reads, Data room reads and recall", async () => {
+    const bot = {
+      id: "bot-omi",
+      ...scope,
+      spawnKey: "integration-agent:conn-omi",
+      archivedAt: null,
+    };
+    const prismaWith = (connectorId: string | null) =>
+      ({
+        mcpServer: { findMany: async () => [] },
+        connection: {
+          findFirst: async ({ where }: { where: { connectorId: string; agentBotId: string } }) =>
+            where.connectorId === connectorId && where.agentBotId === "bot-omi"
+              ? { id: "conn-omi" }
+              : null,
+        },
+      }) as never;
+    expect(await isMeetingSourceAgent(bot, { prisma: prismaWith("omi") })).toBe(true);
+    expect(await isMeetingSourceAgent(bot, { prisma: prismaWith(null) })).toBe(false);
+    expect(
+      await isMeetingSourceAgent({ ...bot, spawnKey: null }, { prisma: prismaWith("omi") }),
+    ).toBe(false);
+    expect([...OMI_AGENT_BUILTIN_TOOLS].sort()).toEqual([
+      "meetings_get",
+      "meetings_list",
+      "meetings_search",
+      "read_data_room_item",
+      "recall_memory",
+      "schedule_create",
+      "schedule_list",
+      "search_data_room",
+      "share_meeting",
     ]);
   });
 });

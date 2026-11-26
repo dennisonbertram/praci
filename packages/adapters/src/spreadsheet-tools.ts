@@ -16,7 +16,7 @@ import {
 } from "./spreadsheet.js";
 
 export const SPREADSHEET_GUIDANCE =
-  "Use read_spreadsheet for Excel (.xlsx, .xlsm) and CSV files, and cite the sheet name and cells (for example Revenue!B4:B9) for every figure you quote.";
+  "Cite the sheet name and cells (for example Revenue!B4:B9) for every figure you quote from a spreadsheet.";
 
 export type SpreadsheetToolDeps = {
   prisma: PrismaClient;

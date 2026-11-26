@@ -97,6 +97,8 @@ export const overview: DevinSessionsOutput = {
 
 export const emptyOverview: DevinSessionsOutput = { ...overview, sessions: [] };
 
+export const connectingOverview: DevinSessionsOutput = { ...emptyOverview, fetchedAt: null };
+
 export const notConnected: DevinSessionsOutput = {
   connection: {
     ...connection,

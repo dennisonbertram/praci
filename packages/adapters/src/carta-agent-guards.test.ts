@@ -161,7 +161,9 @@ describe("Carta agent mail_send", () => {
     expect(block.actions?.map((a) => a.id)).toEqual(["allow", "deny"]);
     const other = buildApprovalAskBlock("e1", "mail_send", args, []);
     if (other.kind !== "ask") throw new Error("expected ask block");
-    expect(other.detail).not.toContain("hidden@x.test");
+    // Every card names each recipient; only the full card keeps the whole body.
+    expect(other.detail).toContain("bcc: hidden@x.test");
+    expect(other.detail).not.toContain(body);
   });
 });
 

@@ -242,6 +242,29 @@ export function connectedModelChoices(
   return choices;
 }
 
+/**
+ * Model key to select after choosing a connection: the current model when the
+ * connection offers it, otherwise the connection's own model, otherwise its
+ * first choice.
+ */
+export function modelKeyForConnection(
+  credential: CredentialModelRef,
+  catalog: readonly CatalogModelRef[],
+  currentKey: string,
+): string {
+  const choices = connectedModelChoices([credential], catalog);
+  if (choices.some((choice) => choice.key === currentKey)) return currentKey;
+  const own = credential.modelId?.trim();
+  if (own) {
+    const ownKey = modelOptionKey(
+      credential.provider,
+      resolveSelectableModelId(catalog, credential.provider, own),
+    );
+    if (choices.some((choice) => choice.key === ownKey)) return ownKey;
+  }
+  return choices[0]?.key ?? "";
+}
+
 /** Match a model by name, id, or provider name; a blank query keeps every model. */
 export function filterModelCatalog(
   entries: readonly ModelCatalogEntry[],

@@ -53,6 +53,33 @@ export const Conversation: Story = {
   beforeEach: () => mockRpc({ "threads.messages": { messages: history, olderCursor: null } }),
 };
 
+export const LongHistory: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "threads.messages": ({ before }: { before?: number }) => {
+        const end = before ?? 32;
+        const start = Math.max(1, end - 7);
+        return {
+          messages: Array.from({ length: end - start + 1 }, (_, index) => {
+            const seq = start + index;
+            return message(seq, [{ kind: "bot_message_sent", toBotId: "bot_b", toBotName: "Researcher", text: `Exchange ${seq}: the summary is ready.` }]);
+          }),
+          olderCursor: start > 1 ? start - 1 : null,
+        };
+      },
+    }),
+};
+
+export const OlderPageFailure: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "threads.messages": ({ before }: { before?: number }) => {
+        if (before !== undefined) throw new Error("offline");
+        return { messages: history, olderCursor: 2 };
+      },
+    }),
+};
+
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "threads.messages": () => new Promise(() => undefined) }),
 };

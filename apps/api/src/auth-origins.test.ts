@@ -61,6 +61,27 @@ describe("CORS origins", () => {
   });
 });
 
+describe("extra trusted origins", () => {
+  const withExtra = { ...env, trustedOrigins: ["https://box.ts.net"] };
+
+  it("accepts a listed origin for CORS and Better Auth, and nothing else", async () => {
+    expect(isTrustedOrigin("https://box.ts.net", withExtra)).toBe(true);
+    expect(isTrustedOrigin("https://box.ts.net", env)).toBe(false);
+    expect(isTrustedOrigin("https://evil.example", withExtra)).toBe(false);
+    const auth = createAuth({} as never, {
+      secret: "offline-auth-secret-at-least-32-characters",
+      baseURL: "https://api.example.test",
+      webOrigin: "https://app.example.test",
+      signupsEnabled: undefined,
+      signupAllowlist: undefined,
+      extraOrigins: [...MOBILE_AUTH_ORIGINS, ...withExtra.trustedOrigins],
+    });
+    const ctx = await auth.$context;
+    expect(ctx.isTrustedOrigin("https://box.ts.net/sign-in")).toBe(true);
+    expect(ctx.isTrustedOrigin("https://evil.example/sign-in")).toBe(false);
+  });
+});
+
 describe("mobile auth origins", () => {
   it("does not trust an arbitrary Expo host as a callback", async () => {
     for (const url of [

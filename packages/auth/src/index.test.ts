@@ -1,9 +1,11 @@
+import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   authRateLimitOptions,
   buildTrustedOrigins,
   createAuth,
   isBlockedAuthPath,
+  passkeyRpId,
   passwordResetEmail,
   resolveSignupPolicy,
 } from "./index.js";
@@ -21,6 +23,17 @@ describe("auth policy", () => {
       "/organization/list",
       "/organization/create-team",
       "/organization/some-future-route",
+      "/organization/add-member",
+      "/organization/update-member-role",
+      "/organization/remove-member",
+      "/organization/set-active-member",
+      "/organization/accept-invitation",
+      "//organization/add-member",
+      "///organization/update-member-role",
+      "/organization//remove-member",
+      "/Organization/accept-invitation",
+      "/%6Frganization/set-active-member",
+      "/%E0%A4%A",
     ]) {
       expect(isBlockedAuthPath(path), path).toBe(true);
     }
@@ -36,9 +49,41 @@ describe("auth policy", () => {
       "/request-password-reset",
       "/reset-password",
       "/delete-user",
+      "/callback/oidc",
+      "/passkey/generate-register-options",
     ]) {
       expect(isBlockedAuthPath(path), path).toBe(false);
     }
+  });
+
+  it("derives the passkey rpID from the web origin, using localhost for loopback", () => {
+    expect(passkeyRpId("https://app.example.com")).toBe("app.example.com");
+    expect(passkeyRpId("http://127.0.0.1:5273")).toBe("localhost");
+    expect(passkeyRpId("http://localhost:5273")).toBe("localhost");
+  });
+
+  it("adds passkey routes unless SSO is mandatory", () => {
+    const env = {
+      secret: "test-secret-that-is-long-enough-for-better-auth",
+      baseURL: "http://localhost:3200",
+      webOrigin: "http://localhost:5273",
+      signupsEnabled: undefined,
+      signupAllowlist: undefined,
+    };
+    expect(createAuth({} as never, env).api).toHaveProperty("listPasskeys");
+    const sso = createAuth({} as never, {
+      ...env,
+      passwordAuth: false,
+      oidc: {
+        name: "Example",
+        issuer: "https://idp.example.com",
+        clientId: "c",
+        clientSecret: "s",
+        scopes: [],
+        allowSignupBypass: false,
+      },
+    });
+    expect(sso.api).not.toHaveProperty("listPasskeys");
   });
 
   it("disables organization deletion inside Better Auth as well", async () => {
@@ -73,6 +118,7 @@ describe("authRateLimitOptions", () => {
         "/sign-in/email": { window: 15 * 60, max: 10 },
         "/sign-up/email": { window: 15 * 60, max: 10 },
         "/request-password-reset": { window: 15 * 60, max: 10 },
+        "/send-verification-email": { window: 15 * 60, max: 10 },
       },
     });
   });
@@ -175,5 +221,76 @@ describe("resolveSignupPolicy", () => {
         signupAllowlist: "environment-only@example.com",
       }),
     ).resolves.toEqual({ enabled: false, allowlist: ["approved@example.com"] });
+  });
+});
+
+describe("session lifetime", () => {
+  it("lasts 90 days and renews after a day of use, keeping the one-day fresh window", async () => {
+    const auth = createAuth({} as never, {
+      secret: "test-secret-that-is-long-enough-for-better-auth",
+      baseURL: "http://127.0.0.1:3100",
+      webOrigin: "http://127.0.0.1:5173",
+      signupsEnabled: undefined,
+      signupAllowlist: undefined,
+    });
+    const { sessionConfig } = await auth.$context;
+    expect(sessionConfig).toMatchObject({
+      expiresIn: 90 * 24 * 60 * 60,
+      updateAge: 24 * 60 * 60,
+      freshAge: 24 * 60 * 60,
+    });
+  });
+});
+
+describe("bearer sessions", () => {
+  const secret = "offline-auth-secret-at-least-32-characters";
+  const token = "fakeSessionToken0123456789abcdef";
+
+  function authWithSessionLookups() {
+    const lookups: unknown[] = [];
+    const model = new Proxy(
+      {},
+      {
+        get: () =>
+          vi.fn(async (query: unknown) => {
+            lookups.push(query);
+            return null;
+          }),
+      },
+    );
+    const prisma = new Proxy({}, { get: (_target, name) => (name === "then" ? undefined : model) });
+    const auth = createAuth(prisma as never, {
+      secret,
+      baseURL: "https://api.example.test",
+      webOrigin: "https://app.example.test",
+      signupsEnabled: "true",
+      signupAllowlist: "",
+    });
+    return { auth, lookups };
+  }
+
+  function signed(value: string, key = secret) {
+    return `${value}.${createHmac("sha256", key).update(value).digest("base64")}`;
+  }
+
+  it.each([
+    ["a raw session token", token],
+    ["a token signed with another key", signed(token, "another-secret-of-at-least-32-chars")],
+  ])("never looks up a session for %s", async (_label, bearer) => {
+    const { auth, lookups } = authWithSessionLookups();
+    const session = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${bearer}` }),
+    });
+    expect(session).toBeNull();
+    expect(JSON.stringify(lookups)).not.toContain(token);
+  });
+
+  it.each([
+    ["raw", signed(token)],
+    ["URL-encoded", encodeURIComponent(signed(token))],
+  ])("looks up the session for a %s signed token", async (_label, bearer) => {
+    const { auth, lookups } = authWithSessionLookups();
+    await auth.api.getSession({ headers: new Headers({ authorization: `Bearer ${bearer}` }) });
+    expect(JSON.stringify(lookups)).toContain(token);
   });
 });

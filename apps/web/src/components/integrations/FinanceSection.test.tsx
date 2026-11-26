@@ -148,10 +148,38 @@ it("shows a failed connect", async () => {
   expect(tile("brex")?.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
 });
 
+it("keeps crypto provider status unknown after a failed load and lets the user retry", async () => {
+  cryptoRpc.crypto.mockRejectedValueOnce(new Error("Could not load"));
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+
+  expect(crypto().querySelector("button")?.textContent).toBe("Try again");
+  expect(tile("alchemy")?.querySelector("button")?.textContent).toBe("Try again");
+  expect(crypto().textContent).not.toContain("Connect");
+  expect(tile("alchemy")?.textContent).not.toContain("Connect");
+
+  await press2(crypto(), "Try again");
+  expect(cryptoRpc.crypto).toHaveBeenCalledTimes(2);
+});
+
+it("keeps exchange status unknown after a failed load and lets the user retry", async () => {
+  cryptoRpc.exchanges.mockRejectedValueOnce(new Error("Could not load"));
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+
+  expect(tile("coinbase")?.querySelector("button")?.textContent).toBe("Try again");
+  expect(tile("coinbase")?.textContent).not.toContain("Connect");
+
+  await press2(tile("coinbase") as Element, "Try again");
+  expect(cryptoRpc.exchanges).toHaveBeenCalledTimes(2);
+});
+
 const crypto = () => container.querySelector('[data-testid="finance-tile-crypto"]') as Element;
 const openCryptoMenu = () =>
   act(async () =>
     (crypto().querySelector('button[aria-label="More Blockscout actions"]') as HTMLElement).click(),
+  );
+const openAlchemyMenu = () =>
+  act(async () =>
+    (alchemy().querySelector('button[aria-label="More Alchemy actions"]') as HTMLElement).click(),
   );
 const menuItems = () =>
   [...document.body.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent);
@@ -334,6 +362,36 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
   expect(alchemy().textContent).toContain("Open");
 });
 
+it("confirms before removing Alchemy and shows a rejected removal inline", async () => {
+  cryptoRpc.crypto.mockResolvedValue({
+    connected: false,
+    hasApiKey: false,
+    alchemy: { connected: true, lastError: null },
+  });
+  cryptoRpc.cryptoProviderRemove.mockRejectedValue(new Error("Could not remove Alchemy"));
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+
+  await openAlchemyMenu();
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  const confirm = document.body.querySelector('[role="alertdialog"]');
+  expect(confirm).not.toBeNull();
+  expect(confirm?.textContent).toContain("Remove Alchemy?");
+  expect(cryptoRpc.cryptoProviderRemove).not.toHaveBeenCalled();
+
+  await press2(confirm as Element, "Remove Alchemy");
+  expect(cryptoRpc.cryptoProviderRemove).toHaveBeenCalledWith({ provider: "alchemy" });
+  expect(document.body.querySelector('[role="alertdialog"]')).toBeNull();
+  expect(tile("alchemy")?.querySelector('[role="alert"]')?.textContent).toContain(
+    "Could not remove Alchemy",
+  );
+});
+
 it("gives every finance tile the shared hover and a visible focus ring on the name link", async () => {
   cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: true });
   await show([source("mercury", "ok"), source("brex", "ok")]);
@@ -350,4 +408,48 @@ it("keeps a connected tile's status row under its name, not pushed to the bottom
   await show([source("mercury", "ok"), source("brex", "ok")]);
   const row = (p: string) => tile(p)?.querySelector(".flex.items-center.gap-2");
   expect(row("coinbase")?.className).not.toContain("mt-auto");
+});
+
+it("links a lapsed bank's name to its page so it can be removed, but not an unconnected one", async () => {
+  await show([
+    { ...source("mercury", "needs_reconnect"), serverId: "srv_m" },
+    source("brex", "not_connected"),
+  ]);
+  expect(tile("mercury")?.querySelector('a[href="/app/integrations/mcp/srv_m"]')).not.toBeNull();
+  expect(tile("brex")?.querySelector("a")).toBeNull();
+});
+
+it("puts a connected bank's Used by line above its action row, which sits at the bottom", async () => {
+  await show([source("mercury", "ok"), source("brex", "not_connected")], vi.fn(), {
+    mercury: <span>Used by Finance agent</span>,
+  });
+  const t = tile("mercury");
+  const extras = [...(t?.querySelectorAll("span") ?? [])].find((s) =>
+    s.textContent?.includes("Used by"),
+  );
+  const open = t?.querySelector('a[href="/app/finance"]');
+  expect(extras!.compareDocumentPosition(open!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(open?.parentElement?.className).toContain("mt-auto");
+});
+
+it("says when the refresh after removing Alchemy fails instead of leaving it looking connected", async () => {
+  cryptoRpc.crypto.mockResolvedValue({
+    connected: false,
+    hasApiKey: false,
+    alchemy: { connected: true, lastError: null },
+  });
+  cryptoRpc.cryptoProviderRemove.mockResolvedValue({ ok: true });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  cryptoRpc.crypto.mockRejectedValueOnce(new Error("offline"));
+
+  await openAlchemyMenu();
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  await press2(document.body.querySelector('[role="alertdialog"]') as Element, "Remove Alchemy");
+  expect(tile("alchemy")?.textContent).toContain("Could not load");
 });

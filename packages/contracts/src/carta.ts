@@ -1,11 +1,11 @@
 import * as z from "zod";
 import { IsoDate } from "./ids.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
-/** The one place the Carta agent's spawn key is built. */
-export const cartaAgentSpawnKey = (userId: string) => `carta-agent:${userId}`;
+export const cartaAgentSpawnKey = (userId: string) => pageAgentSpawnKey("carta", userId);
 
 export const isCartaAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(cartaAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "carta";
 
 /** Carta's official remote MCP server. A server counts as Carta by its endpoint host. */
 export const CARTA_MCP_ENDPOINT = "https://mcp.app.carta.com/mcp";
@@ -78,6 +78,19 @@ export const CapTableLedgerRowSchema = z
   });
 export type CapTableLedgerRow = z.infer<typeof CapTableLedgerRowSchema>;
 
+const CapTableHolderSchema = z.object({
+  /** Keeps a typed-in row's identity while it is edited; absent for Carta and sheet holders. */
+  id: z.string().trim().min(1).max(64).optional(),
+  name: Label,
+  email: z.string().trim().toLowerCase().email().max(320).nullable().default(null),
+  organization: Label.nullable().default(null),
+  /** The security as Carta names it, e.g. "Series Seed Preferred" or "SAFE". */
+  security: Label,
+  shares: Shares.nullable().default(null),
+  amountUsd: Usd.nullable().default(null),
+  percent: Percent.nullable().default(null),
+});
+
 /** What the Carta agent saves with cap_table_update. Figures come from Carta; nothing is estimated. */
 export const CapTableSnapshotInputSchema = z.object({
   companyName: Label,
@@ -91,26 +104,13 @@ export const CapTableSnapshotInputSchema = z.object({
   optionPoolAvailable: Shares.nullable().default(null),
   latest409a: z.object({ pricePerShareUsd: Usd, date: z.string().date() }).nullable().default(null),
   shareClasses: z.array(z.object({ name: Label, shares: Shares, percent: Percent })).max(50),
-  holders: z
-    .array(
-      z.object({
-        /** Keeps a typed-in row's identity while it is edited; absent for Carta and sheet holders. */
-        id: z.string().trim().min(1).max(64).optional(),
-        name: Label,
-        email: z.string().trim().toLowerCase().email().max(320).nullable().default(null),
-        organization: Label.nullable().default(null),
-        /** The security as Carta names it, e.g. "Series Seed Preferred" or "SAFE". */
-        security: Label,
-        shares: Shares.nullable().default(null),
-        amountUsd: Usd.nullable().default(null),
-        percent: Percent.nullable().default(null),
-      }),
-    )
-    .max(500),
+  holders: z.array(CapTableHolderSchema).max(500),
 });
 export type CapTableSnapshotInput = z.input<typeof CapTableSnapshotInputSchema>;
 
 export const CapTableSnapshotSchema = CapTableSnapshotInputSchema.extend({
+  /** Saving is capped at 500 holders; a table derived from the ledger is not. */
+  holders: z.array(CapTableHolderSchema),
   updatedAt: IsoDate,
   /** True right after a source switch, until the next change. */
   canUndo: z.boolean().default(false),

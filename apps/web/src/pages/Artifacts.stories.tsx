@@ -70,6 +70,7 @@ const load = (list = items, nextCursor: string | null = null) =>
   mockRpc({
     bootstrap,
     "artifacts.listSpace": { items: list, nextCursor },
+    "artifactShares.get": null,
     "artifacts.listVersions": (input: unknown) => {
       const id = (input as { familyId: string }).familyId;
       return id === "art_html"
@@ -151,6 +152,24 @@ export const List: Story = {
       }
     };
   },
+};
+
+/** The list sorted by name; the sort and the filters are in the URL. */
+export const ListSortedByName: Story = {
+  ...List,
+  render: () => <Page at="/app/artifacts?sort=name&dir=asc" />,
+};
+
+/** Cards sorted by name, with the Sort control beside the filters. */
+export const CardsSortedByName: Story = {
+  beforeEach: () => load(),
+  render: () => <Page at="/app/artifacts?sort=name&dir=asc" />,
+};
+
+/** The Type filter set from the URL. */
+export const TypeFilterSet: Story = {
+  beforeEach: () => load(),
+  render: () => <Page at="/app/artifacts?type=page" />,
 };
 
 export const Loading: Story = {
@@ -239,5 +258,23 @@ export const DeleteConfirm: Story = {
     await userEvent.click(
       (await within(canvasElement).findAllByRole("button", { name: /^Delete / }))[0] as HTMLElement,
     );
+  },
+};
+
+/** Share on an HTML artifact: the link is made and shown once, with Stop sharing beside Done. */
+export const ShareLink: Story = {
+  render: () => <Page at="/app/artifacts/art_html" />,
+  beforeEach: () => {
+    load();
+    mockRpc({
+      "artifactShares.get": null,
+      "artifactShares.create": {
+        url: "https://app.example.test/s#example-token",
+        share: { artifactId: "art_html_v3", version: 3, expiresAt: "2026-02-01T00:00:00.000Z" },
+      },
+    });
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Share" }));
   },
 };

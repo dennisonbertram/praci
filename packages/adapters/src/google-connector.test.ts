@@ -21,6 +21,8 @@ const REDIRECT = "https://rakazo.example.test/integrations/google/callback";
 const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
 const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
+const CONTACTS =
+  "https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly";
 
 const context: AdapterContext = {
   operationId: "op",
@@ -214,7 +216,9 @@ describe("GoogleConnector.begin", () => {
     expect(p.get("response_type")).toBe("code");
     expect(p.get("client_id")).toBe("fake-client-id.apps.example.test");
     expect(p.get("redirect_uri")).toBe(REDIRECT);
-    expect(p.get("scope")).toBe(`openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY}`);
+    expect(p.get("scope")).toBe(
+      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY} ${CONTACTS}`,
+    );
     expect(p.get("access_type")).toBe("offline");
     expect(p.get("prompt")).toBe("consent");
     expect(p.get("include_granted_scopes")).toBe("true");
@@ -241,7 +245,7 @@ describe("GoogleConnector.begin", () => {
     );
     const p = new URL(authorizationUrl as string).searchParams;
     expect(p.get("scope")).toBe(
-      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY} ${GMAIL_SETTINGS_BASIC}`,
+      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY} ${CONTACTS} ${GMAIL_SETTINGS_BASIC}`,
     );
     expect(p.get("include_granted_scopes")).toBe("true");
   });
@@ -324,6 +328,7 @@ describe("GoogleConnector.complete", () => {
     expect(call.get("redirect_uri")).toBe(REDIRECT);
     expect(call.get("client_secret")).toBe(CLIENT_SECRET);
     expect(result.connectionRef).toBe("sub-1");
+    expect(result.account).toBe("ann@example.test");
     expect(s.db.secrets).toHaveLength(1);
     const row = s.db.secrets[0] as {
       id: string;
@@ -627,6 +632,9 @@ describe("GoogleConnector.proxy", () => {
     "https://gmail.googleapis.com.evil.example.test/gmail/v1/users/me/profile",
     "https://gmail.googleapis.com@evil.example.test/gmail/v1/users/me/profile",
     "https://www.googleapis.com/oauth2/v3/userinfo",
+    "https://people.googleapis.com/v1/people/me/connections/../../people:deleteContact",
+    "https://people.googleapis.com/v1/contactGroups",
+    "https://people.googleapis.com@evil.example.test/v1/otherContacts",
   ])("refuses %s before any request is sent", async (url) => {
     const s = setup();
     await connect(s);
@@ -991,7 +999,7 @@ describe("GoogleConnector providers", () => {
     expect(await scopeOf(" GoogleCalendar ")).toBe(`openid email ${CALENDAR_EVENTS}`);
     expect(await scopeOf("googledrive")).toBe(`openid email ${DRIVE}`);
     expect(await scopeOf("gmail")).toBe(
-      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY}`,
+      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY} ${CONTACTS}`,
     );
   });
 

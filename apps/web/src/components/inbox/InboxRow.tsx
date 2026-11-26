@@ -18,9 +18,11 @@ import {
   Archive,
   BellOff,
   Ellipsis,
+  Eye,
   ListChecks,
   Mail,
   MailOpen,
+  MessageSquareOff,
   Paperclip,
   ShieldAlert,
   ShieldCheck,
@@ -30,6 +32,8 @@ import {
 } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { ROW_MENU_EVENT } from "../../lib/inbox-message-cache";
+import type { MailMoveOp } from "../../lib/inbox-move";
+import { availableMoves } from "../../lib/inbox-move";
 import { formatMailTime } from "../../lib/mail-time";
 import { dueLabel } from "./TodoCard";
 
@@ -102,12 +106,14 @@ function moveAmongStops(event: React.KeyboardEvent<HTMLElement>) {
 }
 
 /** Spam and trash are for inbox mail; Not spam for mail the Spam pile shows. */
-export type MailMoveOp = "spam" | "notSpam" | "trash";
+export type { MailMoveOp } from "../../lib/inbox-move";
 
 /** The checkbox state a list passes to its rows. */
 export interface RowPicking {
   /** Present when the list can report spam or move to trash. */
   onMove?: (op: MailMoveOp, messageId: string) => void;
+  /** Present when mail waiting on a reply can be marked as needing none; it lives in the More menu only. */
+  onNoReply?: (messageId: string) => void;
   /** The checked rows. */
   pickedIds?: ReadonlySet<string>;
   onPick?: (messageId: string, event: { shift: boolean }) => void;
@@ -125,6 +131,7 @@ export const rowPicking = (id: string, picking: RowPicking) => ({
   hideNewsletter: picking.hideNewsletter,
   query: picking.query,
   ...(picking.onMove ? { onMove: (op: MailMoveOp) => picking.onMove?.(op, id) } : {}),
+  ...(picking.onNoReply ? { onNoReply: () => picking.onNoReply?.(id) } : {}),
   ...(picking.onPick
     ? {
         picked: picking.pickedIds?.has(id) ?? false,
@@ -141,6 +148,7 @@ export function InboxGroup({
   onMark,
   onArchive,
   onRead,
+  onTrack,
   selectedId,
   hideAttention,
   unreadTotal,
@@ -157,6 +165,7 @@ export function InboxGroup({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
+  onTrack?: (messageId: string, track: boolean) => void;
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
@@ -187,6 +196,7 @@ export function InboxGroup({
             onMark={onMark}
             onArchive={onArchive}
             onRead={onRead}
+            onTrack={onTrack}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
             todo={todoDue?.has(row.id)}
@@ -205,6 +215,7 @@ export function InboxRow({
   onMark,
   onArchive,
   onRead,
+  onTrack,
   selected = false,
   hideAttention = false,
   todo = false,
@@ -213,6 +224,7 @@ export function InboxRow({
   anyPicked = false,
   onPick,
   onMove,
+  onNoReply,
   showArchived = true,
   hideNewsletter = false,
   query,
@@ -222,6 +234,7 @@ export function InboxRow({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
+  onTrack?: (messageId: string, track: boolean) => void;
   selected?: boolean;
   hideAttention?: boolean;
   todo?: boolean;
@@ -234,6 +247,8 @@ export function InboxRow({
   onPick?: (event: { shift: boolean }) => void;
   /** Present when the row can be reported as spam or moved to trash; these live in the More menu only. */
   onMove?: (op: MailMoveOp) => void;
+  /** Present when the list can say a Needs reply row needs no reply; shown only on such a row. */
+  onNoReply?: () => void;
   showArchived?: boolean;
   hideNewsletter?: boolean;
   query?: string;
@@ -278,7 +293,18 @@ export function InboxRow({
         { mark: "noise", name: t`Mark noise`, Icon: BellOff },
       ] as const)
     : [];
-  const actions = [
+  const moveMeta: Record<MailMoveOp, { name: string; Icon: typeof Archive }> = {
+    spam: { name: t`Spam`, Icon: ShieldAlert },
+    trash: { name: t`Trash`, Icon: Trash2 },
+    notSpam: { name: t`Not spam`, Icon: ShieldCheck },
+  };
+  const actions: {
+    name: string;
+    Icon: typeof Archive;
+    run: () => void;
+    menuOnly?: boolean;
+    pressed?: boolean;
+  }[] = [
     ...(onArchive && row.inInbox
       ? [{ name: t`Archive`, Icon: Archive, run: () => onArchive(row.id) }]
       : []),
@@ -291,14 +317,31 @@ export function InboxRow({
           },
         ]
       : []),
-    ...(onMove && row.inInbox && row.pile !== "spam"
-      ? [{ name: t`Spam`, Icon: ShieldAlert, run: () => onMove("spam"), menuOnly: true }]
+    ...(onTrack
+      ? [
+          {
+            name: row.tracked ? t`Stop tracking` : t`Track`,
+            Icon: Eye,
+            run: () => onTrack(row.id, !row.tracked),
+            pressed: row.tracked === true,
+          },
+        ]
       : []),
-    ...(onMove && row.inInbox
-      ? [{ name: t`Trash`, Icon: Trash2, run: () => onMove("trash"), menuOnly: true }]
+    ...(onNoReply && row.needsReply === true
+      ? [
+          {
+            name: t`No reply needed`,
+            Icon: MessageSquareOff,
+            run: onNoReply,
+          },
+        ]
       : []),
-    ...(onMove && row.pile === "spam"
-      ? [{ name: t`Not spam`, Icon: ShieldCheck, run: () => onMove("notSpam"), menuOnly: true }]
+    ...(onMove
+      ? availableMoves(row).map((op) => ({
+          ...moveMeta[op],
+          run: () => onMove(op),
+          menuOnly: true,
+        }))
       : []),
   ];
   return (
@@ -396,8 +439,15 @@ export function InboxRow({
           )}
           <time
             dateTime={row.receivedAt}
-            className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
+            className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "[@media(hover:hover)]:@max-md:group-focus-within/row:opacity-0 [@media(hover:hover)]:@max-md:group-hover/row:opacity-0" : ""}`}
           >
+            {row.tracked ? (
+              <Eye
+                role="img"
+                aria-label={t`Tracked`}
+                className="me-1 inline size-3 align-text-bottom"
+              />
+            ) : null}
             {row.hasAttachment ? (
               <Paperclip
                 role="img"
@@ -426,8 +476,8 @@ export function InboxRow({
               className={`absolute end-26 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-linear-to-l from-muted from-75% to-transparent ps-6 pointer-coarse:hidden @max-md:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
               {actions
-                .filter((action) => !("menuOnly" in action))
-                .map(({ name, Icon, run }) => (
+                .filter((action) => !action.menuOnly)
+                .map(({ name, Icon, run, pressed }) => (
                   <Tooltip key={name}>
                     <TooltipTrigger
                       render={
@@ -435,9 +485,10 @@ export function InboxRow({
                           variant="ghost"
                           size="icon-xs"
                           aria-label={name}
+                          aria-pressed={pressed}
                           tabIndex={-1}
                           data-row-stop=""
-                          className="text-muted-foreground"
+                          className={pressed ? "text-foreground" : "text-muted-foreground"}
                           onClick={(event) => {
                             event.stopPropagation();
                             run();
@@ -445,7 +496,7 @@ export function InboxRow({
                         />
                       }
                     >
-                      <Icon aria-hidden="true" />
+                      <Icon aria-hidden="true" className={pressed ? "fill-current" : ""} />
                     </TooltipTrigger>
                     <TooltipContent>{name}</TooltipContent>
                   </Tooltip>

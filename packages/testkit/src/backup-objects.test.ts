@@ -192,13 +192,20 @@ exit 0
     expect(backed.status, backed.stderr).toBe(0);
     const out = path.join(checkout, "backups/one");
     const manifest = JSON.parse(readFileSync(path.join(out, "objects.manifest.json"), "utf8"));
+    expect(manifest.version).toBe(2);
+    expect(manifest.encoding).toBe("sha256-hex-v1");
     expect(manifest.count).toBe(Object.keys(objects).length);
     expect(manifest.objects.map((o: { key: string }) => o.key).sort()).toEqual(
       Object.keys(objects).sort(),
     );
     for (const entry of manifest.objects) expect(entry.size).toBe(objects[entry.key].length);
+    const largeObject = manifest.objects.find(
+      (entry: { key: string }) => entry.key === "homes/bot a/nested dir/ünï & co.bin",
+    );
+    if (!largeObject) throw new Error("large object missing from backup manifest");
+    expect(largeObject.file).toMatch(/^[a-f0-9]{64}\.object$/);
     expect(
-      readFileSync(path.join(out, "objects/homes/bot a/nested dir/ünï & co.bin")).equals(
+      readFileSync(path.join(out, "objects", largeObject.file)).equals(
         objects["homes/bot a/nested dir/ünï & co.bin"],
       ),
     ).toBe(true);

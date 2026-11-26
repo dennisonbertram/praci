@@ -14,7 +14,9 @@ import { financePath } from "../../lib/finance-route";
 import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { ErrorNotice } from "../finance/ui";
 import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
+import { ConfirmDialog } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
@@ -58,6 +60,7 @@ function CryptoTile({
   hasServer,
   manageTo,
   reload,
+  loadError,
   children,
 }: {
   hasKey: boolean | null;
@@ -65,6 +68,7 @@ function CryptoTile({
   /** The Blockscout MCP server's page, where its agents are chosen. */
   manageTo?: string;
   reload: () => void;
+  loadError: boolean;
   children?: ReactNode;
 }) {
   const { t } = useLingui();
@@ -82,7 +86,8 @@ function CryptoTile({
           </div>
         </div>
       </div>
-      <div className={`${hasKey || hasServer ? "" : "mt-auto "}flex items-center gap-2`}>
+      {children}
+      <div className="mt-auto flex items-center gap-2">
         {hasKey === null ? null : (
           <>
             {/* Nothing to connect without a key: the first wallet added starts it. Not "Not connected". */}
@@ -105,18 +110,47 @@ function CryptoTile({
           </>
         )}
       </div>
+      {loadError ? <ErrorNotice message={t`Could not load`} onRetry={reload} /> : null}
       {dialog ? (
         <BlockscoutConnectDialog onConnected={reload} onClose={() => setDialog(false)} />
       ) : null}
-      {children}
     </IntegrationTile>
   );
 }
 
+/** Named like a connection so the remove dialog reuses its copy. */
+const ALCHEMY = { name: "Alchemy" };
+
 /** Optional: with an Alchemy key, holdings come from Alchemy instead of the public RPC source. */
-function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: () => void }) {
+function AlchemyTile({
+  state,
+  reload,
+  loadError,
+}: {
+  state: AlchemyState | null;
+  reload: () => void;
+  loadError: boolean;
+}) {
   const { t } = useLingui();
   const [dialog, setDialog] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await rpc.finance.cryptoProviderRemove({ provider: "alchemy" });
+      setConfirming(false);
+      reload();
+    } catch (cause) {
+      setConfirming(false);
+      setError(errorText(cause, t`Could not remove`));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <IntegrationTile data-testid="finance-tile-alchemy" className={TILE}>
@@ -140,24 +174,17 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
               <DropdownMenuItem onClick={() => setDialog(true)}>
                 <Trans>Replace API key</Trans>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  void rpc.finance
-                    .cryptoProviderRemove({ provider: "alchemy" })
-                    .then(reload, reload)
-                }
-              >
+              <DropdownMenuItem onClick={() => setConfirming(true)}>
                 <Trans>Remove</Trans>
               </DropdownMenuItem>
             </TileMenu>
           </>
-        ) : (
+        ) : state === null || loadError ? null : (
           <>
             <Button
               size="sm"
               variant="outline"
               className="ms-auto"
-              disabled={state === null}
               aria-label={t`Connect Alchemy`}
               onClick={() => setDialog(true)}
             >
@@ -166,6 +193,12 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
           </>
         )}
       </div>
+      {loadError ? <ErrorNotice message={t`Could not load`} onRetry={reload} /> : null}
+      {error ? (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
       {state?.lastError ? (
         <p role="alert" className="text-xs text-destructive">
           {state.lastError}
@@ -174,6 +207,18 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
       {dialog ? (
         <AlchemyConnectDialog onConnected={reload} onClose={() => setDialog(false)} />
       ) : null}
+      <ConfirmDialog
+        open={confirming}
+        busy={busy}
+        title={t`Remove ${ALCHEMY.name}?`}
+        confirm={t`Remove ${ALCHEMY.name}`}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => void remove()}
+      >
+        <li>
+          <Trans>Your data in {ALCHEMY.name} is not deleted.</Trans>
+        </li>
+      </ConfirmDialog>
     </IntegrationTile>
   );
 }
@@ -183,10 +228,12 @@ function ExchangeTile({
   provider,
   found,
   reload,
+  loadError,
 }: {
   provider: ExchangeProvider;
   found: FinanceExchange | null | undefined;
   reload: () => void;
+  loadError: boolean;
 }) {
   const { t } = useLingui();
   const exchange = EXCHANGES.find((e) => e.provider === provider) ?? EXCHANGES[0];
@@ -217,13 +264,12 @@ function ExchangeTile({
               </DropdownMenuItem>
             </TileMenu>
           </>
-        ) : (
+        ) : found === undefined || loadError ? null : (
           <>
             <Button
               size="sm"
               variant="outline"
               className="ms-auto"
-              disabled={found === undefined}
               aria-label={t`Connect ${exchange.name}`}
               onClick={() => setDialog(true)}
             >
@@ -232,6 +278,7 @@ function ExchangeTile({
           </>
         )}
       </div>
+      {loadError ? <ErrorNotice message={t`Could not load`} onRetry={reload} /> : null}
       {dialog ? (
         <ExchangeConnectDialog
           provider={provider}
@@ -252,6 +299,8 @@ export type FinanceStatus = {
   blockscoutServer?: boolean;
   alchemy: AlchemyState | null;
   exchanges: FinanceExchange[] | null;
+  cryptoError: boolean;
+  exchangesError: boolean;
   reload: () => void;
 };
 
@@ -263,32 +312,30 @@ export function useFinanceStatus(): FinanceStatus {
     alchemy: AlchemyState;
   } | null>(null);
   const [exchanges, setExchanges] = useState<FinanceExchange[] | null>(null);
+  const [cryptoError, setCryptoError] = useState(false);
+  const [exchangesError, setExchangesError] = useState(false);
   const mounted = useMounted();
   const reload = useCallback(() => {
     rpc.finance
       .crypto()
-      .then(
-        (c) =>
-          mounted.current &&
-          setCrypto({
-            blockscout: c.connected && c.hasApiKey,
-            blockscoutServer: c.connected,
-            alchemy: c.alchemy ?? { connected: false, lastError: null },
-          }),
-      )
-      .catch(
-        () =>
-          mounted.current &&
-          setCrypto({
-            blockscout: false,
-            blockscoutServer: false,
-            alchemy: { connected: false, lastError: null },
-          }),
-      );
+      .then((c) => {
+        if (!mounted.current) return;
+        setCrypto({
+          blockscout: c.connected && c.hasApiKey,
+          blockscoutServer: c.connected,
+          alchemy: c.alchemy ?? { connected: false, lastError: null },
+        });
+        setCryptoError(false);
+      })
+      .catch(() => mounted.current && setCryptoError(true));
     rpc.finance
       .exchanges()
-      .then((all) => mounted.current && setExchanges(Array.isArray(all) ? all : []))
-      .catch(() => mounted.current && setExchanges([]));
+      .then((all) => {
+        if (!mounted.current) return;
+        setExchanges(Array.isArray(all) ? all : []);
+        setExchangesError(false);
+      })
+      .catch(() => mounted.current && setExchangesError(true));
   }, [mounted]);
   useEffect(reload, [reload]);
   return {
@@ -296,6 +343,9 @@ export function useFinanceStatus(): FinanceStatus {
     blockscoutServer: crypto?.blockscoutServer ?? false,
     alchemy: crypto ? crypto.alchemy : null,
     exchanges,
+    // The latest request failed: say so, even while the last known status stays on screen.
+    cryptoError,
+    exchangesError,
     reload,
   };
 }
@@ -311,6 +361,16 @@ export function connectedFinanceKeys(sources: FinanceSource[], status: FinanceSt
   if (status.alchemy?.connected && !status.alchemy.lastError) keys.add("alchemy");
   for (const { provider } of EXCHANGES)
     if (status.exchanges?.find((x) => x.provider === provider && x.connected && !x.lastError))
+      keys.add(provider);
+  return keys;
+}
+
+/** Alchemy or an exchange that is connected but whose last check failed: it needs attention too. */
+export function erroredFinanceKeys(status: FinanceStatus) {
+  const keys = new Set<string>();
+  if (status.alchemy?.connected && status.alchemy.lastError) keys.add("alchemy");
+  for (const { provider } of EXCHANGES)
+    if (status.exchanges?.find((x) => x.provider === provider && x.connected && x.lastError))
       keys.add(provider);
   return keys;
 }
@@ -339,6 +399,7 @@ export function FinanceSection({
   mode = "all",
   extras,
   cryptoManageTo,
+  only,
 }: {
   sources: FinanceSource[];
   status: FinanceStatus;
@@ -347,6 +408,8 @@ export function FinanceSection({
   extras?: Partial<Record<FinanceProvider | "crypto", ReactNode>>;
   /** Where Blockscout's agents are chosen, once its MCP server exists. */
   cryptoManageTo?: string;
+  /** Renders just this tile (a provider, "crypto", "alchemy" or an exchange), so the page can order tiles itself. */
+  only?: string;
 }) {
   const { t } = useLingui();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
@@ -364,11 +427,12 @@ export function FinanceSection({
   };
   const lapsedKeys = lapsedFinanceKeys(sources);
   const shown = (key: string) =>
-    mode === "all" ||
-    (mode === "lapsed"
-      ? lapsedKeys.has(key)
-      : (mode === "connected") === connectedKeys.has(key) &&
-        (mode === "connected" || !lapsedKeys.has(key)));
+    (!only || key === only) &&
+    (mode === "all" ||
+      (mode === "lapsed"
+        ? lapsedKeys.has(key)
+        : (mode === "connected") === connectedKeys.has(key) &&
+          (mode === "connected" || !lapsedKeys.has(key))));
 
   async function connect(provider: FinanceProvider, reconnect: boolean) {
     setBusy(provider);
@@ -409,15 +473,18 @@ export function FinanceSection({
                 <div className="min-w-0">
                   <TileName
                     name={name}
-                    to={connected && serverId ? `/app/integrations/mcp/${serverId}` : undefined}
+                    to={serverId ? `/app/integrations/mcp/${serverId}` : undefined}
                   />
                   <div className="line-clamp-2 text-xs text-muted-foreground">
                     {description[provider]}
                   </div>
                 </div>
               </div>
-              {/* Connected: the status row sits under the name, level with Gmail and Carta's. */}
-              <div className={`${connected ? "" : "mt-auto "}flex items-center gap-2`}>
+              {/* Used by first, then the action row at the bottom, level with Gmail and Carta's. */}
+              {connected ? (
+                <div className="max-sm:hidden empty:hidden">{extras?.[provider]}</div>
+              ) : null}
+              <div className="mt-auto flex items-center gap-2">
                 {busy === provider ? (
                   <StatusBadge status="connecting" />
                 ) : connected ? (
@@ -463,9 +530,6 @@ export function FinanceSection({
                   {error}
                 </p>
               ) : null}
-              {connected ? (
-                <div className="max-sm:hidden empty:hidden">{extras?.[provider]}</div>
-              ) : null}
             </IntegrationTile>
           );
         },
@@ -476,13 +540,16 @@ export function FinanceSection({
           hasServer={status.blockscoutServer}
           manageTo={cryptoManageTo}
           reload={reload}
+          loadError={status.cryptoError}
         >
           {mode === "available" ? null : (
             <div className="max-sm:hidden empty:hidden">{extras?.crypto}</div>
           )}
         </CryptoTile>
       ) : null}
-      {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={reload} /> : null}
+      {shown("alchemy") ? (
+        <AlchemyTile state={status.alchemy} reload={reload} loadError={status.cryptoError} />
+      ) : null}
       {EXCHANGES.filter(({ provider }) => shown(provider)).map(({ provider }) => (
         <ExchangeTile
           key={provider}
@@ -493,6 +560,7 @@ export function FinanceSection({
               : undefined
           }
           reload={reload}
+          loadError={status.exchangesError}
         />
       ))}
     </>

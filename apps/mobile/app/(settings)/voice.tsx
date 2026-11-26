@@ -1,3 +1,4 @@
+import type { VoiceCatalogEntry } from "@rakazo/contracts";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -28,12 +29,6 @@ import { native, useThemedStyles } from "../../lib/native";
 import { errorText } from "../../lib/user-error";
 import { speakText } from "../../lib/voice";
 
-type VoiceCatalogEntry = {
-  id: string;
-  name: string;
-  description: string;
-  transcribe: boolean;
-};
 type VoiceCredential = {
   id: string;
   provider: string;
@@ -72,15 +67,20 @@ export default function VoiceSettings() {
     "connect" | "disconnect" | "voice" | "speech" | "test" | "device-voice" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const deviceVoiceRevision = useRef(0);
   const deviceVoiceSaveInFlight = useRef(false);
+  // Set in the same tick as the tap, so a second tap before the re-render is ignored.
+  const voiceSaving = useRef(false);
 
-  const load = useCallback(async (nextProvider?: string) => {
-    const [nextCatalog, nextCredentials, nextStatus] = await Promise.all([
+  const load = useCallback(async (nextProvider?: string): Promise<boolean> => {
+    const [fullCatalog, nextCredentials, nextStatus] = await Promise.all([
       rpc<VoiceCatalogEntry[]>("voice/catalog"),
       rpc<VoiceCredential[]>("voice/credentials"),
       rpc<VoiceStatus>("voice/status"),
     ]);
+    // Transcription-only servers are set up on web and desktop.
+    const nextCatalog = fullCatalog.filter((entry) => entry.speech !== false);
     const selected = nextProvider || nextStatus.provider || nextCatalog[0]?.id || "";
     setCatalog(nextCatalog);
     setCredentials(nextCredentials);
@@ -90,15 +90,23 @@ export default function VoiceSettings() {
     setVoiceId(cred?.voiceId ?? "");
     setSpeechModel(cred?.speechModel ?? "");
     if (cred) {
-      setVoices(await rpc<VoiceInfo[]>("voice/voices", { provider: selected }));
+      try {
+        setVoices(await rpc<VoiceInfo[]>("voice/voices", { provider: selected }));
+      } catch {
+        setVoices([]);
+        return false;
+      }
     } else {
       setVoices([]);
     }
+    return true;
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
+      setLoadError(null);
+      setError(null);
       const revision = ++deviceVoiceRevision.current;
       void loadDeviceVoiceEnabled()
         .then((value) => {
@@ -126,10 +134,24 @@ export default function VoiceSettings() {
         },
       );
       void load()
-        .catch((err: unknown) => setError(errorText(err, t("Could not load voice settings"))))
+        .then((loaded) => {
+          if (!loaded) setError(t("Could not load voice settings"));
+        })
+        .catch((err: unknown) => setLoadError(errorText(err, t("Could not load voice settings"))))
         .finally(() => setLoading(false));
     }, [load, t]),
   );
+
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
+    void load()
+      .then((loaded) => {
+        if (!loaded) setError(t("Could not load voice settings"));
+      })
+      .catch((err: unknown) => setLoadError(errorText(err, t("Could not load voice settings"))))
+      .finally(() => setLoading(false));
+  }, [load, t]);
 
   /** One sound-switch save at a time; a failed save rolls back only that switch. */
   async function saveSoundPref(
@@ -223,7 +245,8 @@ export default function VoiceSettings() {
       setSpeechModel(cred?.speechModel ?? "");
       setVoices([]);
       try {
-        await load(nextProvider);
+        const loaded = await load(nextProvider);
+        if (!loaded) setError(t("Could not load voice settings"));
       } catch (err) {
         // A refresh failure must not leave another provider's voices available.
         setVoices([]);
@@ -249,9 +272,15 @@ export default function VoiceSettings() {
         ...(selected.id === "fish-audio" ? { speechModel: speechModel.trim() } : {}),
       });
       setApiKey("");
-      await load(selected.id);
     } catch (err) {
       setError(errorText(err, t("Could not connect")));
+      setPending(null);
+      return;
+    }
+    try {
+      if (!(await load(selected.id))) setError(t("Could not load voice settings"));
+    } catch {
+      setError(t("Could not load voice settings"));
     } finally {
       setPending(null);
     }
@@ -264,9 +293,20 @@ export default function VoiceSettings() {
     try {
       await rpc("voice/disconnect", { provider: credential.provider });
       setApiKey("");
-      await load(credential.provider);
+      setCredentials((current) =>
+        current.filter((entry) => entry.provider !== credential.provider),
+      );
+      setVoices([]);
+      setVoiceId("");
     } catch (err) {
       setError(errorText(err, t("Could not disconnect")));
+      setPending(null);
+      return;
+    }
+    try {
+      if (!(await load(credential.provider))) setError(t("Could not load voice settings"));
+    } catch {
+      setError(t("Could not load voice settings"));
     } finally {
       setPending(null);
     }
@@ -298,15 +338,28 @@ export default function VoiceSettings() {
   }
 
   async function chooseVoice(nextVoiceId: string) {
+    if (pending !== null || voiceSaving.current) return;
+    voiceSaving.current = true;
+    const previousVoiceId = voiceId;
     setVoiceId(nextVoiceId);
     setPending("voice");
+    setError(null);
     try {
       await rpc("voice/setVoice", { voiceId: nextVoiceId, provider: selected?.id });
-      await load(selected?.id);
     } catch (err) {
+      setVoiceId(previousVoiceId);
       setError(errorText(err, t("Could not save that voice")));
+      setPending(null);
+      voiceSaving.current = false;
+      return;
+    }
+    try {
+      if (!(await load(selected?.id))) setError(t("Could not load voice settings"));
+    } catch {
+      setError(t("Could not load voice settings"));
     } finally {
       setPending(null);
+      voiceSaving.current = false;
     }
   }
 
@@ -325,10 +378,28 @@ export default function VoiceSettings() {
     }
   }
 
+  if (loading || loadError) {
+    return (
+      <SafeAreaView edges={["bottom"]} style={styles.screen}>
+        <View style={[styles.content, { flex: 1, justifyContent: "center" }]}>
+          {loadError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {loadError}
+            </Text>
+          ) : null}
+          {loadError ? (
+            <NativeActionButton label={t("Try again")} onPress={retryLoad} />
+          ) : (
+            <ActivityIndicator color={native.secondaryLabel} />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
-        {loading ? <ActivityIndicator color={native.secondaryLabel} /> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={styles.group}>
           <Pressable

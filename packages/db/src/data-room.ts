@@ -3,6 +3,7 @@ import type { Actor } from "@rakazo/contracts";
 import { DATA_ROOM_STUCK_MS } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { recordImportSkips } from "./data-room-imports.js";
 import { IsolationError } from "./scope.js";
 
 /** Duplicate folder name, non-empty folder delete, or a move that would create a cycle. */
@@ -34,10 +35,14 @@ export interface DataRoomFilters {
   docDateTo?: Date;
   status?: string;
   source?: string;
+  /** Hides items of this source (agents never search meeting text). */
+  excludeSource?: string;
   /** Only ready items with no Legal analysis at their current revision (as Legal counts them). */
   legalUnchecked?: boolean;
   /** Hides items imported through these connections. Items with no connection stay visible. */
   excludeConnectionIds?: string[];
+  /** Only items imported through this connection (the Omi agent's own recordings). */
+  onlyConnectionId?: string;
 }
 
 const MAX_LIMIT = 50;
@@ -199,6 +204,8 @@ export function eligibleWhere(
     ...(filters.tag ? { tags: { has: filters.tag } } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.excludeSource ? { NOT: { source: filters.excludeSource } } : {}),
+    ...(filters.onlyConnectionId ? { sourceConnectionId: filters.onlyConnectionId } : {}),
     ...(filters.excludeConnectionIds?.length
       ? {
           OR: [
@@ -231,9 +238,13 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   if (filters.tag) parts.push(Prisma.sql`${filters.tag} = ANY(i."tags")`);
   if (filters.status) parts.push(Prisma.sql`i."status" = ${filters.status}`);
   if (filters.source) parts.push(Prisma.sql`i."source" = ${filters.source}`);
+  if (filters.excludeSource) parts.push(Prisma.sql`i."source" <> ${filters.excludeSource}`);
+  if (filters.onlyConnectionId) {
+    parts.push(Prisma.sql`i."sourceConnectionId" = ${filters.onlyConnectionId}`);
+  }
   if (filters.legalUnchecked) {
     parts.push(
-      Prisma.sql`i."status" = 'ready' AND NOT EXISTS (
+      Prisma.sql`i."status" = 'ready' AND i."source" <> 'meeting' AND NOT EXISTS (
         SELECT 1 FROM legal_contracts c
         WHERE c."dataRoomItemId" = i.id AND c."spaceId" = i."spaceId" AND c."userId" = i."userId"
           AND c."analyzedRevision" >= i.revision)`,
@@ -338,10 +349,11 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async processing(actor: Actor, now = new Date()) {
       const where = { spaceId: actor.spaceId, userId: actor.userId };
       // A file that has sat in Reading too long (a lost job) fails, so Try again is offered.
+      // Pending rows are left to the reconciler.
       await prisma.dataRoomItem.updateMany({
         where: {
           ...where,
-          status: { in: ["pending", "extracting"] },
+          status: "extracting",
           updatedAt: { lt: new Date(now.getTime() - READING_STALE_MS) },
         },
         data: { status: "failed", error: "Reading took too long." },
@@ -565,7 +577,10 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     /** What a tidy-up looks at: classified items only, with the facets that say where they belong. */
     listForSort: (actor: Actor, limit: number) =>
       prisma.dataRoomItem.findMany({
-        where: { ...eligibleWhere(actor), classifiedAt: { not: null } },
+        where: {
+          ...eligibleWhere(actor, { excludeSource: "meeting" }),
+          classifiedAt: { not: null },
+        },
         select: {
           id: true,
           name: true,
@@ -584,7 +599,16 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async createItem(
       actor: Actor,
       input: {
-        source: "upload" | "drive" | "box" | "gmail" | "chat" | "finance";
+        source:
+          | "upload"
+          | "scan"
+          | "drive"
+          | "box"
+          | "gmail"
+          | "chat"
+          | "finance"
+          | "omi"
+          | "meeting";
         sha256: string;
         name: string;
         mimeType: string;
@@ -596,6 +620,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         externalId?: string | null;
         sourceUrl?: string | null;
         sourceUpdatedAt?: Date | null;
+        notIndexed?: boolean;
+        status?: "ready";
         docType?: string | null;
         docDate?: Date | null;
         parties?: string[];
@@ -604,9 +630,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     ): Promise<{ item: DataRoomItemRecord; created: boolean }> {
       const findExisting = () =>
         prisma.dataRoomItem.findFirst({
-          where: { ...eligibleWhere(actor), source: "upload", sha256: input.sha256 },
+          where: { ...eligibleWhere(actor), source: input.source, sha256: input.sha256 },
         });
-      if (input.source === "upload") {
+      if (input.source === "upload" || input.source === "scan") {
         const existing = await findExisting();
         if (existing) return { item: existing, created: false };
       }
@@ -629,7 +655,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         if (isUniqueViolation(error)) {
           // An upload repeats by bytes; an import repeats by its source id.
           const existing =
-            input.source === "upload"
+            input.source === "upload" || input.source === "scan"
               ? await findExisting()
               : input.externalId
                 ? await prisma.dataRoomItem.findFirst({
@@ -735,6 +761,14 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         where: { id, ...eligibleWhere(actor) },
       });
       if (!count) throw new IsolationError();
+      // A file removed before it was filed still counts toward its import, so the import can finish.
+      if (item.importId) {
+        await recordImportSkips(
+          prisma,
+          item.importId,
+          item.status === "failed" ? { rejected: 1 } : { duplicates: 1 },
+        );
+      }
       return { storageKey: item.storageKey };
     },
 
@@ -1005,6 +1039,15 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           AND "storageKey" IS NOT NULL AND "thumbnailKey" IS NULL AND "thumbnailTriedAt" IS NULL
         RETURNING id`;
       return rows.map((row) => row.id);
+    },
+
+    /** Releases a failed enqueue claim while the item still has no thumbnail. */
+    async releaseThumbnail(actor: Actor, id: string): Promise<boolean> {
+      const { count } = await prisma.dataRoomItem.updateMany({
+        where: { id, ...eligibleWhere(actor), thumbnailKey: null },
+        data: { thumbnailTriedAt: null },
+      });
+      return count === 1;
     },
 
     /** Saves the thumbnail's store key. False when the item is gone or the actor's no longer. */

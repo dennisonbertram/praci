@@ -110,6 +110,18 @@ function fixture({
     dataRoomItem: {
       findMany: vi.fn(async () => [{ spaceId: "space-1", storageKey: "blob/k1" }]),
     },
+    meetingCaptureChunk: {
+      findMany: vi.fn(async () => [{ spaceId: "space-1", blobKey: "capture/k3" }]),
+    },
+    omiUpload: {
+      findMany: vi.fn(async () => [{ spaceId: "space-1", storageKey: "omi/k5" }]),
+    },
+    contactPhoto: {
+      findMany: vi.fn(async () => [{ spaceId: "space-1", storageKey: "photo/k2" }]),
+    },
+    accountExport: {
+      findMany: vi.fn(async () => [{ spaceId: "space-2", storageKey: "export/k4" }]),
+    },
     computer: {
       findMany: vi.fn(async () => [
         {
@@ -227,6 +239,24 @@ describe("identity trust through auth endpoints", () => {
     expect(bootstrapUserSpace).toHaveBeenCalledTimes(1);
     expect((await f.signin()).status).toBe(200);
     expect(bootstrapUserSpace).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns stable error codes when signup is closed or the email is not allowed", async () => {
+    const closed = fixture();
+    closed.policy.signupsEnabled = false;
+    const closedResponse = await closed.signup();
+    expect(closedResponse.status).toBe(400);
+    expect(await closedResponse.json()).toMatchObject({
+      code: "REGISTRATION_CLOSED",
+      message: "Registration is closed",
+    });
+    const restricted = fixture({ allowlist: "approved@example.test" });
+    const restrictedResponse = await restricted.signup("outsider@other.test");
+    expect(restrictedResponse.status).toBe(400);
+    expect(await restrictedResponse.json()).toMatchObject({
+      code: "EMAIL_NOT_ALLOWED",
+      message: "Email is not allowed to register",
+    });
   });
 
   it("admits the first allowlisted account without email delivery and still blocks everyone else", async () => {
@@ -493,6 +523,36 @@ describe("session credentials", () => {
     expect(server?.session).not.toHaveProperty("token");
   });
 
+  it("stores password reset tokens hashed and accepts one stored before hashing", async () => {
+    const f = fixture();
+    const { user } = (await (await f.signup()).json()) as { user: { id: string } };
+    expect(
+      (await f.request("/request-password-reset", { email: "approved@example.test" })).status,
+    ).toBe(200);
+    const token = f.messages.at(-1)!.text.match(/reset-password\/([^?\s]+)/)![1]!;
+    expect(f.data.verification!.some((row) => String(row.identifier).includes(token))).toBe(false);
+    const reset = await f.request("/reset-password", { token, newPassword: "offline-password34" });
+    expect(reset.status, await reset.clone().text()).toBe(200);
+    f.data.verification!.push({
+      id: "legacy-reset",
+      identifier: "reset-password:legacy-reset-token",
+      value: user.id,
+      expiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const legacy = await f.request("/reset-password", {
+      token: "legacy-reset-token",
+      newPassword: "offline-password56",
+    });
+    expect(legacy.status, await legacy.clone().text()).toBe(200);
+    const signedIn = await f.request("/sign-in/email", {
+      email: "approved@example.test",
+      password: "offline-password56",
+    });
+    expect(signedIn.status).toBe(200);
+  });
+
   it("requires the password to delete an account, even from a fresh session", async () => {
     const f = fixture({ delivery: false });
     const { token } = (await (await f.signup()).json()) as { token: string };
@@ -504,7 +564,13 @@ describe("session credentials", () => {
     const deleted = await f.request("/delete-user", { password: "offline-password12" }, token);
     expect(deleted.status).toBe(200);
     expect(f.data.user).toHaveLength(0);
-    expect(f.blobs).toEqual([{ spaceId: "space-1", storageKey: "blob/k1" }]);
+    expect(f.blobs).toEqual([
+      { spaceId: "space-1", storageKey: "blob/k1" },
+      { spaceId: "space-1", storageKey: "photo/k2" },
+      { spaceId: "space-2", storageKey: "export/k4" },
+      { spaceId: "space-1", storageKey: "capture/k3" },
+      { spaceId: "space-1", storageKey: "omi/k5" },
+    ]);
     expect(f.homes).toEqual([
       expect.objectContaining({ homeKey: "home-1", homeSnapshotId: "snap-2" }),
     ]);

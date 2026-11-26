@@ -11,6 +11,7 @@ import {
   mailOutcomeSummary,
   normalizeResponseStreamingPreference,
   projectMessages,
+  redactSecrets,
   reduceLiveMessageBlocks,
   responseStreamingEnabled,
   runFailureError,
@@ -655,6 +656,7 @@ describe("tool names for people", () => {
   it("never says a mail send or draft finished before its outcome is known", () => {
     expect(toolPhrase("mail_send", "done")).toBe("Email to send");
     expect(toolPhrase("mail_draft", "done")).toBe("Draft to save");
+    expect(toolPhrase("mail_reply_batch", "done")).toBe("Emails to send");
     expect(mailOutcomeSummary("mail_send", "sent")).toBe("Sent email");
     expect(mailOutcomeSummary("mail_send", "failed")).toBe("Couldn't send");
     expect(mailOutcomeSummary("mail_draft", "saved")).toBe("Draft saved");
@@ -863,6 +865,41 @@ describe("appendToolCallSegment", () => {
   });
 });
 
+describe("redactSecrets", () => {
+  it("hides a longer value whole when a shorter one appears inside it", () => {
+    expect(redactSecrets("password=test-value-123", ["123", "test-value-123"])).toBe(
+      "password=[redacted]",
+    );
+    expect(redactSecrets("a 123 b", ["123", "test-value-123", ""])).toBe("a [redacted] b");
+  });
+
+  it("hides values that overlap without one containing the other", () => {
+    expect(redactSecrets("x=pre-test-value-123;", ["pre-tes", "test-value-123"])).toBe("x=[redacted];");
+    expect(redactSecrets("abab abab", ["abab"])).toBe("[redacted] [redacted]");
+    expect(redactSecrets("aaaaaa", ["aaaa"])).toBe("[redacted]");
+    expect(redactSecrets("keyfake-keyfake-", ["fake-", "key"])).toBe(
+      "[redacted][redacted][redacted][redacted]",
+    );
+  });
+
+  it("hides each body line of a multi-line value when output splits or rejoins its lines", () => {
+    const key =
+      "-----BEGIN FAKE KEY-----\r\nAAAAfakeKeyLineOne01\nBBBBfakeKeyLineTwo02\nshort\n-----END FAKE KEY-----\n";
+    expect(redactSecrets(`key: ${key}`, [key])).toBe("key: [redacted]");
+    // An unquoted `echo $KEY` joins the lines with spaces.
+    expect(
+      redactSecrets(
+        "-----BEGIN FAKE KEY----- AAAAfakeKeyLineOne01 BBBBfakeKeyLineTwo02 short -----END",
+        [key],
+      ),
+    ).toBe("-----BEGIN FAKE KEY----- [redacted] [redacted] short -----END");
+    expect(redactSecrets("tail: BBBBfakeKeyLineTwo02", [key])).toBe("tail: [redacted]");
+    expect(containsSecret({ out: "AAAAfakeKeyLineOne01" }, [key])).toBe(true);
+    // Short lines and spaced lines like the header also appear in ordinary text.
+    expect(containsSecret({ out: "short -----BEGIN FAKE KEY-----" }, [key])).toBe(false);
+  });
+});
+
 describe("createStreamingRedactor", () => {
   it("never emits a secret split across streaming chunks", () => {
     const redactor = createStreamingRedactor(["fake-secret-123"]);
@@ -873,6 +910,39 @@ describe("createStreamingRedactor", () => {
     ].join("");
     expect(output).toBe("before [redacted] after");
     expect(output).not.toContain("fake-secret-123");
+  });
+
+  it("hides overlapping values whole, however the text is split", () => {
+    const secrets = ["pre-tes", "test-value-123", "123"];
+    const text = "x=pre-test-value-123; y=123; z=test-value-123";
+    for (let size = 1; size <= text.length; size += 1) {
+      const redactor = createStreamingRedactor(secrets);
+      let output = "";
+      for (let at = 0; at < text.length; at += size)
+        output += redactor.push(text.slice(at, at + size));
+      output += redactor.finish();
+      expect(output).toBe(redactSecrets(text, secrets));
+      expect(output).toBe("x=[redacted]; y=[redacted]; z=[redacted]");
+    }
+  });
+
+  it("shows a long run of a value that overlaps itself as it streams, without holding it", () => {
+    const redactor = createStreamingRedactor(["0000"]);
+    const outputs = Array.from({ length: 10_000 }, () => redactor.push("0000"));
+    // One placeholder as soon as the first match is known; later matches extend it.
+    expect(outputs[0]).toBe("[redacted]");
+    expect(outputs.slice(1).every((output) => output === "")).toBe(true);
+    expect(redactor.push(" done") + redactor.finish()).toBe(" done");
+  });
+
+  it("hides a line of a multi-line value split across chunks", () => {
+    const redactor = createStreamingRedactor(["header\nAAAAfakeKeyLineOne01\n"]);
+    const output = [
+      redactor.push("x AAAAfake"),
+      redactor.push("KeyLineOne01 y"),
+      redactor.finish(),
+    ];
+    expect(output.join("")).toBe("x [redacted] y");
   });
 
   it("does not delay chunks when there are no known secrets", () => {
@@ -933,6 +1003,38 @@ describe("sanitizeUtf16ForJson", () => {
         "meta\uFFFD": "ok",
         "meta\uFFFD#2": "also",
       },
+    });
+  });
+});
+
+describe("stale helper projection", () => {
+  it.each([
+    "run.waiting_input",
+    "computer.takeover.requested",
+    "run.completed",
+    "run.failed",
+    "run.cancelled",
+  ])("settles helpers on %s without reviving them on resume", (type) => {
+    const base = {
+      id: "fixture",
+      threadId: "thread-1",
+      runId: "run-1",
+      seq: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const helper = { agentId: "helper", name: "Helper", task: "Check", status: "running" };
+    const next = projectMessages([
+      { ...base, type: "thread.subagent", payload: helper },
+      { ...base, seq: 2, type, payload: {} },
+      { ...base, seq: 3, type: "run.started", payload: {} },
+      { ...base, seq: 4, type: "thread.subagent", payload: { ...helper, agentId: "resumed" } },
+    ]);
+    expect(next.find((m) => m.id === "subagent:helper")?.blocks[0]).toMatchObject({
+      status: "failed",
+      result: "stopped",
+    });
+    expect(next.find((m) => m.id === "subagent:resumed")?.blocks[0]).toMatchObject({
+      status: "running",
     });
   });
 });

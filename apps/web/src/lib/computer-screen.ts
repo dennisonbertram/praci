@@ -32,6 +32,11 @@ export function embeddableScreenUrl(url: string | null): string | null {
   try {
     const parsed = new URL(url, window.location.href);
     const page = new URL(window.location.href);
+    // The server that served this page proxies /novnc/. Keep the frame on this origin even when the
+    // API's WEB_ORIGIN names another host for it (localhost vs 127.0.0.1), as the CSP frames 'self'.
+    if (parsed.pathname.startsWith("/novnc/")) {
+      return `${page.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
     const local = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
     const pagePort = page.port || (page.protocol === "https:" ? "443" : "80");
     if (local && parsed.port && parsed.port !== pagePort) {

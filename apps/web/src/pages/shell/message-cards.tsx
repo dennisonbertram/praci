@@ -108,7 +108,7 @@ export function ChoiceCard({
                 type="button"
                 disabled={Boolean(block.answerId) || pending}
                 onClick={() => void choose(option.id)}
-                className={`flex w-full items-start gap-3 rounded-xl px-3.5 py-3.5 text-start text-foreground ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent disabled:opacity-60"}`}
+                className={`flex w-full items-start gap-3 rounded-xl border border-border px-3.5 py-3.5 text-start text-foreground ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent disabled:opacity-60"}`}
               >
                 <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center rounded-[7px] bg-background text-[12.5px] font-medium text-foreground/75">
                   {option.letter}
@@ -461,7 +461,7 @@ export function McpApprovalCard({
     }
   }
 
-  const summary = endpoint ?? `stdio · ${transport}`;
+  const summary = endpoint ?? (transport === "stdio" ? "stdio" : transport);
   return (
     <BuiCard data-testid="mcp-approval-card" className="max-w-full p-4">
       <div className="flex items-center gap-2">

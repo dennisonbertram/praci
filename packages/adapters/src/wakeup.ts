@@ -5,8 +5,8 @@ import type {
   JobWorkerHost,
 } from "@rakazo/adapter-kit";
 import { dispatchBackgroundJob } from "@rakazo/adapter-kit";
-import { isTooManyDatabaseConnections } from "@rakazo/db";
-import { runCorrelatedJob, unwrapJobPayload, wrapJobPayload } from "@rakazo/logging";
+import { isTooManyDatabaseConnections, runAsSystem } from "@rakazo/db";
+import { getLogger, runCorrelatedJob, unwrapJobPayload, wrapJobPayload } from "@rakazo/logging";
 import type { CronItem, Runner, WorkerUtils } from "graphile-worker";
 import { makeWorkerUtils, parseCronItems, run } from "graphile-worker";
 import type { Pool } from "pg";
@@ -25,12 +25,15 @@ export class GraphileJobPublisher implements JobPublisher {
   async enqueue(job: BackgroundJob): Promise<void> {
     const utils = await this.getUtils();
     // replace resets attempts and run_at. unsafe_dedupe leaves both, so an
-    // exhausted row would stay queued forever. Dedupe only while attempts remain.
+    // exhausted row would stay queued forever. Dedupe only while attempts remain,
+    // and not a job locked by replaceLockedBefore: Graphile never unlocks a job
+    // whose worker died, and replace detaches a locked job and inserts a new one.
     const jobKeyMode = await this.keepExistingMode(utils, job);
     await utils.addJob(job.name, wrapJobPayload(job.payload), {
       runAt: job.availableAt,
       jobKey: job.replaceKey,
       maxAttempts: job.maxAttempts,
+      ...(job.priority !== undefined ? { priority: job.priority } : {}),
       ...(jobKeyMode ? { jobKeyMode } : {}),
     });
   }
@@ -75,13 +78,37 @@ export class GraphileJobPublisher implements JobPublisher {
       );
       return found.rows[0];
     });
-    if (
-      !existing ||
-      existing.locked_at ||
-      Number(existing.attempts) >= Number(existing.max_attempts)
-    )
+    if (!existing) return undefined;
+    const lockedAt = existing.locked_at;
+    if (lockedAt && job.replaceLockedBefore && lockedAt <= job.replaceLockedBefore)
       return undefined;
+    if (Number(existing.attempts) >= Number(existing.max_attempts)) return undefined;
     return "unsafe_dedupe";
+  }
+}
+
+/**
+ * Job payloads carry only ids. Dispatch starts as system rather than inheriting
+ * whichever request enqueued the job (the in-memory queue's timers would otherwise
+ * keep its tenant); each handler then narrows to the tenant of the row it acts for
+ * (see createBackgroundJobHandlers).
+ */
+function dispatchJob(handlers: BackgroundJobHandlers, name: string, payload: unknown) {
+  return runAsSystem(`background job ${name}`, () =>
+    dispatchBackgroundJob(handlers, name, payload),
+  );
+}
+
+/**
+ * Install or upgrade graphile-worker's schema. Runs as the migration role during
+ * `pnpm db:migrate`, so the runtime role only needs grants on that schema.
+ */
+export async function migrateJobQueue(connectionString: string): Promise<void> {
+  const utils = await makeWorkerUtils({ connectionString });
+  try {
+    await utils.migrate();
+  } finally {
+    await utils.release();
   }
 }
 
@@ -99,8 +126,17 @@ export const RECURRING_JOBS: CronItem[] = [
   { task: "account.export.cleanup", match: "29 3 * * *" },
   { task: "company.import.recover", match: "* * * * *" },
   { task: "company.refresh.tick", match: "* * * * *" },
+  { task: "watch.probe", match: "* * * * *" },
+  { task: "pages.refresh.tick", match: "* * * * *" },
+  { task: "pages.snapshots.retention", match: "41 3 * * *" },
   // Gmail push watches last 7 days; renew daily. Does nothing unless push is configured.
   { task: "mail.watch.renew", match: "11 4 * * *" },
+  // Background sync of every connected mailbox, and a retry after a failed sync. Push is not required.
+  { task: "mail.sync.sweep", match: "*/5 * * * *" },
+  // Recordings whose device went quiet are stored with what arrived.
+  { task: "meetings.capture_sweep", match: "*/5 * * * *" },
+  // Pipeline statuses and next calls from the owner's mail and calendar.
+  { task: "pipeline.auto_status.sweep", match: "*/30 * * * *" },
   // Devin sessions for the Devin page and its alerts.
   { task: "devin.refresh", match: "*/2 * * * *" },
 ];
@@ -161,7 +197,7 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
             name,
             payload: unpacked.payload,
             correlation: unpacked.correlation,
-            run: () => dispatchBackgroundJob(handlers, name, unpacked.payload),
+            run: () => dispatchJob(handlers, name, unpacked.payload),
           });
         },
       ]),
@@ -175,6 +211,19 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
       ...(this.options.cron ? { parsedCronItems: parseCronItems(this.options.cron) } : {}),
     });
     runner.events.on("job:failed", ({ job, error }) => {
+      if (job.attempts >= job.max_attempts) {
+        const message = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+        getLogger().error(
+          `${job.task_identifier} failed after exhausting attempts`,
+          new Error(message),
+          {
+            "job.task": job.task_identifier,
+            "job.id": job.id,
+            "job.attempts": job.attempts,
+            "job.max_attempts": job.max_attempts,
+          },
+        );
+      }
       recordHistoryCompactAttemptsExhausted(job, error);
     });
     if (this.stopping) {
@@ -231,6 +280,59 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
       }
     }
   }
+}
+
+/** Exhausted retry rows are durable notice requests, including across worker restarts. */
+export function createRoutineRetryNoticeReconciler(
+  pool: Pool,
+  notify: (runId: string) => Promise<void>,
+): () => Promise<void> {
+  const batchSize = 20;
+  const concurrency = 4;
+  let cursor = "0";
+  return async () => {
+    const { rows } = await pool.query<{ id: string; revision: number; payload: unknown }>(
+      `select jobs.id, jobs.revision, jobs.payload
+       from graphile_worker._private_jobs as jobs
+       join graphile_worker._private_tasks as tasks on tasks.id = jobs.task_id
+       where tasks.identifier = 'routine.retry'
+         and jobs.attempts >= jobs.max_attempts and jobs.locked_at is null
+         and jobs.id > $1::bigint
+       order by jobs.id limit $2`,
+      [cursor, batchSize],
+    );
+    const deliver = async (job: (typeof rows)[number]) => {
+      const { payload } = unwrapJobPayload(job.payload);
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        !("runId" in payload) ||
+        typeof payload.runId !== "string" ||
+        !payload.runId
+      ) {
+        return;
+      }
+      try {
+        await notify(payload.runId);
+        // A concurrently replaced job is new work, not the notice we just delivered.
+        // A crash before this delete may replay the notice (at-least-once delivery).
+        await pool.query(
+          `delete from graphile_worker._private_jobs
+           where id = $1 and revision = $2
+             and attempts >= max_attempts and locked_at is null`,
+          [job.id, job.revision],
+        );
+      } catch (error) {
+        getLogger().error("routine retry exhaustion notification", error);
+      }
+    };
+    for (let index = 0; index < rows.length; index += concurrency) {
+      await Promise.all(rows.slice(index, index + concurrency).map(deliver));
+    }
+    // Advance past failures too, so an unavailable destination cannot starve later notices.
+    // Wrap after the final page; failed rows stay durable and will be revisited.
+    cursor = rows.length === batchSize ? rows[rows.length - 1]!.id : "0";
+  };
 }
 
 /** Graphile's default when a job sets no cap. */
@@ -389,7 +491,7 @@ export class InMemoryJobQueue implements JobPublisher, JobWorkerHost {
       name: job.name,
       payload: unpacked.payload,
       correlation: unpacked.correlation,
-      run: () => dispatchBackgroundJob(handlers, job.name, unpacked.payload),
+      run: () => dispatchJob(handlers, job.name, unpacked.payload),
     }).catch(() => {
       this.failures.set(job.name, (this.failures.get(job.name) ?? 0) + 1);
     });

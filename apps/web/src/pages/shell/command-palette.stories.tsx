@@ -122,12 +122,12 @@ export const SearchFindsContactsAndChats: Story = {
         icon: <BookUser size={16} strokeWidth={1.75} />,
         entries: [
           {
-            id: "/app/contacts?q=Ada%20Example",
+            id: "/app/contacts/c1",
             label: "Ada Example",
             detail: "Halcyon Logistics",
           },
           {
-            id: "/app/contacts?q=Ben%20Sample",
+            id: "/app/contacts/c2",
             label: "Ben Sample",
             detail: "ben@halcyon.example",
           },

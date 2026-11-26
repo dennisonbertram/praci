@@ -78,6 +78,19 @@ describe("scripted runtime", () => {
     expect(script?.some((t) => t.toolCalls?.some((c) => c.args.name === "Scout"))).toBe(true);
   });
 
+  it("creates and writes a named page, and can say a given line", () => {
+    const calls = (prompt: string) => inferScript(prompt).flatMap((turn) => turn.toolCalls ?? []);
+    expect(calls("make a page called Customer support")).toMatchObject([
+      { name: "page_create", args: { title: "Customer support" } },
+    ]);
+    expect(calls("write the page called Customer support")).toMatchObject([
+      { name: "page_write", args: { page: "Customer support" } },
+    ]);
+    expect(inferScript("say: See [P](/app/pages/b/p)")[0]?.assistant).toBe(
+      "See [P](/app/pages/b/p)",
+    );
+  });
+
   it("proposes a named space", () => {
     const script = inferScript("create a space named Customer support");
     expect(

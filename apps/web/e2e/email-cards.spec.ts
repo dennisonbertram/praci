@@ -31,18 +31,11 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   );
   await page.keyboard.press("Enter");
 
-  // Urgent mail is a card; Later is a compact row list with the attachment count.
+  // One table row per email, most urgent first, with the attachment count.
   const cards = panel.getByTestId("email-cards");
   await expect(cards).toBeVisible({ timeout: 60_000 });
-  await expect(cards.getByRole("heading")).toHaveText([
-    "Today",
-    "Within 3 days",
-    "This week",
-    "No rush",
-  ]);
-  await expect(cards.getByTestId("email-card")).toHaveCount(3);
-  await expect(cards.getByTestId("email-row")).toHaveCount(2);
-  await expect(cards.getByTestId("email-card").first()).toContainText("Offsite dates");
+  await expect(cards.getByTestId("email-row")).toHaveCount(5);
+  await expect(cards.getByTestId("email-row").first()).toContainText("Offsite dates");
   const attached = cards.getByTestId("email-row").filter({ hasText: "Q3 report" });
   await expect(attached.getByLabel("Attachments: 2")).toBeVisible();
   await expect(
@@ -54,7 +47,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await captureScreenshot(page, testInfo, "email-cards-in-chat");
 
   // Clicking a card opens the message in place, without leaving the Inbox.
-  await cards.getByTestId("email-card").first().click();
+  await cards.getByTestId("email-row").first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Offsite dates")).toBeVisible();
   const body = dialog.locator("iframe").contentFrame().locator("#preview").contentFrame();

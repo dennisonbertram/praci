@@ -19,6 +19,8 @@ export interface MailActionInput {
   senders: string[];
   /** Provider thread ids that changed; undo works from these. */
   threadIds: string[];
+  /** The agent call behind the change, so its Undo reaches the approval decision log. */
+  effectId?: string;
 }
 
 /** Records bulk mail actions so they can be listed and undone. Appends to the batch if it exists. */
@@ -31,9 +33,10 @@ export async function logMailAction(
   if (input.threadIds.length === 0) return;
   await prisma.$executeRaw`
     INSERT INTO mail_action_logs (id, "spaceId", "userId", "connectionId", "batchId", kind, source,
-      reason, "senderAddresses", "threadIds")
+      reason, "senderAddresses", "threadIds", "effectId")
     VALUES (gen_random_uuid()::text, ${spaceId}, ${userId}, ${connectionId}, ${input.batchId},
-      ${input.kind}, ${input.source}, ${input.reason}, ${input.senders}::text[], ${input.threadIds}::text[])
+      ${input.kind}, ${input.source}, ${input.reason}, ${input.senders}::text[], ${input.threadIds}::text[],
+      ${input.effectId ?? null})
     ON CONFLICT ("connectionId", "batchId") DO UPDATE SET
       "senderAddresses" = ARRAY(SELECT DISTINCT unnest(mail_action_logs."senderAddresses" || EXCLUDED."senderAddresses")),
       "threadIds" = ARRAY(SELECT DISTINCT unnest(mail_action_logs."threadIds" || EXCLUDED."threadIds"))`;
