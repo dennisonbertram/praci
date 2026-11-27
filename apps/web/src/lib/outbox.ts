@@ -21,8 +21,14 @@ export interface OutboxSnapshot {
 /** Called once a held item is over: null when it went out, the reason when it did not, undefined when undone. */
 type HoldEnd = (problem: string | null | undefined) => void;
 
-/** Sends the message; resolves to null when it went out, or to the reason it did not. */
-type Run = () => Promise<string | null>;
+export type HoldFailure = {
+  message: string;
+  uncertain?: boolean;
+  deliveryResolution?: "retry" | "checkSent";
+};
+
+/** Sends the message; resolves to null when it went out, or to its failure state. */
+type Run = () => Promise<string | HoldFailure | null>;
 
 let snapshot: OutboxSnapshot = { view: null, restoring: null };
 let held:
@@ -73,7 +79,7 @@ async function fire() {
     return;
   }
   set({ view: { kind: "sending", undoable: false } });
-  let problem: string | null;
+  let problem: string | HoldFailure | null;
   try {
     problem = await run();
   } catch (cause) {
@@ -85,7 +91,23 @@ async function fire() {
     clearTimeout(sentTimer);
     sentTimer = setTimeout(() => set({ view: null }), SENT_MS);
   } else {
-    set({ view: null, ...(restore ? { restoring: { ...restore, notice: problem } } : {}) });
+    const message = typeof problem === "string" ? problem : problem.message;
+    const deliveryStatus =
+      typeof problem === "string" ? undefined : problem.uncertain ? "uncertain" : undefined;
+    const deliveryResolution =
+      typeof problem === "string"
+        ? undefined
+        : problem.uncertain
+          ? (problem.deliveryResolution ?? restore?.deliveryResolution)
+          : undefined;
+    set({
+      view: null,
+      ...(restore
+        ? { restoring: { ...restore, notice: message, deliveryStatus, deliveryResolution } }
+        : {}),
+    });
+    onEnd?.(message);
+    return;
   }
   onEnd?.(problem);
 }

@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -75,48 +76,50 @@ export function AppSafes({ reloadKey = 0, onAdded }: { reloadKey?: number; onAdd
           {error}
         </p>
       ) : null}
-      <Table>
-        <TableHeader>
-          <TableHeadRow>
-            <TableHead>{t`Investor`}</TableHead>
-            <TableHead className="text-end">{t`Amount`}</TableHead>
-            <TableHead className="text-end">{t`Valuation cap`}</TableHead>
-            <TableHead className="text-end">{t`Discount`}</TableHead>
-            <TableHead>{t`Investment date`}</TableHead>
-            <TableHead className="w-32">
-              <span className="sr-only">{t`Actions`}</span>
-            </TableHead>
-          </TableHeadRow>
-        </TableHeader>
-        <TableBody aria-label={t`Fundraising SAFEs`}>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.investorName}</TableCell>
-              <TableCell className="text-end tabular-nums">
-                {formatCents(row.principalCents, hidden)}
-              </TableCell>
-              <TableCell className="text-end tabular-nums">
-                {formatCents(row.valuationCapCents, hidden)}
-              </TableCell>
-              <TableCell className="text-end tabular-nums">
-                {formatPercent(row.discountPercent)}
-              </TableCell>
-              <TableCell>{formatDay(row.issueDate)}</TableCell>
-              <TableCell className="text-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={adding !== null}
-                  aria-label={t`Add ${row.investorName} to ledger`}
-                  onClick={() => void add(row.id)}
-                >
-                  {t`Add to ledger`}
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <TableScrollRegion aria-label={t`Fundraising SAFEs`}>
+        <Table className="min-w-[48rem]">
+          <TableHeader>
+            <TableHeadRow>
+              <TableHead>{t`Investor`}</TableHead>
+              <TableHead className="text-end">{t`Amount`}</TableHead>
+              <TableHead className="text-end">{t`Valuation cap`}</TableHead>
+              <TableHead className="text-end">{t`Discount`}</TableHead>
+              <TableHead>{t`Investment date`}</TableHead>
+              <TableHead className="w-32">
+                <span className="sr-only">{t`Actions`}</span>
+              </TableHead>
+            </TableHeadRow>
+          </TableHeader>
+          <TableBody aria-label={t`Fundraising SAFEs`}>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.investorName}</TableCell>
+                <TableCell className="text-end tabular-nums">
+                  {formatCents(row.principalCents, hidden)}
+                </TableCell>
+                <TableCell className="text-end tabular-nums">
+                  {formatCents(row.valuationCapCents, hidden)}
+                </TableCell>
+                <TableCell className="text-end tabular-nums">
+                  {formatPercent(row.discountPercent)}
+                </TableCell>
+                <TableCell>{formatDay(row.issueDate)}</TableCell>
+                <TableCell className="text-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={adding !== null}
+                    aria-label={t`Add ${row.investorName} to ledger`}
+                    onClick={() => void add(row.id)}
+                  >
+                    {t`Add to ledger`}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableScrollRegion>
     </section>
   );
 }

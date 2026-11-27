@@ -1797,6 +1797,10 @@ msgstr ""
 msgid "Add the value."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Add this period’s highlights"
+msgstr "添加本期亮点"
+
 #: src/components/inbox/MailAttachments.tsx
 msgid "Add to Data room"
 msgstr ""
@@ -2467,6 +2471,10 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "审批边界"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Approval requested"
+msgstr "已请求授权"
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Approvals"
@@ -2716,6 +2724,10 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Asking another agent"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Asks"
+msgstr "请求事项"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3953,6 +3965,10 @@ msgstr ""
 msgid "Check queue"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Check Sent"
+msgstr "检查已发送邮件"
+
 #: src/pages/Investors.tsx
 msgid "Check size"
 msgstr ""
@@ -3985,9 +4001,17 @@ msgstr ""
 msgid "Checked {checked}"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Checking approval status"
+msgstr "正在检查授权状态"
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Checking Sent…"
+msgstr "正在检查已发送邮件…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
@@ -4979,9 +5003,17 @@ msgstr ""
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent request closed"
+msgstr "授权请求已关闭"
+
 #: src/pages/CompanyImport.tsx
 msgid "Consent required"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent was declined"
+msgstr "授权已被拒绝"
 
 #: src/components/cap-table/access/access-levels.ts
 msgid "Consultants and stakeholders with \"other\" or no relationship"
@@ -5028,6 +5060,7 @@ msgstr "上下文限制"
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
 msgstr "继续"
@@ -6272,6 +6305,10 @@ msgstr ""
 msgid "Couldn't archive {count}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't check Sent."
+msgstr "无法检查已发送邮件。"
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -7210,6 +7247,10 @@ msgstr ""
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "关闭错误"
+
+#: src/components/ComposeEmail.tsx
+msgid "Dismiss recovery"
+msgstr "关闭恢复提示"
 
 #: src/components/cap-table/stakeholders/StakeholderChanges.tsx
 msgid "Dismiss update"
@@ -8605,6 +8646,10 @@ msgstr ""
 msgid "Found {total} files"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Found a matching message in Sent."
+msgstr "在已发送邮件中找到匹配的邮件。"
+
 #: src/lib/company-relation-label.ts
 msgid "founded"
 msgstr "创立"
@@ -9136,6 +9181,10 @@ msgstr "高"
 #: src/lib/model-catalog.ts
 msgid "High"
 msgstr "高"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Highlights"
+msgstr "亮点"
 
 #: src/components/cap-table/stakeholders/HrisPreferencesDialog.tsx
 msgid "Hire date"
@@ -10523,6 +10572,10 @@ msgstr ""
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Lowlights"
+msgstr "挑战"
 
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -12197,6 +12250,10 @@ msgstr ""
 msgid "No matching holders"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "No matching message found. Delivery remains unconfirmed."
+msgstr "未找到匹配的邮件。发送状态仍未确认。"
+
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -12571,7 +12628,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
-msgstr ""
+msgstr "无法确认是否已发送。再次尝试前，请检查“已发送”文件夹。"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
@@ -13241,6 +13298,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Optional: add details for this skill"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Optional. Anything you leave blank will be checked against available sources or marked TBD."
+msgstr "可选。留空的内容会根据可用来源进行核对，或标记为 TBD。"
 
 #: src/components/cap-table/options/OptionDraftSetDialog.tsx
 #: src/components/cap-table/options/OptionGrantActionDialog.tsx
@@ -15646,6 +15707,10 @@ msgstr ""
 msgid "Retry screen"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Retry send"
+msgstr "重新发送"
+
 #: src/lib/run-phase.ts
 msgid "Retrying"
 msgstr ""
@@ -15713,6 +15778,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "请检查提供方设置并重新测试。"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Review request"
+msgstr "查看请求"
 
 #: src/components/inbox/AttachmentReviewDialog.tsx
 #: src/components/inbox/MailAttachments.tsx
@@ -17383,6 +17452,7 @@ msgstr ""
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/teach/SkillDraftCard.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "跳过"
@@ -18639,6 +18709,10 @@ msgstr ""
 #: src/pages/McpConsent.tsx
 msgid "This connection request is not valid"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "This context is too long. Shorten it and try again."
+msgstr "此上下文过长。请缩短后重试。"
 
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
@@ -20062,6 +20136,10 @@ msgstr ""
 #: src/pages/McpConnectionsPanel.tsx
 msgid "Waiting for approval"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Waiting for consent"
+msgstr "等待授权"
 
 #. placeholder {0}: dayLabel(row.waitingSince.slice(0, 10))
 #: src/components/fundraising/PipelineTable.tsx

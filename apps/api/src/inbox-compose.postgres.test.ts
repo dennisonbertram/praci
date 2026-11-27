@@ -646,14 +646,23 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     it("answers unknown after an unclear failure and never sends again for that client id", async () => {
       const input = fields();
       gmail.failNext(500, { urlIncludes: "drafts/send", times: 10 });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "unknown" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "unknown",
+        unknownState: "permanent",
+      });
       expect(
         (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
       ).toBe("unknown");
       gmail.clearFailures();
       const before = sendRequests().length;
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "unknown" });
-      expect(await inboxComposeDraftSave(deps(), a, input)).toEqual({ status: "unknown" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "unknown",
+        unknownState: "permanent",
+      });
+      expect(await inboxComposeDraftSave(deps(), a, input)).toEqual({
+        status: "unknown",
+        unknownState: "permanent",
+      });
       expect(sendRequests()).toHaveLength(before);
       expect(gmail.sentOf("box-a")).toHaveLength(0);
     });
@@ -665,7 +674,10 @@ describePostgres("inbox compose (PostgreSQL)", () => {
         where: { clientId: input.clientId },
         data: { state: "pending", updatedAt: new Date(Date.now() - 10 * 60_000) },
       });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "unknown" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "unknown",
+        unknownState: "permanent",
+      });
       expect(sendRequests()).toHaveLength(0);
     });
 

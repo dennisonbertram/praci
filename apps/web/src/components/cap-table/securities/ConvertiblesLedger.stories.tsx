@@ -47,6 +47,14 @@ export const Default: Story = {
       "equity.convertibleTotals": { count: rows.length, principalCents: "550000000" },
     }),
 };
+export const Narrow: Story = {
+  ...Default,
+  render: (args) => (
+    <div className="w-[390px]">
+      <ConvertiblesLedger {...args} />
+    </div>
+  ),
+};
 export const ClosedInterestUnavailable: Story = {
   beforeEach: () => {
     const row = {

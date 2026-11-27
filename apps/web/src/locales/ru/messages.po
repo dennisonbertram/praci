@@ -1797,6 +1797,10 @@ msgstr ""
 msgid "Add the value."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Add this period’s highlights"
+msgstr "Добавить главные события за этот период"
+
 #: src/components/inbox/MailAttachments.tsx
 msgid "Add to Data room"
 msgstr ""
@@ -2467,6 +2471,10 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "Границы одобрения"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Approval requested"
+msgstr "Запрошено разрешение"
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Approvals"
@@ -2716,6 +2724,10 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Asking another agent"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Asks"
+msgstr "Запросы"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3953,6 +3965,10 @@ msgstr ""
 msgid "Check queue"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Check Sent"
+msgstr "Проверить отправленные"
+
 #: src/pages/Investors.tsx
 msgid "Check size"
 msgstr ""
@@ -3985,9 +4001,17 @@ msgstr ""
 msgid "Checked {checked}"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Checking approval status"
+msgstr "Проверка статуса разрешения"
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Checking Sent…"
+msgstr "Проверяем отправленные…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
@@ -4979,9 +5003,17 @@ msgstr ""
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent request closed"
+msgstr "Запрос согласия закрыт"
+
 #: src/pages/CompanyImport.tsx
 msgid "Consent required"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent was declined"
+msgstr "В согласии отказано"
 
 #: src/components/cap-table/access/access-levels.ts
 msgid "Consultants and stakeholders with \"other\" or no relationship"
@@ -5028,6 +5060,7 @@ msgstr ""
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
 msgstr "Продолжить"
@@ -6272,6 +6305,10 @@ msgstr ""
 msgid "Couldn't archive {count}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't check Sent."
+msgstr "Не удалось проверить отправленные."
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -7210,6 +7247,10 @@ msgstr ""
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "Закрыть ошибку"
+
+#: src/components/ComposeEmail.tsx
+msgid "Dismiss recovery"
+msgstr "Закрыть восстановление"
 
 #: src/components/cap-table/stakeholders/StakeholderChanges.tsx
 msgid "Dismiss update"
@@ -8605,6 +8646,10 @@ msgstr ""
 msgid "Found {total} files"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Found a matching message in Sent."
+msgstr "В отправленных найдено подходящее сообщение."
+
 #: src/lib/company-relation-label.ts
 msgid "founded"
 msgstr "основал"
@@ -9136,6 +9181,10 @@ msgstr "Высокий"
 #: src/lib/model-catalog.ts
 msgid "High"
 msgstr "Высокий"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Highlights"
+msgstr "Главные события"
 
 #: src/components/cap-table/stakeholders/HrisPreferencesDialog.tsx
 msgid "Hire date"
@@ -10523,6 +10572,10 @@ msgstr ""
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Lowlights"
+msgstr "Трудности"
 
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -12197,6 +12250,10 @@ msgstr ""
 msgid "No matching holders"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "No matching message found. Delivery remains unconfirmed."
+msgstr "Подходящее сообщение не найдено. Отправка по-прежнему не подтверждена."
+
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -12571,7 +12628,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
-msgstr ""
+msgstr "Не удалось подтвердить отправку. Перед повторной попыткой проверьте папку «Отправленные»."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
@@ -13241,6 +13298,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Optional: add details for this skill"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Optional. Anything you leave blank will be checked against available sources or marked TBD."
+msgstr "Необязательно. Все незаполненные поля будут сверены с доступными источниками или отмечены как TBD."
 
 #: src/components/cap-table/options/OptionDraftSetDialog.tsx
 #: src/components/cap-table/options/OptionGrantActionDialog.tsx
@@ -15646,6 +15707,10 @@ msgstr ""
 msgid "Retry screen"
 msgstr "Повторить загрузку экрана"
 
+#: src/components/ComposeEmail.tsx
+msgid "Retry send"
+msgstr "Отправить повторно"
+
 #: src/lib/run-phase.ts
 msgid "Retrying"
 msgstr ""
@@ -15713,6 +15778,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "Проверьте настройки поставщика и повторите тест."
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Review request"
+msgstr "Проверить запрос"
 
 #: src/components/inbox/AttachmentReviewDialog.tsx
 #: src/components/inbox/MailAttachments.tsx
@@ -17383,6 +17452,7 @@ msgstr ""
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/teach/SkillDraftCard.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "Пропустить"
@@ -18639,6 +18709,10 @@ msgstr ""
 #: src/pages/McpConsent.tsx
 msgid "This connection request is not valid"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "This context is too long. Shorten it and try again."
+msgstr "Этот контекст слишком длинный. Сократите его и попробуйте снова."
 
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
@@ -20062,6 +20136,10 @@ msgstr ""
 #: src/pages/McpConnectionsPanel.tsx
 msgid "Waiting for approval"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Waiting for consent"
+msgstr "Ожидание согласия"
 
 #. placeholder {0}: dayLabel(row.waitingSince.slice(0, 10))
 #: src/components/fundraising/PipelineTable.tsx

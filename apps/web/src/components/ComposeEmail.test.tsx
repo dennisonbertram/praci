@@ -9,10 +9,18 @@ const prefill = vi.hoisted(() => vi.fn());
 const send = vi.hoisted(() => vi.fn());
 const draftSave = vi.hoisted(() => vi.fn());
 const discardDraft = vi.hoisted(() => vi.fn());
+const selectedSpaceId = vi.hoisted(() => vi.fn<() => string | null>(() => null));
+const inboxList = vi.hoisted(() => vi.fn());
 const requestClose = vi.hoisted(() => ({ current: () => {} }));
 
 vi.mock("../lib/rpc", () => ({
-  rpc: { inbox: { compose: { prefill, draftSave, send, discard: discardDraft } } },
+  rpc: {
+    inbox: {
+      list: inboxList,
+      compose: { prefill, draftSave, send, discard: discardDraft },
+    },
+  },
+  selectedSpaceId,
 }));
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -57,7 +65,17 @@ vi.mock("@rakazo/ui-web", () => {
       return <div>{children}</div>;
     },
     DialogClose: Container,
-    DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    DialogContent: ({
+      children,
+      onKeyDown,
+    }: {
+      children?: ReactNode;
+      onKeyDown?: ComponentProps<"div">["onKeyDown"];
+    }) => (
+      <div role="dialog" onKeyDown={onKeyDown}>
+        {children}
+      </div>
+    ),
     DialogTitle: Container,
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
@@ -78,9 +96,9 @@ vi.mock("./inbox/EmailSidePanel", () => ({
 }));
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
-import type { ComposeSeed } from "./ComposeEmail";
+import type { ComposeRestore, ComposeSeed } from "./ComposeEmail";
 import { ComposeEmail } from "./ComposeEmail";
-import { forgetClosed, recallClosed } from "./compose/draft-memory";
+import { forgetClosed, recallClosed, rememberClosed } from "./compose/draft-memory";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
 const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
@@ -97,6 +115,7 @@ async function open(
   draft?: string,
   spaceId?: string,
   onSent?: () => void,
+  restore?: ComposeRestore,
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
@@ -120,6 +139,7 @@ async function open(
         connectionId="c1"
         draft={draft}
         spaceId={spaceId}
+        restore={restore}
         onClose={onClose}
         onSent={onSent}
       />,
@@ -148,10 +168,16 @@ afterEach(async () => {
     for (const root of mounted.splice(0)) root.unmount();
   });
   closeRestored();
-  for (const kind of ["reply", "replyAll", "forward"] as const) forgetClosed(reply(kind));
+  for (const spaceId of [null, "space-a", "space-b"] as const) {
+    for (const kind of ["reply", "replyAll", "forward"] as const)
+      forgetClosed(reply(kind), spaceId);
+    forgetClosed({ kind: "new" }, spaceId);
+  }
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  inboxList.mockReset();
+  selectedSpaceId.mockReturnValue(null);
 });
 
 it("seeds a reply-all with chips, shows Cc only because it has addresses, and keeps Bcc hidden", async () => {
@@ -727,8 +753,68 @@ it("says why Gmail refused a send, once", async () => {
   }
 });
 
-it("says the message was not sent when a send fails, and keeps Send available", async () => {
-  send.mockRejectedValue(new Error("Could not reach the server"));
+it("treats a lost send response as uncertain, not definitely unsent", async () => {
+  send.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    const opened = await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.notice).toBe(
+      "Not confirmed as sent. Check Sent before trying again.",
+    );
+    expect(getOutbox().restoring?.deliveryStatus).toBe("uncertain");
+    expect(getOutbox().restoring?.fields).toMatchObject({
+      to: ["Sam Lee <sam@example.test>"],
+      subject: "Re: Offsite",
+    });
+    const restore = getOutbox().restoring;
+    expect(restore).not.toBeNull();
+
+    // The restored composer can only reconcile the same request. Its fields stay locked and the
+    // action reuses the original client id, so an acknowledged send is returned instead of resent.
+    await act(async () => opened.root.unmount());
+    mounted.splice(mounted.indexOf(opened.root), 1);
+    document.body.innerHTML = "";
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push(root);
+    await act(async () =>
+      root.render(
+        <ComposeEmail
+          seed={restore?.seed ?? reply("reply")}
+          accounts={restore?.accounts ?? []}
+          restore={restore ?? undefined}
+          onClose={() => {}}
+        />,
+      ),
+    );
+    expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+    expect(button("Retry send").disabled).toBe(false);
+    send.mockResolvedValueOnce({ status: "sent" });
+    await act(async () => button("Retry send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1]?.[0]).toEqual(send.mock.calls[0]?.[0]);
+    expect(getOutbox().view).toEqual({ kind: "sent" });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps a definite rejection as not sent", async () => {
+  send.mockRejectedValueOnce(
+    Object.assign(new Error("Invalid request"), {
+      code: "BAD_REQUEST",
+      status: 400,
+    }),
+  );
   vi.useFakeTimers();
   try {
     await open(reply("reply"));
@@ -736,7 +822,292 @@ it("says the message was not sent when a send fails, and keeps Send available", 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
     });
-    expect(getOutbox().restoring?.notice).toMatch(/^Not sent\. /);
+    expect(getOutbox().restoring?.notice).toBe("Not sent. Invalid request");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps the original uncertain reply payload and Space when reopened through Reply all", async () => {
+  send.mockReset();
+  draftSave.mockReset();
+  send.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  send.mockResolvedValueOnce({ status: "sent" });
+  draftSave.mockResolvedValue({ status: "saved" });
+  selectedSpaceId.mockReturnValue("space-a");
+  vi.useFakeTimers();
+  try {
+    const first = await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    const restore = getOutbox().restoring;
+    expect(restore?.deliveryStatus).toBe("uncertain");
+    expect((restore as (ComposeRestore & { spaceId?: string | null }) | null)?.spaceId).toBe(
+      "space-a",
+    );
+    const originalRequest = send.mock.calls[0]?.[0];
+
+    // A closed uncertain reply may be reopened from the other reply button, but it must keep
+    // its original immutable request and client id until the server resolves that request.
+    rememberClosed(reply("reply"), restore as NonNullable<typeof restore>);
+    await act(async () => first.root.unmount());
+    mounted.splice(mounted.indexOf(first.root), 1);
+    document.body.innerHTML = "";
+    selectedSpaceId.mockReturnValue("space-b");
+    const reopened = await open(reply("replyAll"));
+    expect(prefill).toHaveBeenCalledTimes(1);
+    expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+    expect(button("Retry send").disabled).toBe(false);
+    await act(async () => button("Retry send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1]?.[0]).toEqual(originalRequest);
+    expect(send.mock.calls[0]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+    expect(send.mock.calls[1]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+    await act(async () => reopened.root.unmount());
+    mounted.splice(mounted.indexOf(reopened.root), 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps earlier uncertainty after retry auth errors and lets Close dismiss only local recovery", async () => {
+  send.mockReset();
+  draftSave.mockReset();
+  send.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  send.mockRejectedValueOnce(
+    Object.assign(new Error("Reconnect required"), { code: "UNAUTHORIZED", status: 401 }),
+  );
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.useFakeTimers();
+  try {
+    const first = await open(reply("reply"), () => closeRestored(), undefined, "space-a");
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    const restore = getOutbox().restoring;
+    expect(restore?.deliveryStatus).toBe("uncertain");
+    await act(async () => first.root.unmount());
+    mounted.splice(mounted.indexOf(first.root), 1);
+    document.body.innerHTML = "";
+
+    const recovery = await open(
+      restore!.seed,
+      () => closeRestored(),
+      undefined,
+      "space-b",
+      undefined,
+      restore!,
+    );
+    expect(recovery.container.textContent).toContain("Not confirmed as sent.");
+    await act(async () => button("Retry send").click());
+    await act(async () => recovery.root.unmount());
+    mounted.splice(mounted.indexOf(recovery.root), 1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.deliveryStatus).toBe("uncertain");
+    expect(getOutbox().restoring?.notice).toBe(
+      "Not confirmed as sent. Check Sent before trying again.",
+    );
+    expect(send.mock.calls[1]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+
+    const recoveryAfterRetry = await open(
+      getOutbox().restoring!.seed,
+      () => closeRestored(),
+      undefined,
+      "space-b",
+      undefined,
+      getOutbox().restoring!,
+    );
+
+    // Close preserves local recovery. It does not discard the provider draft.
+    await act(async () => requestClose.current());
+    expect(recallClosed(reply("reply"), "space-a")).toMatchObject({
+      deliveryStatus: "uncertain",
+      fields: restore!.fields,
+    });
+    expect(getOutbox().restoring).toBeNull();
+    expect(discardDraft).not.toHaveBeenCalled();
+    await act(async () => recoveryAfterRetry.root.unmount());
+    mounted.splice(mounted.indexOf(recoveryAfterRetry.root), 1);
+
+    selectedSpaceId.mockReturnValue("space-b");
+    send.mockResolvedValueOnce({ status: "sent" });
+    const resumed = await open(reply("replyAll"));
+    expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+    expect(button("Retry send")).not.toBeUndefined();
+    expect(send.mock.calls[1]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+    await act(async () => button("Dismiss recovery").click());
+    await act(async () => resumed.root.unmount());
+    mounted.splice(mounted.indexOf(resumed.root), 1);
+
+    const newReplyAll = await open(reply("replyAll"));
+    expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "replyAll" }), {
+      context: { spaceId: "space-b" },
+    });
+    expect((field("Subject") as HTMLInputElement).disabled).toBe(false);
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send.mock.calls[2]?.[0].clientId).not.toBe(send.mock.calls[0]?.[0].clientId);
+    expect(send.mock.calls[2]?.[1]).toEqual({ context: { spaceId: "space-b" } });
+    await act(async () => newReplyAll.root.unmount());
+    mounted.splice(mounted.indexOf(newReplyAll.root), 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("checks Sent read-only for a permanent unknown in its original Space and account", async () => {
+  const restore = {
+    seed: reply("reply"),
+    clientId: "client-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["Sam Lee <sam@example.test>"],
+      cc: [],
+      bcc: [],
+      subject: "Re: Offsite",
+      html: "",
+      text: "Draft body",
+    },
+    replyToId: "m1",
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  inboxList.mockResolvedValue({ rows: [{ subject: "Re: Offsite" }] });
+  const { container } = await open(
+    restore.seed,
+    () => {},
+    undefined,
+    "space-b",
+    undefined,
+    restore,
+  );
+
+  expect(button("Check Sent")).not.toBeNull();
+  expect(button("Retry send")).toBeUndefined();
+  await act(async () => {
+    container.firstElementChild?.firstElementChild?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true }),
+    );
+  });
+  expect(inboxList).toHaveBeenCalledTimes(1);
+  expect(send).not.toHaveBeenCalled();
+  await act(async () => button("Check Sent").click());
+  expect(inboxList).toHaveBeenLastCalledWith(
+    { connectionId: "mailbox-a", query: 'in:sent to:sam@example.test subject:"Re: Offsite"' },
+    { context: { spaceId: "space-a" } },
+  );
+  expect(container.textContent).toContain("Found a matching message in Sent.");
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("lets a person explicitly dismiss local recovery without deleting a provider draft", async () => {
+  const restore = {
+    seed: reply("reply"),
+    clientId: "client-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["Sam Lee <sam@example.test>"],
+      cc: [],
+      bcc: [],
+      subject: "Re: Offsite",
+      html: "",
+      text: "Draft body",
+    },
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  const onClose = vi.fn();
+  const { root } = await open(restore.seed, onClose, undefined, "space-a", undefined, restore);
+  await act(async () => button("Dismiss recovery").click());
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(recallClosed(restore.seed, "space-a")).toBeUndefined();
+  expect(discardDraft).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+  mounted.splice(mounted.indexOf(root), 1);
+});
+
+it("keeps a new message's uncertain recovery through ordinary Close and reopen in the same Space", async () => {
+  const restore = {
+    seed: { kind: "new" as const },
+    clientId: "client-new-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["sam@example.test"],
+      cc: [],
+      bcc: [],
+      subject: "New note",
+      html: "",
+      text: "Keep this unsent text.",
+    },
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  const closed = vi.fn();
+  const first = await open(restore.seed, closed, undefined, "space-a", undefined, restore);
+  await act(async () => requestClose.current());
+  expect(closed).toHaveBeenCalledTimes(1);
+  expect(recallClosed(restore.seed, "space-a")).toMatchObject({
+    clientId: restore.clientId,
+    fields: { ...restore.fields, html: "<p>Keep this unsent text.</p>" },
+    deliveryResolution: "checkSent",
+  });
+  expect(discardDraft).not.toHaveBeenCalled();
+  await act(async () => first.root.unmount());
+  mounted.splice(mounted.indexOf(first.root), 1);
+
+  const reopened = await open(restore.seed, () => {}, undefined, "space-a");
+  expect((field("Subject") as HTMLInputElement).value).toBe("New note");
+  expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+  expect(button("Check Sent")).not.toBeNull();
+  await act(async () => reopened.root.unmount());
+  mounted.splice(mounted.indexOf(reopened.root), 1);
+});
+
+it("treats HTTP 499 as ambiguous because the server may still finish sending", async () => {
+  send.mockReset();
+  draftSave.mockReset();
+  send.mockRejectedValueOnce(
+    Object.assign(new Error("Client closed request"), {
+      code: "CLIENT_CLOSED_REQUEST",
+      status: 499,
+    }),
+  );
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.deliveryStatus).toBe("uncertain");
+    expect(getOutbox().restoring?.notice).toBe(
+      "Not confirmed as sent. Check Sent before trying again.",
+    );
   } finally {
     vi.useRealTimers();
   }
@@ -813,7 +1184,9 @@ it("carries a Reply all draft into Reply with only the sender as recipient", asy
       attachments: [],
     });
     await open(reply("reply"));
-    expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "reply" }));
+    expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "reply" }), {
+      context: { spaceId: null },
+    });
     expect(chips()).toEqual(["Remove sam@example.test"]);
     expect(field("Cc")).toBeNull();
     expect((field("Subject") as HTMLInputElement).value).toBe("Re: Offsite!");
@@ -1486,7 +1859,12 @@ it("does not save or lock From without a chosen account", async () => {
     mounted.push(root);
     await act(async () => {
       root.render(
-        <ComposeEmail seed={{ kind: "new" }} accounts={accounts} connectionId="" onClose={() => {}} />,
+        <ComposeEmail
+          seed={{ kind: "new" }}
+          accounts={accounts}
+          connectionId=""
+          onClose={() => {}}
+        />,
       );
     });
     const from = () => document.querySelector<HTMLSelectElement>('select[aria-label="From"]');

@@ -35,11 +35,12 @@ import { useContextPanelOpen } from "../lib/mail-context-panel";
 import { holdDiscard, holdSend } from "../lib/outbox";
 import {
   invalidRecipients,
+  parseRecipient,
   recipientPeople,
   summarizeRecipients,
   takeEntries,
 } from "../lib/recipients";
-import { rpc } from "../lib/rpc";
+import { rpc, selectedSpaceId } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { useMediaQuery, useVisualViewport } from "../lib/visual-viewport";
 import { focusRestored } from "./compose/caret";
@@ -99,6 +100,12 @@ export interface ComposeRestore {
   files: File[];
   /** A Gmail draft may exist, so Discard has one to remove. */
   saved: boolean;
+  /** The server may have sent this message even though the client lost the response. */
+  deliveryStatus?: "uncertain";
+  /** Whether the same client id can still settle, or only a read-only Sent check can help. */
+  deliveryResolution?: "retry" | "checkSent";
+  /** The Space that scoped this composer and its client id. */
+  spaceId?: string | null;
   accounts: Accounts;
   notice?: string;
 }
@@ -138,6 +145,20 @@ const COLLAPSE_OVER = 3;
 /** Not-sent wording for a failed send; "unknown" already says so and warns about a repeat. */
 const notSent = (text: string, status?: ComposeResult["status"]) =>
   status === "unknown" ? text : t`Not sent. ${text}`;
+
+/** Only a structured 4xx response proves the API rejected a send before Gmail handled it. */
+function isExplicitRejection(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { code, status } = error as { code?: unknown; status?: unknown };
+  return (
+    typeof code === "string" &&
+    typeof status === "number" &&
+    status >= 400 &&
+    status < 500 &&
+    status !== 408 &&
+    status !== 499
+  );
+}
 
 /** The recipients as one line (a few names and "+N more"); focusing it opens the rows. */
 function RecipientSummary({ entries, onOpen }: { entries: string[]; onOpen: () => void }) {
@@ -194,16 +215,21 @@ export function ComposeEmail({
   /** Called when Send has been pressed and the message is queued, just before `onClose`. */
   onSent?: () => void;
 }) {
-  const spaceContext = useMemo(
-    () => (spaceId === undefined ? {} : { context: { spaceId } }),
-    [spaceId],
-  );
+  const requestedSpaceId = spaceId !== undefined ? spaceId : selectedSpaceId();
   // Reply, reply all and forward continue the composer closed last time for the same message.
-  const [recalled] = useState(() => restoreProp ?? recallClosed(seedProp));
+  const [recalled] = useState(() => restoreProp ?? recallClosed(seedProp, requestedSpaceId));
+  const [originSpaceId] = useState(() =>
+    recalled?.spaceId !== undefined ? recalled.spaceId : requestedSpaceId,
+  );
+  const spaceContext = useMemo(() => ({ context: { spaceId: originSpaceId } }), [originSpaceId]);
   // A reply typed under Reply comes back under Reply all too, but with the recipients of the button
   // pressed: the text carries over and the prefill fills To and Cc again.
   const [carried] = useState(() =>
-    !restoreProp && recalled && seedProp.kind !== "new" && recalled.seed.kind !== seedProp.kind
+    !restoreProp &&
+    recalled?.deliveryStatus !== "uncertain" &&
+    recalled &&
+    seedProp.kind !== "new" &&
+    recalled.seed.kind !== seedProp.kind
       ? recalled
       : undefined,
   );
@@ -263,6 +289,13 @@ export function ComposeEmail({
   const [notice, setNotice] = useState<Notice | null>(
     restore?.notice ? { kind: "error", text: restore.notice } : null,
   );
+  const uncertainSend = restore?.deliveryStatus === "uncertain";
+  const deliveryResolution = uncertainSend
+    ? (restore?.deliveryResolution ?? "checkSent")
+    : undefined;
+  const [sentCheck, setSentCheck] = useState<"checking" | "found" | "notFound" | "error" | null>(
+    null,
+  );
   // Set once the person edits; an untouched reply is not worth keeping. A draft opened under the
   // other reply button counts once it is edited, so a glance leaves it as it was written.
   const touched = useRef(Boolean(recalled) && !carried);
@@ -280,7 +313,7 @@ export function ComposeEmail({
   const ccRef = useRef<HTMLInputElement>(null);
   const bccRef = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const locked = loading || sending;
+  const locked = loading || sending || uncertainSend;
 
   /** Autosave carries no attachments: they are re-sent with Send, and the draft stays small. */
   const payload = (f: Fields) => ({
@@ -367,7 +400,7 @@ export function ComposeEmail({
     setQuoteMissing(false);
     setNotice(null);
     rpc.inbox.compose
-      .prefill({ messageId: seed.messageId, mode: seed.kind, ...clientLocale() })
+      .prefill({ messageId: seed.messageId, mode: seed.kind, ...clientLocale() }, spaceContext)
       .then((prefilled) => {
         if (!live) return;
         const next = draft ? { ...prefilled, body: `${draft}${prefilled.body}` } : prefilled;
@@ -409,7 +442,7 @@ export function ComposeEmail({
     return () => {
       live = false;
     };
-  }, [seed, restore, prefillAttempt, draft]);
+  }, [seed, restore, prefillAttempt, draft, spaceContext]);
 
   // Fill the editor with the quoted original (or the restored message) once both it and the editor
   // exist. A reply starts above the quote; a forward starts at its empty To.
@@ -443,12 +476,15 @@ export function ComposeEmail({
   const snapshot = (kept: File[], hasDraft: boolean): ComposeRestore => ({
     seed,
     clientId,
+    spaceId: originSpaceId,
     fields: fieldsRef.current,
     ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
     forwarded,
     leftOut,
     files: kept,
     saved: hasDraft,
+    ...(uncertainSend ? { deliveryStatus: "uncertain" } : {}),
+    ...(deliveryResolution ? { deliveryResolution } : {}),
     // A reply has no picker, so it keeps the one account it is sent from.
     accounts: accounts.length > 0 ? accounts : sentFrom ? [sentFrom] : [],
   });
@@ -465,7 +501,7 @@ export function ComposeEmail({
   const discardNow = () => {
     done.current = true;
     saver.cancel();
-    forgetClosed(seed);
+    forgetClosed(seed, originSpaceId);
     void dropDraft().catch(() => undefined);
     onClose();
   };
@@ -475,14 +511,19 @@ export function ComposeEmail({
     if (isBlank(fieldsRef.current) && files.length === 0) return discardNow();
     done.current = true;
     saver.cancel();
-    forgetClosed(seed);
+    forgetClosed(seed, originSpaceId);
     onClose();
     // A save still in flight may have made the draft; the server accepts a discard of none.
     void saver.flush().then(() => holdDiscard(dropDraft, snapshot(files, true)));
   };
 
   const closeNow = () => {
-    if (carried && !touched.current) {
+    if (uncertainSend) {
+      done.current = true;
+      saver.cancel();
+      rememberClosed(seed, snapshot(files, saved.current), originSpaceId);
+      onClose();
+    } else if (carried && !touched.current) {
       // Opened under the other button and left alone: the draft stays in the mode it was written in.
       done.current = true;
       saver.cancel();
@@ -490,13 +531,15 @@ export function ComposeEmail({
     } else if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
     else {
       // Closing saves a draft; attachments are not part of it, so they are not kept.
-      rememberClosed(seed, snapshot([], true));
+      rememberClosed(seed, snapshot([], true), originSpaceId);
       onClose();
     }
   };
 
   const close = () => {
     if (sending) return;
+    // Uncertain recovery stays in this browser session when closed, including local attachments.
+    if (uncertainSend) return closeNow();
     // Autosave leaves attachments out, so closing would lose them: ask first.
     if (files.length > 0) setConfirmClose(true);
     else closeNow();
@@ -531,6 +574,7 @@ export function ComposeEmail({
   };
 
   const send = async () => {
+    if (uncertainSend && deliveryResolution === "checkSent") return checkSent();
     if (sending || loading) return;
     const current = fieldsRef.current;
     if (seed.kind === "new" && !current.connectionId) {
@@ -584,15 +628,29 @@ export function ComposeEmail({
         await saving.catch(() => undefined);
         try {
           const result = await rpc.inbox.compose.send(request, spaceContext);
-          return result.status === "sent"
-            ? null
-            : notSent(problemText(result, true), result.status);
+          if (result.status === "sent") return null;
+          const problem = problemText(result, true);
+          return result.status === "unknown"
+            ? {
+                message: problem,
+                uncertain: true,
+                deliveryResolution: result.unknownState === "pending" ? "retry" : "checkSent",
+              }
+            : uncertainSend && result.status !== "failed"
+              ? { message: problem, uncertain: true, deliveryResolution }
+              : notSent(problem, result.status);
         } catch (cause) {
-          return notSent(errorText(cause));
+          return isExplicitRejection(cause) && !uncertainSend
+            ? notSent(errorText(cause))
+            : {
+                message: problemText({ status: "unknown" }, true),
+                uncertain: true,
+                deliveryResolution: deliveryResolution ?? "retry",
+              };
         }
       }, reopen);
       done.current = true;
-      forgetClosed(seed);
+      forgetClosed(seed, originSpaceId);
       onSent?.();
       onClose();
       return;
@@ -601,6 +659,49 @@ export function ComposeEmail({
     }
     setSending(false);
   };
+
+  const checkSent = async () => {
+    if (!uncertainSend || deliveryResolution !== "checkSent" || sending) return;
+    const recipient = [...fields.to, ...fields.cc, ...fields.bcc]
+      .map(parseRecipient)
+      .find(({ valid }) => valid)?.address;
+    const subject = fields.subject.replace(/["\\]/g, "").trim();
+    const query = [
+      "in:sent",
+      recipient ? `to:${recipient}` : "",
+      subject ? `subject:"${subject}"` : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, 500);
+    setSentCheck("checking");
+    try {
+      const result = await rpc.inbox.list(
+        { connectionId: fields.connectionId, query },
+        spaceContext,
+      );
+      setSentCheck(
+        result.failedAccounts?.includes(fields.connectionId)
+          ? "error"
+          : result.rows.length > 0
+            ? "found"
+            : "notFound",
+      );
+    } catch {
+      setSentCheck("error");
+    }
+  };
+
+  const dismissRecovery = () => {
+    if (!uncertainSend || sending) return;
+    done.current = true;
+    saver.cancel();
+    forgetClosed(seed, originSpaceId);
+    onClose();
+  };
+
+  const primaryAction = () =>
+    uncertainSend && deliveryResolution === "checkSent" ? checkSent() : send();
 
   // A reply or forward hides its quoted original until asked; it is still sent.
   const collapsed =
@@ -632,7 +733,7 @@ export function ComposeEmail({
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
-            void send();
+            void primaryAction();
           }
         }}
         onDragOver={(event) => {
@@ -861,7 +962,7 @@ export function ComposeEmail({
                   <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
                   <button
                     type="button"
-                    disabled={sending}
+                    disabled={locked}
                     aria-label={t`Remove ${file.filename}`}
                     className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-8"
                     onClick={() => setForwarded(forwarded.filter((other) => other.id !== file.id))}
@@ -883,7 +984,7 @@ export function ComposeEmail({
                   <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
                   <button
                     type="button"
-                    disabled={sending}
+                    disabled={locked}
                     aria-label={t`Remove ${file.name}`}
                     className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-8"
                     onClick={() => setFiles(files.filter((_, i) => i !== index))}
@@ -918,16 +1019,32 @@ export function ComposeEmail({
           <div className="flex shrink-0 flex-wrap items-center gap-1 px-3 py-2">
             <Button
               className="rounded-full px-4"
-              disabled={locked}
-              aria-busy={sending}
-              onClick={() => void send()}
+              disabled={loading || sending || sentCheck === "checking"}
+              aria-busy={sending || sentCheck === "checking"}
+              onClick={() => void primaryAction()}
             >
-              {sending ? <Spinner aria-hidden="true" role="presentation" /> : null}
-              <Trans>Send</Trans>
+              {sending || sentCheck === "checking" ? (
+                <Spinner aria-hidden="true" role="presentation" />
+              ) : null}
+              {uncertainSend ? (
+                deliveryResolution === "retry" ? (
+                  <Trans>Retry send</Trans>
+                ) : (
+                  <Trans>Check Sent</Trans>
+                )
+              ) : (
+                <Trans>Send</Trans>
+              )}
             </Button>
+            {uncertainSend ? (
+              <Button variant="outline" size="sm" disabled={sending} onClick={dismissRecovery}>
+                <Trans>Dismiss recovery</Trans>
+              </Button>
+            ) : null}
             <ToolButton
               label={t`Formatting options`}
               active={showFormat}
+              disabled={locked}
               onClick={() => setShowFormat(!showFormat)}
             >
               <Type aria-hidden="true" />
@@ -964,7 +1081,13 @@ export function ComposeEmail({
                 shownNotice?.kind === "error" ? "text-destructive" : "text-muted-foreground",
               )}
             >
-              {shownNotice?.text}
+              {sentCheck === "found" ? <Trans>Found a matching message in Sent.</Trans> : null}
+              {sentCheck === "notFound" ? (
+                <Trans>No matching message found. Delivery remains unconfirmed.</Trans>
+              ) : null}
+              {sentCheck === "error" ? <Trans>Couldn't check Sent.</Trans> : null}
+              {sentCheck === "checking" ? <Trans>Checking Sent…</Trans> : null}
+              {sentCheck === null ? shownNotice?.text : null}
             </p>
             <Tooltip>
               <TooltipTrigger
@@ -973,7 +1096,7 @@ export function ComposeEmail({
                     variant="ghost"
                     size="icon-sm"
                     className="pointer-coarse:size-10"
-                    disabled={sending}
+                    disabled={sending || uncertainSend}
                     aria-label={t`Discard`}
                     onClick={discard}
                   />

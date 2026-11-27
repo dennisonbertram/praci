@@ -321,8 +321,12 @@ async function writeDraft(
   return (await deps.mail.updateDraft(account, winner.draftId, draft, context)).draftId;
 }
 
-const savedStatus = (state: string): ComposeResult["status"] =>
-  state === "sent" ? "sent" : state === "unknown" ? "unknown" : "saved";
+const savedStatus = (state: string): ComposeResult =>
+  state === "sent"
+    ? { status: "sent" }
+    : state === "unknown"
+      ? { status: "unknown", unknownState: "permanent" }
+      : { status: "saved" };
 
 export async function inboxComposeDraftSave(
   deps: ComposeDeps,
@@ -341,7 +345,7 @@ export async function inboxComposeDraftSave(
   // A send in flight, or one that already happened, owns the draft.
   if (row.state === "abandoned") return { status: "failed" };
   if (row.state === "sent" || row.state === "unknown" || row.state === "pending")
-    return { status: savedStatus(row.state) };
+    return savedStatus(row.state);
   try {
     const draftId = await writeDraft(deps, account, row, draft, context);
     await deps.prisma.composeSend.updateMany({
@@ -380,7 +384,7 @@ async function settled(deps: ComposeDeps, rowId: string): Promise<ComposeResult>
     });
     if (!row) return { status: "failed" };
     if (row.state === "sent") return { status: "sent" };
-    if (row.state === "unknown") return { status: "unknown" };
+    if (row.state === "unknown") return { status: "unknown", unknownState: "permanent" };
     if (row.state !== "pending") return { status: "failed" };
     if (Date.now() - row.updatedAt.getTime() > PENDING_STALE_MS) {
       // The process that held it is gone; whether it sent is not known.
@@ -390,7 +394,7 @@ async function settled(deps: ComposeDeps, rowId: string): Promise<ComposeResult>
       });
       continue;
     }
-    if (Date.now() >= deadline) return { status: "unknown" };
+    if (Date.now() >= deadline) return { status: "unknown", unknownState: "pending" };
     await sleep(POLL_MS);
   }
 }
@@ -531,12 +535,12 @@ async function claimAndSend(
     return { status: "sent" };
   } catch (error) {
     if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {
-      await record(deps, row.id, { state: "unknown" });
+      const recorded = await record(deps, row.id, { state: "unknown" });
       getLogger().warn("inbox compose send outcome unknown", {
         connectionId: account.id,
         reason: error instanceof MailProviderError ? error.kind : "error",
       });
-      return { status: "unknown" };
+      return { status: "unknown", unknownState: recorded ? "permanent" : "pending" };
     }
     // Nothing was sent: allow another attempt.
     await record(deps, row.id, { state: "failed" });
@@ -555,11 +559,13 @@ async function record(
   deps: ComposeDeps,
   id: string,
   data: { state: string; providerMessageId?: string | null; threadId?: string | null },
-): Promise<void> {
+): Promise<boolean> {
   try {
     await deps.prisma.composeSend.update({ where: { id }, data });
+    return true;
   } catch (error) {
     getLogger().error("inbox compose record failed", error, { state: data.state });
+    return false;
   }
 }
 

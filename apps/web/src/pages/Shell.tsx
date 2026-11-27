@@ -5098,6 +5098,7 @@ export function ShellPage() {
           <UpdateEditor
             key={investorUpdateMatch.params.id}
             updateId={investorUpdateMatch.params.id}
+            spaceId={selectedSpaceId() ?? bootstrapMe?.spaceId ?? null}
             agentBusy={transcriptRunning}
           />
         </PageFrame>
