@@ -59,11 +59,17 @@ it("reopens uncertain delivery in the Space that owned the original send", async
     clientId: "abcdefgh",
     spaceId: "space-a",
     deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
     notice: "Not confirmed as sent.",
   } as ComposeRestore;
   await act(async () => {
     holdSend(
-      () => Promise.resolve({ message: "Not confirmed as sent.", uncertain: true }),
+      () =>
+        Promise.resolve({
+          message: "Not confirmed as sent.",
+          uncertain: true,
+          deliveryResolution: "checkSent" as const,
+        }),
       original,
     );
     await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);

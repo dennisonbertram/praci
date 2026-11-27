@@ -10,10 +10,16 @@ const send = vi.hoisted(() => vi.fn());
 const draftSave = vi.hoisted(() => vi.fn());
 const discardDraft = vi.hoisted(() => vi.fn());
 const selectedSpaceId = vi.hoisted(() => vi.fn<() => string | null>(() => null));
+const inboxList = vi.hoisted(() => vi.fn());
 const requestClose = vi.hoisted(() => ({ current: () => {} }));
 
 vi.mock("../lib/rpc", () => ({
-  rpc: { inbox: { compose: { prefill, draftSave, send, discard: discardDraft } } },
+  rpc: {
+    inbox: {
+      list: inboxList,
+      compose: { prefill, draftSave, send, discard: discardDraft },
+    },
+  },
   selectedSpaceId,
 }));
 vi.mock("@lingui/core/macro", () => ({
@@ -59,7 +65,17 @@ vi.mock("@rakazo/ui-web", () => {
       return <div>{children}</div>;
     },
     DialogClose: Container,
-    DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    DialogContent: ({
+      children,
+      onKeyDown,
+    }: {
+      children?: ReactNode;
+      onKeyDown?: ComponentProps<"div">["onKeyDown"];
+    }) => (
+      <div role="dialog" onKeyDown={onKeyDown}>
+        {children}
+      </div>
+    ),
     DialogTitle: Container,
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
@@ -152,10 +168,15 @@ afterEach(async () => {
     for (const root of mounted.splice(0)) root.unmount();
   });
   closeRestored();
-  for (const kind of ["reply", "replyAll", "forward"] as const) forgetClosed(reply(kind));
+  for (const spaceId of [null, "space-a", "space-b"] as const) {
+    for (const kind of ["reply", "replyAll", "forward"] as const)
+      forgetClosed(reply(kind), spaceId);
+    forgetClosed({ kind: "new" }, spaceId);
+  }
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  inboxList.mockReset();
   selectedSpaceId.mockReturnValue(null);
 });
 
@@ -905,16 +926,27 @@ it("keeps earlier uncertainty after retry auth errors and lets Close dismiss onl
       getOutbox().restoring!,
     );
 
-    // Closing clears only the local frozen recovery. It does not discard the provider draft.
+    // Close preserves local recovery. It does not discard the provider draft.
     await act(async () => requestClose.current());
+    expect(recallClosed(reply("reply"), "space-a")).toMatchObject({
+      deliveryStatus: "uncertain",
+      fields: restore!.fields,
+    });
     expect(getOutbox().restoring).toBeNull();
     expect(discardDraft).not.toHaveBeenCalled();
-    expect(recallClosed(reply("reply"))).toBeUndefined();
     await act(async () => recoveryAfterRetry.root.unmount());
     mounted.splice(mounted.indexOf(recoveryAfterRetry.root), 1);
 
     selectedSpaceId.mockReturnValue("space-b");
     send.mockResolvedValueOnce({ status: "sent" });
+    const resumed = await open(reply("replyAll"));
+    expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+    expect(button("Retry send")).not.toBeUndefined();
+    expect(send.mock.calls[1]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+    await act(async () => button("Dismiss recovery").click());
+    await act(async () => resumed.root.unmount());
+    mounted.splice(mounted.indexOf(resumed.root), 1);
+
     const newReplyAll = await open(reply("replyAll"));
     expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "replyAll" }), {
       context: { spaceId: "space-b" },
@@ -931,6 +963,129 @@ it("keeps earlier uncertainty after retry auth errors and lets Close dismiss onl
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("checks Sent read-only for a permanent unknown in its original Space and account", async () => {
+  const restore = {
+    seed: reply("reply"),
+    clientId: "client-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["Sam Lee <sam@example.test>"],
+      cc: [],
+      bcc: [],
+      subject: "Re: Offsite",
+      html: "",
+      text: "Draft body",
+    },
+    replyToId: "m1",
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  inboxList.mockResolvedValue({ rows: [{ subject: "Re: Offsite" }] });
+  const { container } = await open(
+    restore.seed,
+    () => {},
+    undefined,
+    "space-b",
+    undefined,
+    restore,
+  );
+
+  expect(button("Check Sent")).not.toBeNull();
+  expect(button("Retry send")).toBeUndefined();
+  await act(async () => {
+    container.firstElementChild?.firstElementChild?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true }),
+    );
+  });
+  expect(inboxList).toHaveBeenCalledTimes(1);
+  expect(send).not.toHaveBeenCalled();
+  await act(async () => button("Check Sent").click());
+  expect(inboxList).toHaveBeenLastCalledWith(
+    { connectionId: "mailbox-a", query: 'in:sent to:sam@example.test subject:"Re: Offsite"' },
+    { context: { spaceId: "space-a" } },
+  );
+  expect(container.textContent).toContain("Found a matching message in Sent.");
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("lets a person explicitly dismiss local recovery without deleting a provider draft", async () => {
+  const restore = {
+    seed: reply("reply"),
+    clientId: "client-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["Sam Lee <sam@example.test>"],
+      cc: [],
+      bcc: [],
+      subject: "Re: Offsite",
+      html: "",
+      text: "Draft body",
+    },
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  const onClose = vi.fn();
+  const { root } = await open(restore.seed, onClose, undefined, "space-a", undefined, restore);
+  await act(async () => button("Dismiss recovery").click());
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(recallClosed(restore.seed, "space-a")).toBeUndefined();
+  expect(discardDraft).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+  mounted.splice(mounted.indexOf(root), 1);
+});
+
+it("keeps a new message's uncertain recovery through ordinary Close and reopen in the same Space", async () => {
+  const restore = {
+    seed: { kind: "new" as const },
+    clientId: "client-new-unknown",
+    fields: {
+      connectionId: "mailbox-a",
+      to: ["sam@example.test"],
+      cc: [],
+      bcc: [],
+      subject: "New note",
+      html: "",
+      text: "Keep this unsent text.",
+    },
+    forwarded: [],
+    files: [],
+    saved: false,
+    deliveryStatus: "uncertain",
+    deliveryResolution: "checkSent",
+    spaceId: "space-a",
+    accounts: [{ connectionId: "mailbox-a", label: "Mailbox A" }],
+  } as ComposeRestore;
+  const closed = vi.fn();
+  const first = await open(restore.seed, closed, undefined, "space-a", undefined, restore);
+  await act(async () => requestClose.current());
+  expect(closed).toHaveBeenCalledTimes(1);
+  expect(recallClosed(restore.seed, "space-a")).toMatchObject({
+    clientId: restore.clientId,
+    fields: { ...restore.fields, html: "<p>Keep this unsent text.</p>" },
+    deliveryResolution: "checkSent",
+  });
+  expect(discardDraft).not.toHaveBeenCalled();
+  await act(async () => first.root.unmount());
+  mounted.splice(mounted.indexOf(first.root), 1);
+
+  const reopened = await open(restore.seed, () => {}, undefined, "space-a");
+  expect((field("Subject") as HTMLInputElement).value).toBe("New note");
+  expect((field("Subject") as HTMLInputElement).disabled).toBe(true);
+  expect(button("Check Sent")).not.toBeNull();
+  await act(async () => reopened.root.unmount());
+  mounted.splice(mounted.indexOf(reopened.root), 1);
 });
 
 it("treats HTTP 499 as ambiguous because the server may still finish sending", async () => {

@@ -3965,6 +3965,10 @@ msgstr ""
 msgid "Check queue"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Check Sent"
+msgstr "보낸 메일 확인"
+
 #: src/pages/Investors.tsx
 msgid "Check size"
 msgstr ""
@@ -4004,6 +4008,10 @@ msgstr "승인 상태 확인 중"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Checking Sent…"
+msgstr "보낸 메일 확인 중…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
@@ -6297,6 +6305,10 @@ msgstr ""
 msgid "Couldn't archive {count}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't check Sent."
+msgstr "보낸 메일을 확인하지 못했습니다."
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -7235,6 +7247,10 @@ msgstr ""
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "오류 닫기"
+
+#: src/components/ComposeEmail.tsx
+msgid "Dismiss recovery"
+msgstr "복구 닫기"
 
 #: src/components/cap-table/stakeholders/StakeholderChanges.tsx
 msgid "Dismiss update"
@@ -8629,6 +8645,10 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 msgid "Found {total} files"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Found a matching message in Sent."
+msgstr "보낸 메일에서 일치하는 메시지를 찾았습니다."
 
 #: src/lib/company-relation-label.ts
 msgid "founded"
@@ -12229,6 +12249,10 @@ msgstr ""
 #: src/components/cap-table/access/InvestorRelations.tsx
 msgid "No matching holders"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "No matching message found. Delivery remains unconfirmed."
+msgstr "일치하는 메시지를 찾지 못했습니다. 전송 여부는 아직 확인되지 않았습니다."
 
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx

@@ -3965,6 +3965,10 @@ msgstr ""
 msgid "Check queue"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Check Sent"
+msgstr "检查已发送邮件"
+
 #: src/pages/Investors.tsx
 msgid "Check size"
 msgstr ""
@@ -4004,6 +4008,10 @@ msgstr "正在检查授权状态"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Checking Sent…"
+msgstr "正在检查已发送邮件…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
@@ -6297,6 +6305,10 @@ msgstr ""
 msgid "Couldn't archive {count}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't check Sent."
+msgstr "无法检查已发送邮件。"
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -7235,6 +7247,10 @@ msgstr ""
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "关闭错误"
+
+#: src/components/ComposeEmail.tsx
+msgid "Dismiss recovery"
+msgstr "关闭恢复提示"
 
 #: src/components/cap-table/stakeholders/StakeholderChanges.tsx
 msgid "Dismiss update"
@@ -8629,6 +8645,10 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 msgid "Found {total} files"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Found a matching message in Sent."
+msgstr "在已发送邮件中找到匹配的邮件。"
 
 #: src/lib/company-relation-label.ts
 msgid "founded"
@@ -12229,6 +12249,10 @@ msgstr ""
 #: src/components/cap-table/access/InvestorRelations.tsx
 msgid "No matching holders"
 msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "No matching message found. Delivery remains unconfirmed."
+msgstr "未找到匹配的邮件。发送状态仍未确认。"
 
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx

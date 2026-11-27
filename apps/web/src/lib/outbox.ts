@@ -21,7 +21,11 @@ export interface OutboxSnapshot {
 /** Called once a held item is over: null when it went out, the reason when it did not, undefined when undone. */
 type HoldEnd = (problem: string | null | undefined) => void;
 
-export type HoldFailure = { message: string; uncertain?: boolean };
+export type HoldFailure = {
+  message: string;
+  uncertain?: boolean;
+  deliveryResolution?: "retry" | "checkSent";
+};
 
 /** Sends the message; resolves to null when it went out, or to its failure state. */
 type Run = () => Promise<string | HoldFailure | null>;
@@ -90,9 +94,17 @@ async function fire() {
     const message = typeof problem === "string" ? problem : problem.message;
     const deliveryStatus =
       typeof problem === "string" ? undefined : problem.uncertain ? "uncertain" : undefined;
+    const deliveryResolution =
+      typeof problem === "string"
+        ? undefined
+        : problem.uncertain
+          ? (problem.deliveryResolution ?? restore?.deliveryResolution)
+          : undefined;
     set({
       view: null,
-      ...(restore ? { restoring: { ...restore, notice: message, deliveryStatus } } : {}),
+      ...(restore
+        ? { restoring: { ...restore, notice: message, deliveryStatus, deliveryResolution } }
+        : {}),
     });
     onEnd?.(message);
     return;

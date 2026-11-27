@@ -3965,6 +3965,10 @@ msgstr "Check in"
 msgid "Check queue"
 msgstr "Check queue"
 
+#: src/components/ComposeEmail.tsx
+msgid "Check Sent"
+msgstr "Check Sent"
+
 #: src/pages/Investors.tsx
 msgid "Check size"
 msgstr "Check size"
@@ -4004,6 +4008,10 @@ msgstr "Checking approval status"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr "Checking computer setup…"
+
+#: src/components/ComposeEmail.tsx
+msgid "Checking Sent…"
+msgstr "Checking Sent…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
@@ -6297,6 +6305,10 @@ msgstr "Couldn't add Gmail filter"
 msgid "Couldn't archive {count}"
 msgstr "Couldn't archive {count}"
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't check Sent."
+msgstr "Couldn't check Sent."
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr "Couldn't classify"
@@ -7235,6 +7247,10 @@ msgstr "Dismiss {name}"
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "Dismiss error"
+
+#: src/components/ComposeEmail.tsx
+msgid "Dismiss recovery"
+msgstr "Dismiss recovery"
 
 #: src/components/cap-table/stakeholders/StakeholderChanges.tsx
 msgid "Dismiss update"
@@ -8629,6 +8645,10 @@ msgstr "Forward"
 #: src/components/data-room/DropZone.tsx
 msgid "Found {total} files"
 msgstr "Found {total} files"
+
+#: src/components/ComposeEmail.tsx
+msgid "Found a matching message in Sent."
+msgstr "Found a matching message in Sent."
 
 #: src/lib/company-relation-label.ts
 msgid "founded"
@@ -12229,6 +12249,10 @@ msgstr "No matching convertibles"
 #: src/components/cap-table/access/InvestorRelations.tsx
 msgid "No matching holders"
 msgstr "No matching holders"
+
+#: src/components/ComposeEmail.tsx
+msgid "No matching message found. Delivery remains unconfirmed."
+msgstr "No matching message found. Delivery remains unconfirmed."
 
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx

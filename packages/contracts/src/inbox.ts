@@ -597,12 +597,14 @@ export const ComposeFieldsSchema = z.object({
 });
 
 /**
- * `saved`/`sent`: done. `unknown`: the send may have gone out; it is never repeated, so the user
- * checks Sent. `reconnect`: the account lacks permission. `disabled`: the deployment turned
+ * `saved`/`sent`: done. `unknown`: the send may have gone out. `unknownState` says whether the
+ * original request is still pending or has a permanent recorded outcome. `reconnect`: the account lacks permission. `disabled`: the deployment turned
  * Gmail writes off. `failed`: nothing was sent or saved; trying again is safe.
  */
 export const ComposeResultSchema = z.object({
   status: z.enum(["saved", "sent", "unknown", "reconnect", "disabled", "failed"]),
+  /** Optional for older clients and responses. Permanent means the server will not retry this client id. */
+  unknownState: z.enum(["pending", "permanent"]).optional(),
   /** Why a `failed` send failed, when Gmail said: it refused the message, or it is limiting requests. */
   reason: z.enum(["rejected", "rate_limited"]).optional(),
 });

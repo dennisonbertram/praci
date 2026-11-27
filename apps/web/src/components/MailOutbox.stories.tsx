@@ -104,8 +104,9 @@ export const SendUnconfirmed: Story = {
         async () => ({
           message: "Not confirmed as sent. Check Sent before trying again.",
           uncertain: true,
+          deliveryResolution: "checkSent",
         }),
-        { ...restore, deliveryStatus: "uncertain" },
+        { ...restore, deliveryStatus: "uncertain", deliveryResolution: "checkSent" },
       ),
     );
     return settle;

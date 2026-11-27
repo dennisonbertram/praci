@@ -206,6 +206,21 @@ export const SendUnconfirmed: Story = {
       {
         notice: "Not confirmed as sent. Check Sent before trying again.",
         deliveryStatus: "uncertain",
+        deliveryResolution: "checkSent",
+        saved: true,
+      },
+    ),
+  },
+};
+
+export const SendPendingUnconfirmed: Story = {
+  args: {
+    restore: restored(
+      { to: ["ana@example.test"], subject: "Hello", text: "Body." },
+      {
+        notice: "Not confirmed as sent. Check Sent before trying again.",
+        deliveryStatus: "uncertain",
+        deliveryResolution: "retry",
         saved: true,
       },
     ),
