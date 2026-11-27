@@ -198,3 +198,16 @@ export const SendFailedNotice: Story = {
     ),
   },
 };
+
+export const SendUnconfirmed: Story = {
+  args: {
+    restore: restored(
+      { to: ["ana@example.test"], subject: "Hello", text: "Body." },
+      {
+        notice: "Not confirmed as sent. Check Sent before trying again.",
+        deliveryStatus: "uncertain",
+        saved: true,
+      },
+    ),
+  },
+};

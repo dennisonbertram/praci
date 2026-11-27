@@ -67,6 +67,19 @@ export const Draft: Story = { beforeEach: setup(update()) };
 /** An empty body offers Draft with agent. */
 export const EmptyBody: Story = { beforeEach: setup(update({ body: "" })) };
 
+/** The founder can add context once or skip before the agent starts. */
+export const PeriodContextPrompt: Story = {
+  beforeEach: setup(update({ body: "" })),
+  play: async ({ canvasElement }) => {
+    const draftButton = await within(canvasElement).findByRole(
+      "button",
+      { name: "Draft with agent" },
+      { timeout: 5_000 },
+    );
+    await userEvent.click(draftButton);
+  },
+};
+
 /** Without Gmail the To list is hidden; Post to portal puts the update on the portal and Connect Gmail is the other action. */
 export const NoGmail: Story = { beforeEach: setup(update(), []) };
 

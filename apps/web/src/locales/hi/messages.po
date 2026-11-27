@@ -1797,6 +1797,10 @@ msgstr ""
 msgid "Add the value."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Add this period’s highlights"
+msgstr "इस अवधि की मुख्य बातें जोड़ें"
+
 #: src/components/inbox/MailAttachments.tsx
 msgid "Add to Data room"
 msgstr ""
@@ -2467,6 +2471,10 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "अनुमोदन सीमाएं"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Approval requested"
+msgstr "अनुमति का अनुरोध किया गया"
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Approvals"
@@ -2716,6 +2724,10 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Asking another agent"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Asks"
+msgstr "अनुरोध"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3985,6 +3997,10 @@ msgstr ""
 msgid "Checked {checked}"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Checking approval status"
+msgstr "अनुमति की स्थिति जाँची जा रही है"
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
@@ -4979,9 +4995,17 @@ msgstr ""
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent request closed"
+msgstr "सहमति अनुरोध बंद कर दिया गया"
+
 #: src/pages/CompanyImport.tsx
 msgid "Consent required"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Consent was declined"
+msgstr "सहमति अस्वीकार की गई"
 
 #: src/components/cap-table/access/access-levels.ts
 msgid "Consultants and stakeholders with \"other\" or no relationship"
@@ -5028,6 +5052,7 @@ msgstr "कॉन्टेक्स्ट सीमा"
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
 msgstr "जारी रखें"
@@ -9137,6 +9162,10 @@ msgstr "उच्च"
 msgid "High"
 msgstr "उच्च"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Highlights"
+msgstr "मुख्य बातें"
+
 #: src/components/cap-table/stakeholders/HrisPreferencesDialog.tsx
 msgid "Hire date"
 msgstr ""
@@ -10523,6 +10552,10 @@ msgstr ""
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Lowlights"
+msgstr "चुनौतियाँ"
 
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -12571,7 +12604,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
-msgstr ""
+msgstr "भेजे जाने की पुष्टि नहीं हुई। दोबारा कोशिश करने से पहले भेजे गए संदेश देखें।"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
@@ -13241,6 +13274,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Optional: add details for this skill"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Optional. Anything you leave blank will be checked against available sources or marked TBD."
+msgstr "वैकल्पिक। खाली छोड़ी गई जानकारी की उपलब्ध स्रोतों से जाँच की जाएगी या उसे TBD के रूप में चिह्नित किया जाएगा।"
 
 #: src/components/cap-table/options/OptionDraftSetDialog.tsx
 #: src/components/cap-table/options/OptionGrantActionDialog.tsx
@@ -15646,6 +15683,10 @@ msgstr ""
 msgid "Retry screen"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Retry send"
+msgstr "फिर से भेजें"
+
 #: src/lib/run-phase.ts
 msgid "Retrying"
 msgstr ""
@@ -15713,6 +15754,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "प्रोवाइडर सेटिंग्स की समीक्षा करें और फिर से परीक्षण करें।"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Review request"
+msgstr "अनुरोध की समीक्षा करें"
 
 #: src/components/inbox/AttachmentReviewDialog.tsx
 #: src/components/inbox/MailAttachments.tsx
@@ -17383,6 +17428,7 @@ msgstr ""
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/teach/SkillDraftCard.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "छोड़ें"
@@ -18639,6 +18685,10 @@ msgstr ""
 #: src/pages/McpConsent.tsx
 msgid "This connection request is not valid"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "This context is too long. Shorten it and try again."
+msgstr "यह संदर्भ बहुत लंबा है। इसे छोटा करके फिर से कोशिश करें।"
 
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
@@ -20062,6 +20112,10 @@ msgstr ""
 #: src/pages/McpConnectionsPanel.tsx
 msgid "Waiting for approval"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Waiting for consent"
+msgstr "सहमति की प्रतीक्षा है"
 
 #. placeholder {0}: dayLabel(row.waitingSince.slice(0, 10))
 #: src/components/fundraising/PipelineTable.tsx

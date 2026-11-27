@@ -55,6 +55,7 @@ export function MailOutbox() {
             seed={restoring.seed}
             accounts={restoring.accounts}
             restore={restoring}
+            spaceId={restoring.spaceId}
             onClose={closeRestored}
           />
         </Suspense>

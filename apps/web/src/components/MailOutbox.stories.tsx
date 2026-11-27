@@ -8,6 +8,7 @@ import { MailOutbox } from "./MailOutbox";
 const restore: ComposeRestore = {
   seed: NEW_MESSAGE,
   clientId: "client_story_outbox",
+  spaceId: "space_story_outbox",
   fields: {
     connectionId: "conn_1",
     to: [],
@@ -85,11 +86,27 @@ export const DraftDiscarded: Story = {
   },
 };
 
-/** The send failed, so the composer reopens with the reason. */
+/** A definite rejection means the message was not sent. */
 export const SendFailed: Story = {
   beforeEach: () => {
     withoutHold(() =>
-      holdSend(async () => "Not confirmed as sent. Check Sent before trying again.", restore),
+      holdSend(async () => "Not sent. Gmail didn't accept it. Check the addresses.", restore),
+    );
+    return settle;
+  },
+};
+
+/** An uncertain result keeps the original request frozen until it can be resolved. */
+export const SendUnconfirmed: Story = {
+  beforeEach: () => {
+    withoutHold(() =>
+      holdSend(
+        async () => ({
+          message: "Not confirmed as sent. Check Sent before trying again.",
+          uncertain: true,
+        }),
+        { ...restore, deliveryStatus: "uncertain" },
+      ),
     );
     return settle;
   },

@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import { ORPCError } from "@orpc/client";
 import type { Contact, InvestorUpdate } from "@rakazo/contracts";
 import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
@@ -29,9 +31,12 @@ const rpcMock = vi.hoisted(() => ({
   accounts: vi.fn(),
   contacts: vi.fn(),
   agent: vi.fn(),
+  selectedSpaceId: vi.fn(() => null),
   threadsSend: vi.fn(),
+  threadsGet: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
+  selectedSpaceId: rpcMock.selectedSpaceId,
   rpc: {
     contacts: { list: rpcMock.contacts },
     investors: {
@@ -46,7 +51,7 @@ vi.mock("../../lib/rpc", () => ({
         accounts: rpcMock.accounts,
       },
     },
-    threads: { send: rpcMock.threadsSend },
+    threads: { send: rpcMock.threadsSend, get: rpcMock.threadsGet },
   },
 }));
 
@@ -82,6 +87,7 @@ const update = (over: Partial<InvestorUpdate> = {}): InvestorUpdate => ({
   ...over,
 });
 const gmail = [{ connectionId: "g1", label: "me@example.test" }];
+const noSpace = { context: { spaceId: null } };
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -104,8 +110,10 @@ async function show(
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={["/app/investors/updates/u1"]}>
-        <UpdateEditor updateId="u1" />
-        <NotificationToaster onOpen={() => {}} />
+        <I18nProvider i18n={i18n}>
+          <UpdateEditor updateId="u1" />
+          <NotificationToaster onOpen={() => {}} />
+        </I18nProvider>
       </MemoryRouter>,
     ),
   );
@@ -114,6 +122,8 @@ async function show(
 }
 
 beforeEach(() => {
+  i18n.load("en", {});
+  i18n.activate("en");
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -147,7 +157,7 @@ it("asks once about leftover TBD, in the button row, and the Send label never sh
   await click(button("Send anyway"));
   expect(rpcMock.send).not.toHaveBeenCalled();
   await advance(UNDO_SEND_MS);
-  expect(rpcMock.send).toHaveBeenCalledWith({ id: "u1" });
+  expect(rpcMock.send).toHaveBeenCalledWith({ id: "u1" }, noSpace);
 });
 
 it("sends without asking when nothing is TBD", async () => {
@@ -197,7 +207,7 @@ it("leaving the page during the hold sends at once, and only once", async () => 
   expect(rpcMock.send).not.toHaveBeenCalled();
   await act(async () => root.unmount());
   expect(rpcMock.send).toHaveBeenCalledOnce();
-  expect(rpcMock.send).toHaveBeenCalledWith({ id: "u1" });
+  expect(rpcMock.send).toHaveBeenCalledWith({ id: "u1" }, noSpace);
   await advance(UNDO_SEND_MS * 2);
   expect(rpcMock.send).toHaveBeenCalledOnce();
   root = createRoot(container);
@@ -227,7 +237,10 @@ it("retries the initial update and recipient load after the draft lookup fails",
   await flush();
 
   expect(rpcMock.get).toHaveBeenCalledTimes(2);
-  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "investor" });
+  expect(rpcMock.contacts).toHaveBeenCalledWith(
+    { kind: "investor" },
+    { context: { spaceId: null } },
+  );
   expect(document.querySelector('fieldset[aria-busy="true"]')).toBeNull();
   expect((document.getElementById("to-c1") as HTMLInputElement).checked).toBe(true);
   expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
@@ -290,7 +303,7 @@ it("loads contacts for the accepted agent refresh without duplicating accounts o
     "Agent draft accepted",
   );
   expect(rpcMock.contacts).toHaveBeenCalledTimes(1);
-  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "board" });
+  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "board" }, { context: { spaceId: null } });
   expect(rpcMock.accounts).toHaveBeenCalledTimes(1);
   expect(document.querySelector('fieldset[aria-busy="true"]')).not.toBeNull();
   expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
@@ -376,7 +389,7 @@ it.each([
 
 it("takes its recipients from the audience: the board update lists board contacts", async () => {
   await show(update({ audience: "board" }));
-  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "board" });
+  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "board" }, { context: { spaceId: null } });
 });
 
 it("greys a recipient without an email and leaves it unticked", async () => {
@@ -422,7 +435,7 @@ it("Post to portal posts the draft and says how many were notified", async () =>
   rpcMock.post.mockResolvedValue({ update: update({ status: "posted" }), notified: 2 });
   await show(update(), []);
   await click(button("Post to portal"));
-  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" });
+  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" }, noSpace);
   expect(document.body.textContent).toContain("Posted · 2 notified");
 });
 
@@ -436,7 +449,7 @@ it("keeps portal posting available for a portal-linked recipient without email",
   expect(button("Post to portal")).toBeDefined();
   expect((button("Post to portal") as HTMLButtonElement).disabled).toBe(false);
   await click(button("Post to portal"));
-  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" });
+  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" }, noSpace);
 });
 
 it("asks once about leftover TBD before posting, like Send", async () => {
@@ -472,6 +485,7 @@ it("greys a revoked recipient, unticks it and never sends to it", async () => {
   await click(button("Send"));
   expect(rpcMock.save).toHaveBeenLastCalledWith(
     expect.objectContaining({ recipientContactIds: ["c2"] }),
+    noSpace,
   );
 });
 
@@ -513,11 +527,14 @@ it("retries a failed recipient directly", async () => {
   expect(document.body.textContent).toContain("1 of 2 sent");
   expect(button("Done")).toBeDefined();
   await click(button("Retry"));
-  expect(rpcMock.retry).toHaveBeenCalledWith({
-    id: "u1",
-    contactIds: ["c2"],
-    resendUnknown: false,
-  });
+  expect(rpcMock.retry).toHaveBeenCalledWith(
+    {
+      id: "u1",
+      contactIds: ["c2"],
+      resendUnknown: false,
+    },
+    noSpace,
+  );
 });
 
 it("asks once before resending an Unknown recipient, and Send again starts a new attempt", async () => {
@@ -536,11 +553,14 @@ it("asks once before resending an Unknown recipient, and Send again starts a new
   expect(rpcMock.retry).not.toHaveBeenCalled();
   expect(document.body.textContent).toContain("May already be delivered. Send again?");
   await click(button("Send again"));
-  expect(rpcMock.retry).toHaveBeenCalledWith({
-    id: "u1",
-    contactIds: ["c2"],
-    resendUnknown: true,
-  });
+  expect(rpcMock.retry).toHaveBeenCalledWith(
+    {
+      id: "u1",
+      contactIds: ["c2"],
+      resendUnknown: true,
+    },
+    noSpace,
+  );
 });
 
 it("closes the resend question without changing anything", async () => {
@@ -569,7 +589,7 @@ it("records an Unknown recipient as Sent with Mark delivered in the footer", asy
     }),
   );
   await click(button("Mark delivered"));
-  expect(rpcMock.markDelivered).toHaveBeenCalledWith({ id: "u1", contactIds: undefined });
+  expect(rpcMock.markDelivered).toHaveBeenCalledWith({ id: "u1", contactIds: undefined }, noSpace);
 });
 
 it("shows Sending on a disabled button while a send runs", async () => {
@@ -606,19 +626,295 @@ it("pauses send polling while the tab is hidden and resumes on the next tick", a
   }
 });
 
-it("offers Draft with agent only while the body is empty, and reports a failure", async () => {
+it("collects optional period context before asking the agent and lets the founder skip", async () => {
   await show(update({ body: "" }));
   expect(button("Draft with agent")).toBeDefined();
+  await click(button("Draft with agent"));
+  expect(document.body.textContent).toContain("Add this period’s highlights");
+  expect(rpcMock.threadsSend).not.toHaveBeenCalled();
   rpcMock.agent.mockResolvedValue({ id: "bot1" });
   rpcMock.threadsSend.mockRejectedValue(new Error("No model"));
-  await click(button("Draft with agent"));
+  await click(button("Skip"));
+  await flush();
   expect(rpcMock.threadsSend).toHaveBeenCalledWith(
-    expect.objectContaining({ botId: "bot1", text: expect.stringContaining("u1") }),
+    expect.objectContaining({
+      botId: "bot1",
+      text: expect.stringContaining("u1"),
+    }),
+    noSpace,
   );
+  expect(rpcMock.threadsSend.mock.calls[0]?.[0].text).toContain("Skipped: TBD");
   expect(document.body.textContent).toContain("No model");
   // The body stays empty.
   expect(button("Draft with agent")).toBeDefined();
 });
+
+it("shows the exact pending consent card, then offers retry after denial", async () => {
+  vi.useFakeTimers();
+  await show(update({ body: "" }));
+  rpcMock.agent.mockResolvedValue({ id: "bot1" });
+  rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "older-ask",
+        seq: 6,
+        runId: "run1",
+        blocks: [
+          {
+            kind: "ask",
+            consent: { version: "v1" },
+            status: "answered",
+            answer: "deny",
+          },
+        ],
+      },
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [{ kind: "ask", consent: { version: "v1" }, status: "pending" }],
+      },
+    ],
+  });
+  await click(button("Draft with agent"));
+  await click(button("Continue"));
+  await flush();
+  await advance(2_000);
+  expect(document.body.textContent).toContain("Waiting for consent");
+  const requestLink = document.querySelector('a[href="/app/bot1?m=ask1"]');
+  expect(requestLink).not.toBeNull();
+  expect(requestLink?.getAttribute("target")).toBe("_blank");
+  await advance(3 * 60_000 + 5_000);
+  expect(document.body.textContent).toContain("Waiting for consent");
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [{ kind: "ask", consent: { version: "v1" }, status: "answered", answer: "deny" }],
+      },
+    ],
+  });
+  await advance(2_000);
+  expect(document.body.textContent).toContain("Consent was declined");
+  expect(button("Draft with agent")).toBeDefined();
+  expect(rpcMock.save).not.toHaveBeenCalled();
+});
+
+it("resumes after consent and renders only the new draft body", async () => {
+  vi.useFakeTimers();
+  await show(update({ body: "" }));
+  rpcMock.agent.mockResolvedValue({ id: "bot1" });
+  rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [
+          {
+            kind: "ask",
+            consent: { version: "v1" },
+            status: "pending",
+          },
+        ],
+      },
+    ],
+  });
+  await click(button("Draft with agent"));
+  await click(button("Continue"));
+  await flush();
+  await advance(2_000);
+  expect(document.body.textContent).toContain("Waiting for consent");
+  expect(document.querySelector('a[href="/app/bot1?m=ask1"]')?.getAttribute("target")).toBe(
+    "_blank",
+  );
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [
+          {
+            kind: "ask",
+            consent: { version: "v1" },
+            status: "answered",
+            answer: "allow",
+          },
+        ],
+      },
+    ],
+  });
+  rpcMock.get.mockResolvedValue(update({ body: "## Highlights\n\n- Founder-sourced update" }));
+  await advance(2_000);
+  expect(document.body.textContent).toContain("Founder-sourced update");
+  expect(document.body.textContent).not.toContain("Waiting for consent");
+  expect(rpcMock.send).not.toHaveBeenCalled();
+  expect(rpcMock.post).not.toHaveBeenCalled();
+});
+
+it("keeps the post-approval wait bounded when the agent never saves a body", async () => {
+  vi.useFakeTimers();
+  await show(update({ body: "" }));
+  rpcMock.agent.mockResolvedValue({ id: "bot1" });
+  rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [
+          {
+            kind: "ask",
+            consent: { version: "v1" },
+            status: "pending",
+          },
+        ],
+      },
+    ],
+  });
+  await click(button("Draft with agent"));
+  await click(button("Continue"));
+  await flush();
+  await advance(2_000);
+  rpcMock.threadsGet.mockResolvedValue({
+    messages: [
+      {
+        id: "ask1",
+        seq: 8,
+        runId: "run1",
+        blocks: [
+          {
+            kind: "ask",
+            consent: { version: "v1" },
+            status: "answered",
+            answer: "allow",
+          },
+        ],
+      },
+    ],
+  });
+  await advance(3 * 60_000 + 5_000);
+  expect(document.body.textContent).toContain("The agent did not finish a draft");
+  expect(button("Draft with agent")).toBeDefined();
+});
+
+it("ignores stale consent cards and keeps the same send alive through a transient read failure", async () => {
+  vi.useFakeTimers();
+  await show(update({ body: "" }));
+  rpcMock.agent.mockResolvedValue({ id: "bot1" });
+  rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+  rpcMock.threadsGet.mockRejectedValueOnce(new Error("temporary read failure")).mockResolvedValue({
+    messages: [
+      {
+        id: "before-send",
+        seq: 6,
+        runId: "run1",
+        blocks: [{ kind: "ask", consent: { version: "v1" }, status: "pending" }],
+      },
+      {
+        id: "current-ask",
+        seq: 8,
+        runId: "run1",
+        blocks: [{ kind: "ask", consent: { version: "v1" }, status: "pending" }],
+      },
+    ],
+  });
+  rpcMock.get
+    .mockResolvedValueOnce(update({ body: "" }))
+    .mockRejectedValueOnce(new Error("temporary draft read failure"))
+    .mockResolvedValue(update({ body: "" }));
+  await click(button("Draft with agent"));
+  await click(button("Continue"));
+  await flush();
+  await advance(4_500);
+  expect(document.querySelector('a[href="/app/bot1?m=current-ask"]')).not.toBeNull();
+  expect(document.querySelector('a[href="/app/bot1?m=before-send"]')).toBeNull();
+  expect(rpcMock.threadsSend).toHaveBeenCalledTimes(1);
+});
+
+it("keeps polling when a stale disclosure Allow is recorded as deny and requeued", async () => {
+  vi.useFakeTimers();
+  await show(update({ body: "" }));
+  rpcMock.agent.mockResolvedValue({ id: "bot1" });
+  rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+  rpcMock.threadsGet
+    .mockResolvedValueOnce({
+      messages: [
+        {
+          id: "old-version",
+          seq: 8,
+          runId: "run1",
+          blocks: [{ kind: "ask", consent: { version: "old" }, status: "pending" }],
+        },
+      ],
+    })
+    .mockResolvedValueOnce({
+      run: { id: "run1", status: "queued" },
+      messages: [
+        {
+          id: "old-version",
+          seq: 8,
+          runId: "run1",
+          blocks: [
+            { kind: "ask", consent: { version: "old" }, status: "answered", answer: "deny" },
+          ],
+        },
+      ],
+    })
+    .mockResolvedValue({
+      messages: [
+        {
+          id: "current-version",
+          seq: 9,
+          runId: "run1",
+          blocks: [{ kind: "ask", consent: { version: "current" }, status: "pending" }],
+        },
+      ],
+    });
+  await click(button("Draft with agent"));
+  await click(button("Continue"));
+  await flush();
+  await advance(1_500);
+  await advance(1_500);
+  await advance(1_500);
+  expect(document.body.textContent).not.toContain("Consent was declined");
+  expect(document.querySelector('a[href="/app/bot1?m=current-version"]')).not.toBeNull();
+  expect(rpcMock.threadsSend).toHaveBeenCalledTimes(1);
+});
+
+it.each(["expired", "stopped", "superseded", "skipped"] as const)(
+  "reports a closed %s consent request without calling it a denial",
+  async (answer) => {
+    vi.useFakeTimers();
+    await show(update({ body: "" }));
+    rpcMock.agent.mockResolvedValue({ id: "bot1" });
+    rpcMock.threadsSend.mockResolvedValue({ runId: "run1", seq: 7 });
+    rpcMock.threadsGet.mockResolvedValue({
+      run: { id: "run1", status: "failed" },
+      messages: [
+        {
+          id: "closed-ask",
+          seq: 8,
+          runId: "run1",
+          blocks: [{ kind: "ask", consent: { version: "v1" }, status: "answered", answer }],
+        },
+      ],
+    });
+    await click(button("Draft with agent"));
+    await click(button("Continue"));
+    await flush();
+    await advance(1_500);
+    expect(document.body.textContent).toContain("Consent request closed");
+    expect(document.body.textContent).not.toContain("Consent was declined");
+    expect(button("Draft with agent")).toBeDefined();
+  },
+);
 
 it("does not offer Draft with agent once there is text", async () => {
   await show(update());
@@ -634,12 +930,14 @@ it("sends the version the fields were read from, then the version the last save 
   expect(rpcMock.save).toHaveBeenNthCalledWith(
     1,
     expect.objectContaining({ updatedAt: "2026-10-01T09:00:00.000Z" }),
+    noSpace,
   );
   await click(document.getElementById("to-c2") as HTMLElement);
   await advance(600);
   expect(rpcMock.save).toHaveBeenNthCalledWith(
     2,
     expect.objectContaining({ updatedAt: "2026-10-01T09:05:00.000Z" }),
+    noSpace,
   );
 });
 
@@ -683,8 +981,10 @@ async function showBusy(agentBusy: boolean) {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={["/app/investors/updates/u1"]}>
-        <UpdateEditor updateId="u1" agentBusy={agentBusy} />
-        <NotificationToaster onOpen={() => {}} />
+        <I18nProvider i18n={i18n}>
+          <UpdateEditor updateId="u1" agentBusy={agentBusy} />
+          <NotificationToaster onOpen={() => {}} />
+        </I18nProvider>
       </MemoryRouter>,
     ),
   );

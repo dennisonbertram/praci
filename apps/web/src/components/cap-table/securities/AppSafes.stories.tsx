@@ -39,3 +39,12 @@ export const Default: Story = {
       ],
     }),
 };
+
+export const Narrow: Story = {
+  ...Default,
+  render: (args) => (
+    <div className="w-[390px]">
+      <AppSafes {...args} />
+    </div>
+  ),
+};

@@ -30,7 +30,9 @@ export function CapTablePage() {
 
   const tab = capTableTab(asked);
   return (
-    <div className={`flex flex-col gap-4 ${PAGE_GUTTER_X} pb-6`}>
+    <div
+      className={`rk-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}
+    >
       <PageHeader title={t`Cap table`} />
       <Tabs value={tab.id} onValueChange={(next) => navigate(`/app/cap-table/${next}`)}>
         <TabsList

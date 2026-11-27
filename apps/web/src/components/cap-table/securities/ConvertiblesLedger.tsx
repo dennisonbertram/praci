@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -227,8 +228,8 @@ export function ConvertiblesLedger({
           message={filtered ? t`No matching convertibles` : t`No SAFEs or convertibles yet`}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="min-w-4xl">
+        <TableScrollRegion aria-label={t`Convertibles`}>
+          <Table className="min-w-4xl whitespace-nowrap">
             <TableHeader>
               <TableHeadRow>
                 <TableHead className="w-8">
@@ -244,7 +245,10 @@ export function ConvertiblesLedger({
                   />
                 </TableHead>
                 <TableHead className="w-24" {...head("label")}>{t`Security`}</TableHead>
-                <TableHead {...head("stakeholderName")}>{t`Stakeholder`}</TableHead>
+                <TableHead
+                  className="w-48"
+                  {...head("stakeholderName")}
+                >{t`Stakeholder`}</TableHead>
                 <TableHead className="w-16">{t`Kind`}</TableHead>
                 <TableHead className="w-28" {...head("status")}>{t`Status`}</TableHead>
                 <TableHead
@@ -292,7 +296,11 @@ export function ConvertiblesLedger({
                       {row.label}
                     </button>
                   </TableCell>
-                  <TableCell>{row.stakeholderName}</TableCell>
+                  <TableCell>
+                    <span className="block truncate" title={row.stakeholderName}>
+                      {row.stakeholderName}
+                    </span>
+                  </TableCell>
                   <TableCell>{kindLabel(row)}</TableCell>
                   <TableCell>
                     {convertibleStatusLabel(row.status)}
@@ -355,7 +363,7 @@ export function ConvertiblesLedger({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TableScrollRegion>
       )}
 
       {rows?.length && totals ? (
